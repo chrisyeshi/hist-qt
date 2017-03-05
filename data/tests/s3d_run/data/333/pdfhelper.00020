@@ -1,0 +1,2 @@
+N_HIST n_nonempty_bins n_vx n_vy n_vz nh_x nh_y nh_z n_bx n_by n_bz min_x min_y min_z max_x max_y max_z log_base_x log_base_y log_base_z
+8 0 20 20 20 2 2 2 10 10 10 2.143135E+01 6.700000E+00 2.700200E-17 2.143135E+01 7.440000E+00 1.910840E-15 0.000000, 0.000000, 0.000000
