@@ -21,7 +21,7 @@ signals:
 
 public:
     void setHistRect(std::shared_ptr<HistFacadeRect> histRect);
-    void setSelectedHistMask(BoolMask2D selectedHistMask);
+//    void setSelectedHistMask(BoolMask2D selectedHistMask);
     void setHistDimensions(std::vector<int> histDims);
     void update();
 
@@ -35,7 +35,7 @@ private:
 
 private:
     std::shared_ptr<HistFacadeRect> _histRect;
-    BoolMask2D _selectedHistMask;
+//    BoolMask2D _selectedHistMask;
     std::vector<std::shared_ptr<HistPainter>> _histPainters;
     std::vector<int> _histDims;
 };

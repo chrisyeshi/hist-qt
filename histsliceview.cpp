@@ -22,10 +22,10 @@ void HistSliceView::setHistRect(std::shared_ptr<HistFacadeRect> histRect)
     /// TODO: draw the histogram rect.
 }
 
-void HistSliceView::setSelectedHistMask(BoolMask2D selectedHistMask)
-{
-    _selectedHistMask = selectedHistMask;
-}
+//void HistSliceView::setSelectedHistMask(BoolMask2D selectedHistMask)
+//{
+//    _selectedHistMask = selectedHistMask;
+//}
 
 void HistSliceView::setHistDimensions(std::vector<int> histDims)
 {
@@ -43,9 +43,10 @@ void HistSliceView::update()
 void HistSliceView::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    for (unsigned int iHist = 0; iHist < _histPainters.size(); ++iHist) {
+    for (int iHist = 0; iHist < int(_histPainters.size()); ++iHist) {
         auto& painter = _histPainters[iHist];
-        if (_selectedHistMask.isSelected(iHist)) {
+//        if (_selectedHistMask.isSelected(iHist)) {
+        if (_histRect->hist(iHist)->selected()) {
             painter->setColorMap(HistPainter::YELLOW_BLUE);
         } else {
             painter->setColorMap(HistPainter::GRAY_SCALE);

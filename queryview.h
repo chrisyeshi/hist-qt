@@ -12,18 +12,6 @@ class QVBoxLayout;
 class QComboBox;
 class QLineEdit;
 
-class QueryRule {
-public:
-    bool isEmpty() const { return histName.empty(); }
-
-public:
-    std::string histName;
-    std::vector<Interval<float>> intervals;
-    float threshold;
-};
-std::ostream& operator<<(std::ostream& os, const QueryRule& rule);
-bool operator==(const QueryRule& a, const QueryRule& b);
-
 /**
  * @brief The QueryRuleDialog class
  */

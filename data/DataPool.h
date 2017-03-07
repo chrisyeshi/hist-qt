@@ -9,9 +9,26 @@
 #include "histfacadegrid.h"
 #include "Histogram.h"
 #include "tracerreader.h"
+#include "mask.h"
 
+/**
+ * @brief The QueryRule class
+ */
+class QueryRule {
+public:
+    bool isEmpty() const { return histName.empty(); }
 
+public:
+    std::string histName;
+    std::vector<Interval<float>> intervals;
+    float threshold;
+};
+std::ostream& operator<<(std::ostream& os, const QueryRule& rule);
+bool operator==(const QueryRule& a, const QueryRule& b);
 
+/**
+ * @brief The HistConfig struct
+ */
 struct HistConfig {
     int nDim;
     std::vector<std::string> vars;
@@ -24,22 +41,29 @@ struct HistConfig {
     bool load(std::istream& in);
 };
 
-
 template <typename T>
 class TDataStep
 {
 public:
     TDataStep() {}
-    TDataStep(const std::string& dir, const std::vector<int> dimProcs,
-             const std::vector<HistConfig>& histConfigs)
-      : m_dir(dir), m_dimProcs(dimProcs)
-      , m_histConfigs(histConfigs) {}
+    TDataStep(std::string dir, std::vector<int> dimProcs,
+            std::vector<int> dimHistsPerDomain,
+            std::vector<HistConfig> histConfigs)
+      : m_dir(dir), m_dimProcs(dimProcs), m_dimHistsPerDomain(dimHistsPerDomain)
+      , m_histConfigs(histConfigs), m_histMask(nHist(), true) {}
 
 public:
+    int nHist() const {
+        int prod = 1;
+        for (unsigned int iDim = 0; iDim < m_dimProcs.size(); ++iDim) {
+            prod *= m_dimProcs[iDim] * m_dimHistsPerDomain[iDim];
+        }
+        return prod;
+    }
     const std::vector<HistConfig>& histConfigs() const { return m_histConfigs; }
     const HistConfig& histConfig(const std::string& name) const {
         auto itr = std::find_if(m_histConfigs.begin(), m_histConfigs.end(),
-                [name](HistConfig histConfig){
+                [name](HistConfig histConfig) {
             return histConfig.name() == name;
         });
         assert(itr != m_histConfigs.end());
@@ -52,6 +76,10 @@ public:
         if (!this->load(name))
             return nullptr;
         return m_data[name];
+    }
+    void setQueryRules(const std::vector<QueryRule>& rules) {
+        m_queryRules = rules;
+        applyQueryRules();
     }
 
 private:
@@ -67,19 +95,62 @@ private:
         sprintf(idcstr, "%03d", index);
         auto histVol = std::make_shared<T>(
                 m_dir, std::string(idcstr), m_dimProcs, itr->vars);
+        /// TODO: separate into it's own function for better performance?
+        for (int iHist = 0; iHist < nHist(); ++iHist)
+            histVol->hist(iHist)->setSelected(m_histMask[iHist]);
         m_data[name] = histVol;
         return true;
+    }
+    void applyQueryRules() {
+        // separate the rules as they are targetting different hist configs.
+        std::unordered_map<std::string, std::vector<QueryRule>> histNameToRules;
+        for (const QueryRule& rule : m_queryRules) {
+            histNameToRules[rule.histName].push_back(rule);
+        }
+        // reset to all true
+        m_histMask.resize(nHist());
+        m_histMask.assign(nHist(), true);
+        // for each histogram config
+        for (const auto& keyValue : histNameToRules) {
+            const std::string& histName = keyValue.first;
+            const std::vector<QueryRule>& rules = keyValue.second;
+            auto histVolume = volume(histName);
+            // for each histogram in a histogram volume
+            for (int iHist = 0; iHist < nHist(); ++iHist) {
+                auto hist = histVolume->hist(iHist);
+                bool histSelected = m_histMask[iHist];
+                // for each rule targettting this hist config
+                for (auto rule : rules) {
+                    // check if the histogram is selected
+                    bool selected =
+                            hist->checkRange(rule.intervals, rule.threshold);
+                    histSelected = histSelected && selected;
+                    if (!histSelected)
+                        break;
+                }
+                // put it in the mask
+                m_histMask[iHist] = histSelected;
+            }
+        }
+        // set selected in the hist facades
+        for (auto keyValue : m_data)
+        for (int iHist = 0; iHist < nHist(); ++iHist) {
+            keyValue.second->hist(iHist)->setSelected(m_histMask[iHist]);
+        }
     }
 
 private:
     std::map<std::string, std::shared_ptr<T> > m_data;
     std::string m_dir;
-    std::vector<int> m_dimProcs;
+    std::vector<int> m_dimProcs, m_dimHistsPerDomain;
     std::vector<HistConfig> m_histConfigs;
+    std::vector<QueryRule> m_queryRules;
+    std::vector<bool> m_histMask;
 };
 
 //typedef TDataStep<HistVolume> DataStep;
 typedef TDataStep<HistFacadeVolume> DataStep;
+//class DataStep : public TDataStep<HistFacadeVolume> {};
 
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -106,10 +177,8 @@ public:
     const std::vector<int>& dimHistsPerDomain() const { return m_dimHistsPerDomain; }
     const std::vector<HistConfig>& histConfigs() const { return m_histConfigs; }
     const HistConfig& histConfig(const std::string& name) const;
-    TracerConfig tracerConfig(int timestep) const {
-        TracerConfig config(stepDir(timestep), m_dimProcs, m_dimHistsPerDomain, m_dimVoxels);
-        return config;
-    }
+    TracerConfig tracerConfig(int timestep) const;
+    void setQueryRules(const std::vector<QueryRule>& rules);
 
 private:
     std::string stepDir(int iStep) const;
@@ -125,11 +194,7 @@ private:
     std::vector<int> m_dimHistsPerDomain;
     std::vector<float> m_volMin, m_volMax;
     std::vector<HistConfig> m_histConfigs;
-
-//    int m_nDimsHist;
-//    std::vector<int> m_dimBinsPerHist;
-//    std::vector<std::string> m_histVars;
-//    std::vector<std::pair<double, double> > m_histRanges;
+    std::vector<QueryRule> m_queryRules;
 };
 
 

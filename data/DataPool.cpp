@@ -11,6 +11,38 @@ namespace {
     const std::string tracer_pre = "tracer-";
 }
 
+/**
+ * @brief operator <<
+ * @param os
+ * @param rule
+ * @return
+ */
+std::ostream &operator<<(std::ostream &os, const QueryRule &rule)
+{
+    os << "Histogram Name: " << rule.histName << std::endl;
+    for (auto interval : rule.intervals) {
+        os << "Interval: (" << interval.lower << ", " << interval.upper << ")"
+                << std::endl;
+    }
+    os << "Threshold: " << rule.threshold << std::endl;
+    return os;
+}
+
+bool operator==(const QueryRule &a, const QueryRule &b)
+{
+    if (a.histName != b.histName)
+        return false;
+    if (fabs(a.threshold - b.threshold) > 0.0001)
+        return false;
+    if (a.intervals != b.intervals)
+        return false;
+    return true;
+}
+
+/**
+ * @brief HistConfig::name
+ * @return
+ */
 std::string HistConfig::name() const
 {
     std::string ret = vars[0];
@@ -176,20 +208,14 @@ bool DataPool::setDir(const std::string& dir)
 
 std::shared_ptr<DataStep> DataPool::step(int iStep)
 {
-    //qDebug() << "loading data step";
-
     if (iStep >= m_nSteps)
-    {
-        //qDebug() << "error iStep >= m_nSteps";
         return nullptr;
+    if (!m_data[iStep]) {
+        m_data[iStep] =
+                std::make_shared<DataStep>(stepDir(iStep), m_dimProcs,
+                    m_dimHistsPerDomain, m_histConfigs);
+        m_data[iStep]->setQueryRules(m_queryRules);
     }
-
-    if (!m_data[iStep])
-    {
-        //qDebug() << "m_data[iStep]==0 : constructing the data step";
-        m_data[iStep] = std::make_shared<DataStep>(stepDir(iStep), m_dimProcs, m_histConfigs);
-    }
-
     return m_data[iStep];
 }
 
@@ -210,6 +236,22 @@ const HistConfig &DataPool::histConfig(const std::string &name) const
     });
     assert(itr != m_histConfigs.end());
     return (*itr);
+}
+
+TracerConfig DataPool::tracerConfig(int timestep) const {
+    TracerConfig config(stepDir(timestep), m_dimProcs, m_dimHistsPerDomain, m_dimVoxels);
+    return config;
+}
+
+void DataPool::setQueryRules(const std::vector<QueryRule> &rules)
+{
+    // store the rules and apply it whenever new data is loaded.
+    m_queryRules = rules;
+    // loop through existing data steps and apply the rule.
+    for (auto step : m_data) {
+        if (step)
+            step->setQueryRules(m_queryRules);
+    }
 }
 
 std::string DataPool::stepDir(int iStep) const

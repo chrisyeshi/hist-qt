@@ -251,16 +251,16 @@ void HistVolumeViewSlice::updateSliceViews()
     _sliceViews[XZ]->setHistDimensions(_histDims);
     _orienView->highlightXYSlice(_xySliceIndex);
     _sliceViews[XY]->setHistRect(_histVolume->xySlice(_xySliceIndex));
-    _sliceViews[XY]->setSelectedHistMask(
-            _selectedHistMask.xySlice(_xySliceIndex));
+//    _sliceViews[XY]->setSelectedHistMask(
+//            _selectedHistMask.xySlice(_xySliceIndex));
     _orienView->highlightXZSlice(_xzSliceIndex);
     _sliceViews[XZ]->setHistRect(_histVolume->xzSlice(_xzSliceIndex));
-    _sliceViews[XZ]->setSelectedHistMask(
-            _selectedHistMask.xzSlice(_xzSliceIndex));
+//    _sliceViews[XZ]->setSelectedHistMask(
+//            _selectedHistMask.xzSlice(_xzSliceIndex));
     _orienView->highlightYZSlice(_yzSliceIndex);
     _sliceViews[YZ]->setHistRect(_histVolume->yzSlice(_yzSliceIndex));
-    _sliceViews[YZ]->setSelectedHistMask(
-            _selectedHistMask.yzSlice(_yzSliceIndex));
+//    _sliceViews[YZ]->setSelectedHistMask(
+//            _selectedHistMask.yzSlice(_yzSliceIndex));
 }
 
 /// TODO: use an array to store the slice indices.
@@ -288,17 +288,17 @@ void HistVolumeViewSlice::setYZSliceIndex(int index)
 void HistVolumeViewSlice::setCurrHistFromXYSlice(
         std::array<int, 2> rectIds, std::vector<int> dims)
 {
-    setCurrHist({ rectIds[0], rectIds[1], _xySliceIndex }, dims);
+    setCurrHist({{ rectIds[0], rectIds[1], _xySliceIndex }}, dims);
 }
 
 void HistVolumeViewSlice::setCurrHistFromXZSlice(std::array<int, 2> rectIds, std::vector<int> dims)
 {
-    setCurrHist({ rectIds[0], _xzSliceIndex, rectIds[1] }, dims);
+    setCurrHist({{ rectIds[0], _xzSliceIndex, rectIds[1] }}, dims);
 }
 
 void HistVolumeViewSlice::setCurrHistFromYZSlice(std::array<int, 2> rectIds, std::vector<int> dims)
 {
-    setCurrHist({ _yzSliceIndex, rectIds[0], rectIds[1] }, dims);
+    setCurrHist({{ _yzSliceIndex, rectIds[0], rectIds[1] }}, dims);
 }
 
 void HistVolumeViewSlice::setCurrHist(

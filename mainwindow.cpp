@@ -166,6 +166,7 @@ void MainWindow::setTimeStep(int timeStep)
 void MainWindow::setRules(const std::vector<QueryRule> &rules)
 {
     _queryRules = rules;
+    _data.setQueryRules(rules);
     applyQueryRules();
     _histVolumeView->setSelectedHistMask(_selectedHistMask);
     _histVolumeView->update();
@@ -183,6 +184,7 @@ void MainWindow::applyQueryRules()
     for (const QueryRule& rule : _queryRules) {
         histNameToRules[rule.histName].push_back(rule);
     }
+    // reset to all true
     _selectedHistMask.resetToAllTrue();
     // for each histogram config
     for (const auto& keyValue : histNameToRules) {

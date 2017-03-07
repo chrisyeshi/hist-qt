@@ -6,28 +6,6 @@
 #include <QLineEdit>
 #include <QDebug>
 
-std::ostream &operator<<(std::ostream &os, const QueryRule &rule)
-{
-    os << "Histogram Name: " << rule.histName << std::endl;
-    for (auto interval : rule.intervals) {
-        os << "Interval: (" << interval.lower << ", " << interval.upper << ")"
-                << std::endl;
-    }
-    os << "Threshold: " << rule.threshold << std::endl;
-    return os;
-}
-
-bool operator==(const QueryRule &a, const QueryRule &b)
-{
-    if (a.histName != b.histName)
-        return false;
-    if (fabs(a.threshold - b.threshold) > 0.0001)
-        return false;
-    if (a.intervals != b.intervals)
-        return false;
-    return true;
-}
-
 /**
  * @brief QueryRuleDialog::QueryRuleDialog
  * @param parent
