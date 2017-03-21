@@ -42,7 +42,10 @@ SOURCES += main.cpp\
     histsliceorienview.cpp \
     data/histgrid.cpp \
     histfacade.cpp \
-    histfacadegrid.cpp
+    histfacadegrid.cpp \
+    painter.cpp \
+    histfacadepainter.cpp \
+    histcharter.cpp
 
 HEADERS  += mainwindow.h \
     histvolumeview.h \
@@ -214,14 +217,16 @@ HEADERS  += mainwindow.h \
     yygl/glrenderpass.h \
     yygl/glerror.h \
     camera.h \
-    mask.h \
     histview.h \
     openglwidget.h \
     histsliceview.h \
     histsliceorienview.h \
     data/histgrid.h \
     histfacade.h \
-    histfacadegrid.h
+    histfacadegrid.h \
+    painter.h \
+    histfacadepainter.h \
+    histcharter.h
 
 FORMS    += mainwindow.ui
 

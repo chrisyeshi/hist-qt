@@ -2,6 +2,7 @@
 #include <QOpenGLFunctions_3_3_Core>
 #include <data/Histogram.h>
 #include <yygl/gltexture.h>
+#include <yygl/glvector.h>
 
 /**
  * @brief HistFacade::create
@@ -36,9 +37,12 @@ bool HistFacade::checkRange(
 
 std::shared_ptr<const Hist> HistFacade::hist(
         const std::vector<int> &dims) const {
+    if (0 < _cachedHists.count(dims)) {
+        return _cachedHists.at(dims);
+    }
     HistCollapser collapser(this->hist());
     std::shared_ptr<const Hist> hist = collapser.collapseTo(dims);
-    /// TODO: cache the computed hist.
+    _cachedHists[dims] = hist;
     return hist;
 }
 
@@ -47,15 +51,20 @@ std::shared_ptr<const Hist> HistFacade::hist(
     return hist(varsToDims(vars));
 }
 
-std::shared_ptr<const yy::gl::texture> HistFacade::texture(
+std::shared_ptr<yy::gl::texture> HistFacade::texture(
         const std::vector<int> &dims) const
 {
+    if (0 < _cachedTextures.count(dims)) {
+        return _cachedTextures.at(dims);
+    }
     /// TODO: right now only supports 2d histograms.
     assert(dims.size() == 2);
     auto hist = this->hist(dims);
-    std::vector<unsigned short> freqs(hist->nBins());
+    /// TODO: remove this for loop after switching to float from double for the
+    /// histograms.
+    std::vector<float> freqs(hist->nBins());
     for (auto iBin = 0; iBin < hist->nBins(); ++iBin) {
-        freqs[iBin] = hist->values()[iBin] + 0.5;
+        freqs[iBin] = hist->values()[iBin];
     }
     auto texture = std::make_shared<yy::gl::texture>();
     texture->setWrapMode(
@@ -63,16 +72,37 @@ std::shared_ptr<const yy::gl::texture> HistFacade::texture(
     texture->setTextureMinMagFilter(yy::gl::texture::TEXTURE_2D,
             yy::gl::texture::MIN_NEAREST, yy::gl::texture::MAG_NEAREST);
     texture->texImage2D(
-            yy::gl::texture::TEXTURE_2D, yy::gl::texture::INTERNAL_R16UI,
+            yy::gl::texture::TEXTURE_2D, yy::gl::texture::INTERNAL_R32F,
             hist->dim()[0], hist->dim()[1], yy::gl::texture::FORMAT_RED,
-            yy::gl::texture::UNSIGNED_SHORT, freqs.data());
-    /// TODO: cache the computed texture.
+            yy::gl::texture::FLOAT, freqs.data());
+    _cachedTextures[dims] = texture;
     return texture;
 }
 
-std::shared_ptr<const yy::gl::texture> HistFacade::texture(
+std::shared_ptr<yy::gl::texture> HistFacade::texture(
         const std::vector<std::string> &vars) const {
     return texture(varsToDims(vars));
+}
+
+/// TODO: consider returning const yy::gl::vector& instead.
+std::shared_ptr<yy::gl::vector<float>> HistFacade::vbo(
+        const std::vector<int> &dims) const {
+    if (0 < _cachedVBOs.count(dims)) {
+        return _cachedVBOs.at(dims);
+    }
+    auto hist = this->hist(dims);
+    auto freqsPtr = std::make_shared<yy::gl::vector<float>>(hist->nBins());
+    auto& freqs = *freqsPtr;
+    for (auto iBin = 0; iBin < hist->nBins(); ++iBin) {
+        freqs[iBin] = hist->values()[iBin];
+    }
+    _cachedVBOs[dims] = freqsPtr;
+    return freqsPtr;
+}
+
+std::shared_ptr<yy::gl::vector<float>> HistFacade::vbo(
+        const std::vector<std::string> &vars) const {
+    return vbo(varsToDims(vars));
 }
 
 std::vector<int> HistFacade::varsToDims(

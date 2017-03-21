@@ -111,6 +111,7 @@ public:
 
 public:
     const std::string& dir() const { return _dir; }
+    const std::vector<std::string>& vars() const { return _vars; }
     std::vector<int> dhtoids(
             const std::vector<int>& dIds, const std::vector<int>& hIds) const;
     std::vector<int> dhtoids(int dId, int hId) const;

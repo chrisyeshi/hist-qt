@@ -7,8 +7,9 @@ ParticleView::ParticleView(QWidget *parent)
   : Widget(parent, Qt::Dialog)
   , _openglView(new ParticleOpenGLView(this))
 {
-    setMinimumSize(200, 200);
+    setMinimumSize(300, 300);
     QVBoxLayout* layout = new QVBoxLayout(this);
+    layout->setMargin(0);
     layout->addWidget(_openglView);
 }
 
@@ -77,7 +78,6 @@ void ParticleOpenGLView::setParticles(const std::vector<Particle> *particles)
 
 void ParticleOpenGLView::paintGL()
 {
-    qDebug() << "ParticleOpenGLView::paintGL";
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_POINT_SPRITE);
@@ -100,11 +100,6 @@ void ParticleOpenGLView::resizeGL(int w, int h)
 void ParticleOpenGLView::mousePressEvent(QMouseEvent *event)
 {
     _mousePrev = event->localPos();
-}
-
-void ParticleOpenGLView::mouseReleaseEvent(QMouseEvent *event)
-{
-
 }
 
 void ParticleOpenGLView::mouseMoveEvent(QMouseEvent *event)

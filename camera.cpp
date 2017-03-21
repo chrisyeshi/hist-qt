@@ -127,7 +127,6 @@ void Camera::reset(const QVector3D &bmin, const QVector3D &bmax)
     float distance = (diagonal / 2.f) / tan(zoom2fov(m_zoom) / 180.f * M_PI / 2.f);
     distance = distance + bmax.z() - m_core->center().z();
     m_core->setEye(m_core->center() - QVector3D(0.f, 0.f, 1.f) * distance);
-    qDebug() << m_core->eye();
     resetNearFar(bmin, bmax);
 }
 
@@ -154,7 +153,6 @@ void Camera::resetNearFar(const QVector3D &bmin, const QVector3D &bmax)
     }
     m_nearRange = std::max(m_nearRange, 0.1f) - 0.01f;
     m_farRange += 0.01f;
-    qDebug() << "near" << near() << "far" << far();
     m_core->setNearFar(near(), far());
 }
 

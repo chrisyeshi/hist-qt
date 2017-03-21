@@ -4,7 +4,6 @@
 #include <QMainWindow>
 #include <data/DataPool.h>
 #include <queryview.h>
-#include <mask.h>
 
 class HistVolumeView;
 class HistCompareView;
@@ -35,8 +34,8 @@ private:
     void exportParticles();
     void setTimeStep(int timeStep);
     void setRules(const std::vector<QueryRule>& rules);
-    void applyQueryRules();
-    std::vector<Particle> loadTracers(int timeStep, const BoolMask3D& mask);
+    std::vector<Particle> loadTracers(
+            int timeStep, const std::vector<int>& selectedHistFlatIds);
 
 private:
     unsigned int nHist() const;
@@ -56,8 +55,6 @@ private:
 private:
     DataPool _data;
     int _currTimeStep;
-    std::vector<QueryRule> _queryRules;
-    BoolMask3D _selectedHistMask;
     std::vector<Particle> _particles;
 
 private:

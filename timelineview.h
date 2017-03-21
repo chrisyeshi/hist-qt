@@ -4,6 +4,7 @@
 #include <widget.h>
 
 class QSlider;
+class QScrollBar;
 
 class TimelineView : public Widget
 {
@@ -18,7 +19,7 @@ signals:
     void timeStepChanged(int);
 
 private:
-    QSlider* _timeSlider;
+    QScrollBar* _timeSlider;
 };
 
 #endif // TIMELINEVIEW_H

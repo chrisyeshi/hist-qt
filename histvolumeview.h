@@ -7,7 +7,6 @@
 #include <openglwidget.h>
 #include <data/DataPool.h>
 #include <yygl/glrenderpass.h>
-#include <mask.h>
 
 class QSlider;
 class QComboBox;
@@ -16,6 +15,7 @@ class QStackedLayout;
 class QStackedWidget;
 class HistVolumeViewImpl;
 class HistPainter;
+class HistView;
 class Hist2DView;
 class HistSliceView;
 class HistSliceOrienView;
@@ -35,7 +35,6 @@ public:
     void update();
     void setHistConfigs(std::vector<HistConfig> configs);
     void setDataStep(std::shared_ptr<DataStep> dataStep);
-    void setSelectedHistMask(BoolMask3D selectedHistMask);
 
 private:
     void setLayout(Layout layout);
@@ -43,6 +42,7 @@ private:
     void updateHistDimensions(const HistConfig& histConfig);
     void selectHistDimension(const QString& dimStr);
     HistVolumeViewImpl* currentImpl() const;
+    void repaintSliceViews();
 
 private:
     QComboBox* _layoutCombo;
@@ -55,7 +55,6 @@ private:
     std::vector<HistConfig> _histConfigs;
     QString _histName;
     std::vector<int> _histDims;
-    BoolMask3D _selectedHistMask;
 };
 
 /// TODO: pull the following classes into separate files before implementing the
@@ -69,8 +68,8 @@ public:
     virtual void setHistVolume(
             std::shared_ptr<const HistFacadeVolume> histVolume) = 0;
     virtual void setHistDimensions(const std::vector<int>& dims) = 0;
-    virtual void setSelectedHistMask(BoolMask3D mask) = 0;
     virtual void update() = 0;
+    virtual void repaintSliceViews() = 0;
 };
 
 /**
@@ -85,8 +84,8 @@ public:
     virtual void setHistVolume(
             std::shared_ptr<const HistFacadeVolume> histVolume) override;
     virtual void setHistDimensions(const std::vector<int>& dims) override;
-    virtual void setSelectedHistMask(BoolMask3D mask) override;
     virtual void update() override;
+    virtual void repaintSliceViews() override;
 
 private:
     static const int NUM_SLICES = 3;
@@ -106,15 +105,23 @@ private:
     void setCurrHistFromYZSlice(
             std::array<int, 2> rectIds, std::vector<int> dims);
     void setCurrHist(std::array<int, 3> histIds, std::vector<int> dims);
+    void unsetCurrHist();
+    void setHoveredHistFromXYSlice(
+            std::array<int, 2> rectIds, std::vector<int> dims, bool hovered);
+    void setHoveredHistFromXZSlice(
+            std::array<int, 2> rectIds, std::vector<int> dims, bool hovered);
+    void setHoveredHistFromYZSlice(
+            std::array<int, 2> rectIds, std::vector<int> dims, bool hovered);
+    void setHoveredHist(
+            std::array<int, 3> histIds, std::vector<int>, bool hovered);
 
 private:
     QVector<QScrollBar*> _sliceIndexScrollBars;
     QVector<HistSliceView*> _sliceViews;
     QStackedWidget* _histOrienWidget;
     HistSliceOrienView* _orienView;
-    Hist2DView* _histView;
+    HistView* _histView;
     std::shared_ptr<const HistFacadeVolume> _histVolume;
-    BoolMask3D _selectedHistMask;
     std::vector<int> _histDims;
     int _xySliceIndex, _xzSliceIndex, _yzSliceIndex;
     std::shared_ptr<const HistFacade> _currHist;

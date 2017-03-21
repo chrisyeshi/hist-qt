@@ -67,6 +67,7 @@ public:
         synchronized = false;
         return hostVector.back();
     }
+    size_t size() const { return hostVector.size(); }
 
 public:
     /// TODO: implement a new iteraotr class to also modify the mapped memory.

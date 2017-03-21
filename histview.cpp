@@ -1,47 +1,58 @@
 #include "histview.h"
-
+#include <QToolTip>
+#include <QMouseEvent>
+#include <painter.h>
+#include <histfacade.h>
 #include <histpainter.h>
+#include <histcharter.h>
 #include <data/Histogram.h>
 
 HistView::HistView(QWidget *parent)
-  : OpenGLWidget(parent)
-{
-
-}
-
-Hist2DView::Hist2DView(QWidget *parent)
-  : HistView(parent)
-{
-
-}
-
-void Hist2DView::setHist(std::shared_ptr<const Hist> hist)
-{
-    _hist = hist;
+  : OpenGLWidget(parent) {
+    setMouseTracking(true);
     delayForInit([this]() {
-        auto hist2d = std::static_pointer_cast<const Hist2D>(_hist);
+        glClearColor(1.f, 1.f, 1.f, 1.f);
+    });
+}
+
+void HistView::setHist(std::shared_ptr<const HistFacade> histFacade,
+        std::vector<int> displayDims) {
+    delayForInit([this, histFacade, displayDims]() {
+        _histCharter = IHistCharter::create(histFacade, displayDims);
+        auto hist2d = histFacade->hist(displayDims);
         float vMin = std::numeric_limits<float>::max();
         float vMax = std::numeric_limits<float>::lowest();
         for (auto v : hist2d->values()) {
             vMin = std::min(vMin, float(v));
             vMax = std::max(vMax, float(v));
         }
-        _painter = std::make_shared<Hist2DPainter>(hist2d.get());
-        _painter->initialize();
-        _painter->setColorMap(HistPainter::YELLOW_BLUE);
-        _painter->setRect(0.f, 0.f, 1.f, 1.f);
-        _painter->setRange(vMin, vMax);
+        _histCharter->setRange(vMin, vMax);
     });
 }
 
-void Hist2DView::paintGL()
+void HistView::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    if (_painter)
-        _painter->paint();
+    _histCharter->setSize(width(), height(), devicePixelRatio());
+    _histCharter->chart();
 }
 
-void Hist2DView::resizeGL(int w, int h)
+void HistView::mouseMoveEvent(QMouseEvent *event)
 {
+    std::string label =
+            _histCharter->setMouseHover(
+                event->localPos().x(), event->localPos().y());
+    if (label.empty())
+        QToolTip::hideText();
+    else {
+        QToolTip::showText(event->globalPos(), "label");
+        QToolTip::showText(event->globalPos(), QString::fromStdString(label));
+    }
+    update();
+}
 
+void HistView::leaveEvent(QEvent *)
+{
+    _histCharter->setMouseHover(-1.f, -1.f);
+    update();
 }

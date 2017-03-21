@@ -5,11 +5,11 @@
 #include <vector>
 #include <memory>
 #include <map>
+#include <QObject>
 #include "histgrid.h"
 #include "histfacadegrid.h"
 #include "Histogram.h"
 #include "tracerreader.h"
-#include "mask.h"
 
 /**
  * @brief The QueryRule class
@@ -41,16 +41,20 @@ struct HistConfig {
     bool load(std::istream& in);
 };
 
-template <typename T>
-class TDataStep
+/**
+ *
+ */
+class DataStep : public QObject
 {
+    Q_OBJECT
 public:
-    TDataStep() {}
-    TDataStep(std::string dir, std::vector<int> dimProcs,
+    explicit DataStep(QObject* parent = 0) : QObject(parent) {}
+    DataStep(std::string dir, std::vector<int> dimProcs,
             std::vector<int> dimHistsPerDomain,
-            std::vector<HistConfig> histConfigs)
-      : m_dir(dir), m_dimProcs(dimProcs), m_dimHistsPerDomain(dimHistsPerDomain)
-      , m_histConfigs(histConfigs), m_histMask(nHist(), true) {}
+            std::vector<HistConfig> histConfigs, QObject* parent = 0);
+
+signals:
+    void histSelectionChanged();
 
 public:
     int nHist() const {
@@ -69,7 +73,7 @@ public:
         assert(itr != m_histConfigs.end());
         return (*itr);
     }
-    std::shared_ptr<T> volume(const std::string& name) {
+    std::shared_ptr<HistFacadeVolume> volume(const std::string& name) {
         if (m_data.count(name) > 0)
             return m_data[name];
         // else, try to load the data
@@ -81,26 +85,15 @@ public:
         m_queryRules = rules;
         applyQueryRules();
     }
+    std::vector<int> selectedFlatIds() const {
+        std::vector<int> flatIds;
+        for (int iHist = 0; iHist < nHist(); ++iHist)
+            if (m_histMask[iHist])
+                flatIds.push_back(iHist);
+        return flatIds;
+    }
 
 private:
-    bool load(const std::string& name) {
-        auto itr = std::find_if(m_histConfigs.begin(), m_histConfigs.end(),
-                [name](HistConfig histConfig){
-            return histConfig.name() == name;
-        });
-        if (m_histConfigs.end() == itr)
-            return false;
-        int index = itr - m_histConfigs.begin() + 1;
-        char idcstr[5];
-        sprintf(idcstr, "%03d", index);
-        auto histVol = std::make_shared<T>(
-                m_dir, std::string(idcstr), m_dimProcs, itr->vars);
-        /// TODO: separate into it's own function for better performance?
-        for (int iHist = 0; iHist < nHist(); ++iHist)
-            histVol->hist(iHist)->setSelected(m_histMask[iHist]);
-        m_data[name] = histVol;
-        return true;
-    }
     void applyQueryRules() {
         // separate the rules as they are targetting different hist configs.
         std::unordered_map<std::string, std::vector<QueryRule>> histNameToRules;
@@ -137,10 +130,30 @@ private:
         for (int iHist = 0; iHist < nHist(); ++iHist) {
             keyValue.second->hist(iHist)->setSelected(m_histMask[iHist]);
         }
+        // emit signal
+        emit histSelectionChanged();
+    }
+    bool load(const std::string& name) {
+        auto itr = std::find_if(m_histConfigs.begin(), m_histConfigs.end(),
+                [name](HistConfig histConfig){
+            return histConfig.name() == name;
+        });
+        if (m_histConfigs.end() == itr)
+            return false;
+        int index = itr - m_histConfigs.begin() + 1;
+        char idcstr[5];
+        sprintf(idcstr, "%03d", index);
+        auto histVol = std::make_shared<HistFacadeVolume>(
+                m_dir, std::string(idcstr), m_dimProcs, itr->vars);
+        /// TODO: separate into it's own function for better performance?
+        for (int iHist = 0; iHist < nHist(); ++iHist)
+            histVol->hist(iHist)->setSelected(m_histMask[iHist]);
+        m_data[name] = histVol;
+        return true;
     }
 
 private:
-    std::map<std::string, std::shared_ptr<T> > m_data;
+    std::map<std::string, std::shared_ptr<HistFacadeVolume>> m_data;
     std::string m_dir;
     std::vector<int> m_dimProcs, m_dimHistsPerDomain;
     std::vector<HistConfig> m_histConfigs;
@@ -148,14 +161,11 @@ private:
     std::vector<bool> m_histMask;
 };
 
-//typedef TDataStep<HistVolume> DataStep;
-typedef TDataStep<HistFacadeVolume> DataStep;
-//class DataStep : public TDataStep<HistFacadeVolume> {};
-
-
 /////////////////////////////////////////////////////////////////////////////////////
 
-
+/**
+ * @brief The DataPool class
+ */
 class DataPool
 {
 public:

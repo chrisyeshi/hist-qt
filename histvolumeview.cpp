@@ -20,8 +20,11 @@ HistVolumeView::HistVolumeView(QWidget *parent)
   : Widget(parent)
 {
     auto verticalLayout = new QVBoxLayout(this);
+    verticalLayout->setMargin(5);
+    verticalLayout->setSpacing(5);
     verticalLayout->addLayout([this]() {
         auto horizontalLayout = new QHBoxLayout();
+        horizontalLayout->setMargin(0);
         // layout combo
         _layoutCombo = new QComboBox(this);
         _layoutCombo->addItem(tr("Slice View"));
@@ -84,14 +87,12 @@ void HistVolumeView::setHistConfigs(std::vector<HistConfig> configs)
 
 void HistVolumeView::setDataStep(std::shared_ptr<DataStep> dataStep)
 {
+    disconnect(_dataStep.get(), &DataStep::histSelectionChanged,
+            this, &HistVolumeView::repaintSliceViews);
     _dataStep = dataStep;
+    connect(_dataStep.get(), &DataStep::histSelectionChanged,
+            this, &HistVolumeView::repaintSliceViews);
     currentImpl()->setHistVolume(_dataStep->volume(_histName.toStdString()));
-}
-
-void HistVolumeView::setSelectedHistMask(BoolMask3D selectedHistMask)
-{
-    _selectedHistMask = selectedHistMask;
-    currentImpl()->setSelectedHistMask(_selectedHistMask);
 }
 
 void HistVolumeView::setLayout(HistVolumeView::Layout layout)
@@ -153,6 +154,15 @@ HistVolumeViewImpl *HistVolumeView::currentImpl() const
     return _impls[_stackedLayout->currentIndex()];
 }
 
+void HistVolumeView::repaintSliceViews()
+{
+    currentImpl()->repaintSliceViews();
+}
+
+/**
+ * @brief HistVolumeViewSlice::HistVolumeViewSlice
+ * @param parent
+ */
 HistVolumeViewSlice::HistVolumeViewSlice(QWidget *parent)
   : QWidget(parent)
   , _sliceIndexScrollBars(NUM_SLICES)
@@ -160,6 +170,7 @@ HistVolumeViewSlice::HistVolumeViewSlice(QWidget *parent)
   , _xySliceIndex(0), _xzSliceIndex(0), _yzSliceIndex(0)
 {
     auto gridLayout = new QGridLayout(this);
+    gridLayout->setMargin(0);
     {
         _sliceIndexScrollBars[XY] = new QScrollBar(Qt::Horizontal, this);
         _sliceIndexScrollBars[XY]->setPageStep(1);
@@ -167,10 +178,13 @@ HistVolumeViewSlice::HistVolumeViewSlice(QWidget *parent)
         connect(_sliceIndexScrollBars[XY], &QScrollBar::valueChanged,
                 this, &HistVolumeViewSlice::setXYSliceIndex);
         auto xyView = new HistSliceView(this);
+        xyView->setSpacingColor(QColor(100, 100, 255));
         _sliceViews[XY] = xyView;
         gridLayout->addWidget(xyView, 1, 0);
         connect(xyView, &HistSliceView::histClicked,
                 this, &HistVolumeViewSlice::setCurrHistFromXYSlice);
+        connect(xyView, &HistSliceView::histHovered,
+                this, &HistVolumeViewSlice::setHoveredHistFromXYSlice);
 
         _sliceIndexScrollBars[XZ] = new QScrollBar(Qt::Horizontal, this);
         _sliceIndexScrollBars[XZ]->setPageStep(1);
@@ -178,10 +192,13 @@ HistVolumeViewSlice::HistVolumeViewSlice(QWidget *parent)
         connect(_sliceIndexScrollBars[XZ], &QScrollBar::valueChanged,
                 this, &HistVolumeViewSlice::setXZSliceIndex);
         auto xzView = new HistSliceView(this);
+        xzView->setSpacingColor(QColor(46, 204, 113));
         _sliceViews[XZ] = xzView;
         gridLayout->addWidget(xzView, 1, 1);
         connect(xzView, &HistSliceView::histClicked,
                 this, &HistVolumeViewSlice::setCurrHistFromXZSlice);
+        connect(xzView, &HistSliceView::histHovered,
+                this, &HistVolumeViewSlice::setHoveredHistFromXZSlice);
 
         _sliceIndexScrollBars[YZ] = new QScrollBar(Qt::Horizontal, this);
         _sliceIndexScrollBars[YZ]->setPageStep(1);
@@ -189,17 +206,20 @@ HistVolumeViewSlice::HistVolumeViewSlice(QWidget *parent)
         connect(_sliceIndexScrollBars[YZ], &QScrollBar::valueChanged,
                 this, &HistVolumeViewSlice::setYZSliceIndex);
         auto yzView = new HistSliceView(this);
+        yzView->setSpacingColor(QColor(255, 100, 100));
         _sliceViews[YZ] = yzView;
         gridLayout->addWidget(yzView, 3, 0);
         connect(yzView, &HistSliceView::histClicked,
                 this, &HistVolumeViewSlice::setCurrHistFromYZSlice);
+        connect(yzView, &HistSliceView::histHovered,
+                this, &HistVolumeViewSlice::setHoveredHistFromYZSlice);
 
         QComboBox* orienCombo = new QComboBox(this);
         gridLayout->addWidget(orienCombo, 2, 1);
         _histOrienWidget = new QStackedWidget(this);
         gridLayout->addWidget(_histOrienWidget, 3, 1);
         _orienView = new HistSliceOrienView(this);
-        _histView = new Hist2DView(this);
+        _histView = new HistView(this);
         _histOrienWidget->addWidget(_orienView);
         _histOrienWidget->addWidget(_histView);
 
@@ -210,7 +230,8 @@ HistVolumeViewSlice::HistVolumeViewSlice(QWidget *parent)
     }
 }
 
-void HistVolumeViewSlice::setHistVolume(std::shared_ptr<const HistFacadeVolume> histVolume) {
+void HistVolumeViewSlice::setHistVolume(
+        std::shared_ptr<const HistFacadeVolume> histVolume) {
     _histVolume = histVolume;
     // update the range of the slice index sliders.
     _sliceIndexScrollBars[XY]->blockSignals(true);
@@ -224,23 +245,27 @@ void HistVolumeViewSlice::setHistVolume(std::shared_ptr<const HistFacadeVolume> 
     _sliceIndexScrollBars[XZ]->blockSignals(false);
 }
 
-void HistVolumeViewSlice::setHistDimensions(const std::vector<int> &dims)
-{
+void HistVolumeViewSlice::setHistDimensions(const std::vector<int> &dims) {
     _histDims = dims;
-}
-
-void HistVolumeViewSlice::setSelectedHistMask(BoolMask3D selectedHistMask)
-{
-    _selectedHistMask = selectedHistMask;
+    _histOrienWidget->setCurrentWidget(_orienView);
+    unsetCurrHist();
 }
 
 void HistVolumeViewSlice::update()
 {
     updateSliceViews();
-    _sliceViews[XY]->update();
-    _sliceViews[YZ]->update();
-    _sliceViews[XZ]->update();
+    repaintSliceViews();
     QWidget::update();
+}
+
+void HistVolumeViewSlice::repaintSliceViews()
+{
+    _sliceViews[XY]->updateHistPainters();
+    _sliceViews[XY]->update();
+    _sliceViews[YZ]->updateHistPainters();
+    _sliceViews[YZ]->update();
+    _sliceViews[XZ]->updateHistPainters();
+    _sliceViews[XZ]->update();
 }
 
 void HistVolumeViewSlice::updateSliceViews()
@@ -251,16 +276,10 @@ void HistVolumeViewSlice::updateSliceViews()
     _sliceViews[XZ]->setHistDimensions(_histDims);
     _orienView->highlightXYSlice(_xySliceIndex);
     _sliceViews[XY]->setHistRect(_histVolume->xySlice(_xySliceIndex));
-//    _sliceViews[XY]->setSelectedHistMask(
-//            _selectedHistMask.xySlice(_xySliceIndex));
     _orienView->highlightXZSlice(_xzSliceIndex);
     _sliceViews[XZ]->setHistRect(_histVolume->xzSlice(_xzSliceIndex));
-//    _sliceViews[XZ]->setSelectedHistMask(
-//            _selectedHistMask.xzSlice(_xzSliceIndex));
     _orienView->highlightYZSlice(_yzSliceIndex);
     _sliceViews[YZ]->setHistRect(_histVolume->yzSlice(_yzSliceIndex));
-//    _sliceViews[YZ]->setSelectedHistMask(
-//            _selectedHistMask.yzSlice(_yzSliceIndex));
 }
 
 /// TODO: use an array to store the slice indices.
@@ -286,19 +305,33 @@ void HistVolumeViewSlice::setYZSliceIndex(int index)
 }
 
 void HistVolumeViewSlice::setCurrHistFromXYSlice(
-        std::array<int, 2> rectIds, std::vector<int> dims)
-{
+        std::array<int, 2> rectIds, std::vector<int> dims) {
     setCurrHist({{ rectIds[0], rectIds[1], _xySliceIndex }}, dims);
 }
 
-void HistVolumeViewSlice::setCurrHistFromXZSlice(std::array<int, 2> rectIds, std::vector<int> dims)
-{
+void HistVolumeViewSlice::setCurrHistFromXZSlice(
+        std::array<int, 2> rectIds, std::vector<int> dims) {
     setCurrHist({{ rectIds[0], _xzSliceIndex, rectIds[1] }}, dims);
 }
 
-void HistVolumeViewSlice::setCurrHistFromYZSlice(std::array<int, 2> rectIds, std::vector<int> dims)
-{
+void HistVolumeViewSlice::setCurrHistFromYZSlice(
+        std::array<int, 2> rectIds, std::vector<int> dims) {
     setCurrHist({{ _yzSliceIndex, rectIds[0], rectIds[1] }}, dims);
+}
+
+void HistVolumeViewSlice::setHoveredHistFromYZSlice(
+        std::array<int, 2> rectIds, std::vector<int> dims, bool hovered) {
+    setHoveredHist({{ _yzSliceIndex, rectIds[0], rectIds[1] }}, dims, hovered);
+}
+
+void HistVolumeViewSlice::setHoveredHistFromXZSlice(
+        std::array<int, 2> rectIds, std::vector<int> dims, bool hovered) {
+    setHoveredHist({{ rectIds[0], _xzSliceIndex, rectIds[1] }}, dims, hovered);
+}
+
+void HistVolumeViewSlice::setHoveredHistFromXYSlice(
+        std::array<int, 2> rectIds, std::vector<int> dims, bool hovered) {
+    setHoveredHist({{ rectIds[0], rectIds[1], _xySliceIndex }}, dims, hovered);
 }
 
 void HistVolumeViewSlice::setCurrHist(
@@ -307,15 +340,61 @@ void HistVolumeViewSlice::setCurrHist(
     std::shared_ptr<const HistFacade> hist =
             _histVolume->hist(histIds[0], histIds[1], histIds[2]);
     if (hist == _currHist) {
-        _currHist = nullptr;
-        /// TODO: _histView->setHist(nullptr);
-        _histOrienWidget->setCurrentWidget(_orienView);
+        unsetCurrHist();
         return;
     }
     _currHist = hist;
-    _histView->setHist(_currHist->hist(dims));
-//    HistCollapser collapser(hist);
-//    _histView->setHist(collapser.collapseTo(dims));
+//    _histView->setHist(_currHist->hist(dims));
+    _histView->setHist(_currHist, dims);
     _histView->update();
     _histOrienWidget->setCurrentWidget(_histView);
+    if (histIds[YZ] == _yzSliceIndex) {
+        _sliceViews[YZ]->setClickedHist({{ histIds[1], histIds[2] }});
+        _sliceViews[YZ]->update();
+    } else {
+        _sliceViews[YZ]->setClickedHist({{ histIds[1], histIds[2] }}, false);
+        _sliceViews[YZ]->update();
+    }
+    if (histIds[XZ] == _xzSliceIndex) {
+        _sliceViews[XZ]->setClickedHist({{ histIds[0], histIds[2] }});
+        _sliceViews[XZ]->update();
+    } else {
+        _sliceViews[XZ]->setClickedHist({{ histIds[0], histIds[2] }}, false);
+        _sliceViews[XZ]->update();
+    }
+    if (histIds[XY] == _xySliceIndex) {
+        _sliceViews[XY]->setClickedHist({{ histIds[0], histIds[1] }});
+        _sliceViews[XY]->update();
+    } else {
+        _sliceViews[XY]->setClickedHist({{ histIds[0], histIds[1] }}, false);
+        _sliceViews[XY]->update();
+    }
+}
+
+void HistVolumeViewSlice::unsetCurrHist()
+{
+    _currHist = nullptr;
+    /// TODO: _histView->setHist(nullptr);
+    _histOrienWidget->setCurrentWidget(_orienView);
+    _sliceViews[YZ]->setClickedHist({{ 0, 0 }}, false);
+    _sliceViews[YZ]->update();
+    _sliceViews[XZ]->setClickedHist({{ 0, 0 }}, false);
+    _sliceViews[XZ]->update();
+    _sliceViews[XY]->setClickedHist({{ 0, 0 }}, false);
+    _sliceViews[XY]->update();
+}
+
+void HistVolumeViewSlice::setHoveredHist(
+        std::array<int, 3> histIds, std::vector<int> /*dims*/, bool hovered)
+{
+    _orienView->setHoveredHist(histIds, hovered);
+    _sliceViews[YZ]->setHoveredHist({{ histIds[1], histIds[2] }},
+            histIds[YZ] == _yzSliceIndex ? hovered : false);
+    _sliceViews[YZ]->update();
+    _sliceViews[XZ]->setHoveredHist({{ histIds[0], histIds[2] }},
+            histIds[XZ] == _xzSliceIndex ? hovered : false);
+    _sliceViews[XZ]->update();
+    _sliceViews[XY]->setHoveredHist({{ histIds[0], histIds[1] }},
+            histIds[XY] == _xySliceIndex ? hovered : false);
+    _sliceViews[XY]->update();
 }

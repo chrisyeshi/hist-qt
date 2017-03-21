@@ -72,10 +72,10 @@ public:
     const Extent& dim() const { return m_dim; }
     int nDim() const { return dim().nDim(); }
     int nBins() const { return [this](){ int prod = 1; for (auto dim : m_dim) prod *= dim; return prod; }(); }
-    double dimMin(int iDim) { assert(iDim < m_dim.nDim()); return m_mins[iDim]; }
-    double dimMax(int iDim) { assert(iDim < m_dim.nDim()); return m_maxs[iDim]; }
-    double logBase(int iDim) { assert(iDim < m_dim.nDim()); return m_logBases[iDim]; }
-    const std::string& var(int iDim) { assert(iDim < m_dim.nDim()); return m_vars[iDim]; }
+    double dimMin(int iDim) const { assert(iDim < m_dim.nDim()); return m_mins[iDim]; }
+    double dimMax(int iDim) const { assert(iDim < m_dim.nDim()); return m_maxs[iDim]; }
+    double logBase(int iDim) const { assert(iDim < m_dim.nDim()); return m_logBases[iDim]; }
+    const std::string& var(int iDim) const { assert(iDim < m_dim.nDim()); return m_vars[iDim]; }
 
 protected:
     Extent m_dim;

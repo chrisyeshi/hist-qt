@@ -266,6 +266,9 @@ private:
     void internalSetUniform(GLint location, const QVector3D& value) {
         uniform3f(location, value.x(), value.y(), value.z());
     }
+    void internalSetUniform(GLint location, const QMatrix3x3& value) {
+        uniformMatrix3fv(location, 1, false, value.data());
+    }
     void internalSetUniform(GLint location, const QMatrix4x4& value) {
         uniformMatrix4fv(location, 1, false, value.data());
     }
@@ -313,6 +316,10 @@ private:
         glUniform4f(location, v0, v1, v2, v3);
     }
 
+    void uniformMatrix3fv(GLint location, GLsizei count, GLboolean transpose,
+            const GLfloat* value) {
+        glUniformMatrix3fv(location, count, transpose, value);
+    }
     void uniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose,
             const GLfloat* value) {
         glUniformMatrix4fv(location, count, transpose, value);

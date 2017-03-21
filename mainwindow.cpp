@@ -29,8 +29,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ctrlw, &QShortcut::activated, this, &MainWindow::close);
     // layout
     auto vLayout = new QVBoxLayout(ui->centralWidget);
+    vLayout->setMargin(0);
+    vLayout->setSpacing(0);
     {
         auto gridLayout = new QGridLayout();
+        gridLayout->setMargin(0);
+        gridLayout->setSpacing(5);
         {
             auto openButton = new QPushButton(ui->centralWidget);
             openButton->setText(tr("Open"));
@@ -50,6 +54,7 @@ MainWindow::MainWindow(QWidget *parent)
             _timelineViewToggleButton = new QPushButton(ui->centralWidget);
             _timelineViewToggleButton->setText(tr("Timeline"));
             _timelineViewToggleButton->setCheckable(true);
+            _timelineViewToggleButton->setChecked(true);
             connect(_timelineViewToggleButton, &QPushButton::toggled,
                     this, &MainWindow::toggleTimelineView);
             connect(_timelineView, &TimelineView::visibilityChanged,
@@ -79,11 +84,12 @@ MainWindow::MainWindow(QWidget *parent)
         }
         vLayout->addLayout(gridLayout, 0);
         vLayout->addWidget(_histVolumeView, 1);
+        vLayout->addWidget(_timelineView, 0);
     }
     // open the sample dataset
-    QTimer::singleShot(0, this, [this]() {
-        this->open(tr("/Users/yey/work/data/s3d_run"));
-    });
+//    QTimer::singleShot(0, this, [this]() {
+//        this->open(tr("/Users/yey/work/data/s3d_run"));
+//    });
 }
 
 MainWindow::~MainWindow()
@@ -102,16 +108,12 @@ void MainWindow::open()
 void MainWindow::open(const QString &dir)
 {
     _data.setDir(dir.toStdString());
-    _selectedHistMask.resetToAllTrue(_data.dimHists());
     _currTimeStep = 0;
     _timelineView->setNTimeSteps(_data.numSteps());
     _histVolumeView->setHistConfigs(_data.histConfigs());
     _histVolumeView->setDataStep(_data.step(_currTimeStep));
-    _histVolumeView->setSelectedHistMask(_selectedHistMask);
     _histVolumeView->update();
     _queryView->setHistConfigs(_data.histConfigs());
-    _queryRules.clear();
-    applyQueryRules();
     _particleView->setVisible(false);
     glm::vec3 lower(_data.volMin()[0], _data.volMin()[1], _data.volMin()[2]);
     glm::vec3 upper(_data.volMax()[0], _data.volMax()[1], _data.volMax()[2]);
@@ -120,6 +122,11 @@ void MainWindow::open(const QString &dir)
 
 void MainWindow::toggleQueryView(bool show)
 {
+    static bool firstTime = true;
+    if (show && firstTime) {
+        firstTime = false;
+        _queryView->move(pos().x() + size().width(), pos().y());
+    }
     _queryViewToggleButton->setChecked(show);
     _queryView->setVisible(show);
 }
@@ -132,8 +139,16 @@ void MainWindow::toggleTimelineView(bool show)
 
 void MainWindow::toggleParticleView(bool show)
 {
+    static bool firstTime = true;
+    if (show && firstTime) {
+        firstTime = false;
+        _particleView->move(
+                pos().x() + size().width(),
+                pos().y() + size().height() - _particleView->size().height());
+    }
     if (show) {
-        _particles = loadTracers(_currTimeStep, _selectedHistMask);
+        _particles = loadTracers(
+                _currTimeStep, _data.step(_currTimeStep)->selectedFlatIds());
         _particleView->setParticles(&_particles);
     }
     _particleViewToggleButton->blockSignals(true);
@@ -152,12 +167,11 @@ void MainWindow::exportParticles()
 void MainWindow::setTimeStep(int timeStep)
 {
     _currTimeStep = timeStep;
-    applyQueryRules();
     _histVolumeView->setDataStep(_data.step(_currTimeStep));
-    _histVolumeView->setSelectedHistMask(_selectedHistMask);
     _histVolumeView->update();
     if (_particleView->isVisible()) {
-        _particles = loadTracers(_currTimeStep, _selectedHistMask);
+        _particles = loadTracers(
+                _currTimeStep, _data.step(_currTimeStep)->selectedFlatIds());
         _particleView->setParticles(&_particles);
         _particleView->update();
     }
@@ -165,58 +179,18 @@ void MainWindow::setTimeStep(int timeStep)
 
 void MainWindow::setRules(const std::vector<QueryRule> &rules)
 {
-    _queryRules = rules;
     _data.setQueryRules(rules);
-    applyQueryRules();
-    _histVolumeView->setSelectedHistMask(_selectedHistMask);
-    _histVolumeView->update();
     if (_particleView->isVisible()) {
-        _particles = loadTracers(_currTimeStep, _selectedHistMask);
+        _particles = loadTracers(
+                _currTimeStep, _data.step(_currTimeStep)->selectedFlatIds());
         _particleView->setParticles(&_particles);
         _particleView->update();
     }
 }
 
-void MainWindow::applyQueryRules()
-{
-    // seperate the rules as they are targetting different hist configs.
-    std::unordered_map<std::string, std::vector<QueryRule>> histNameToRules;
-    for (const QueryRule& rule : _queryRules) {
-        histNameToRules[rule.histName].push_back(rule);
-    }
-    // reset to all true
-    _selectedHistMask.resetToAllTrue();
-    // for each histogram config
-    for (const auto& keyValue : histNameToRules) {
-        const std::string& histName = keyValue.first;
-        const std::vector<QueryRule>& rules = keyValue.second;
-        auto histVolume = _data.step(_currTimeStep)->volume(histName);
-        // for each histogram in a histogram volume
-        for (int iHist = 0; iHist < histVolume->helper().N_HIST; ++iHist) {
-            auto hist = histVolume->hist(iHist);
-            bool histSelected = _selectedHistMask.isSelected(iHist);
-            // for each rule targetting this hist config
-            for (auto rule : rules) {
-                // check if the histogram is selected
-                bool selected =
-                        hist->checkRange(rule.intervals, rule.threshold);
-                histSelected = histSelected && selected;
-                if (!histSelected)
-                    break;
-            }
-            // put it in the mask
-            _selectedHistMask.setSelected(iHist, histSelected);
-        }
-    }
-}
-
 std::vector<Particle> MainWindow::loadTracers(
-        int timeStep, const BoolMask3D &mask)
+        int timeStep, const std::vector<int>& selectedHistFlatIds)
 {
-    std::vector<int> selectedHistFlatIds;
-    for (unsigned int iHist = 0; iHist < nHist(); ++iHist)
-        if (mask.isSelected(iHist))
-            selectedHistFlatIds.push_back(iHist);
     // use different tracer reader when different files are present.
     TracerConfig tracerConfig = _data.tracerConfig(timeStep);
     std::shared_ptr<TracerReader> reader = TracerReader::create(tracerConfig);

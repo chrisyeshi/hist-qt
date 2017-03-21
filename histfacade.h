@@ -6,7 +6,9 @@
 #include <array>
 #include <vector>
 #include <string>
+#include <QOpenGLFunctions_3_3_Core>
 #include <data/Histogram.h>
+#include <yygl/glvector.h>
 
 namespace yy {
 namespace gl {
@@ -26,6 +28,7 @@ public:
 
 public:
     virtual ~HistFacade() {}
+    virtual int nDim() const { return vars().size(); }
     virtual std::vector<std::string> vars() const = 0;
     virtual bool selected() const = 0;
     virtual void setSelected(bool selected) = 0;
@@ -37,17 +40,44 @@ public:
     virtual std::shared_ptr<const Hist> hist(
             const std::vector<int>& dims) const;
     virtual std::shared_ptr<const Hist> hist(
+            const std::array<int, 2>& dims) const {
+        return hist(std::vector<int>{{ dims[0], dims[1] }});
+    }
+    virtual std::shared_ptr<const Hist> hist(int dim) const {
+        return hist(std::vector<int>{ dim });
+    }
+    virtual std::shared_ptr<const Hist> hist(
             const std::vector<std::string>& vars) const;
 
 public:
-    virtual std::shared_ptr<const yy::gl::texture> texture(
+    virtual std::shared_ptr<yy::gl::texture> texture(
             const std::vector<int>& dims) const;
-    virtual std::shared_ptr<const yy::gl::texture> texture(
+    virtual std::shared_ptr<yy::gl::texture> texture(
+            const std::array<int, 2>& dims) const {
+        return texture(std::vector<int>{{ dims[0], dims[1] }});
+    }
+    virtual std::shared_ptr<yy::gl::texture> texture(
+            const std::vector<std::string>& vars) const;
+
+public:
+    virtual std::shared_ptr<yy::gl::vector<float>> vbo(
+            const std::vector<int>& dims) const;
+    virtual std::shared_ptr<yy::gl::vector<float>> vbo(int dim) const {
+        return vbo(std::vector<int>{ dim });
+    }
+    virtual std::shared_ptr<yy::gl::vector<float>> vbo(
             const std::vector<std::string>& vars) const;
 
 protected:
     std::vector<int> varsToDims(const std::vector<std::string>& vars) const;
     std::vector<std::string> dimsToVars(const std::vector<int>& dims) const;
+
+private:
+    template <typename T>
+    using FacadeMap = std::map<std::vector<int>, T>;
+    mutable FacadeMap<std::shared_ptr<const Hist>> _cachedHists;
+    mutable FacadeMap<std::shared_ptr<yy::gl::texture>> _cachedTextures;
+    mutable FacadeMap<std::shared_ptr<yy::gl::vector<float>>> _cachedVBOs;
 };
 
 /**

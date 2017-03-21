@@ -57,6 +57,7 @@ public:
         UNSIGNED_SHORT = GL_UNSIGNED_SHORT,
         UNSIGNED_INT = GL_UNSIGNED_INT
     };
+    /// TODO: this should be const?
     void drawArrays() {
         for (auto keyValue : _uniformFunctorMap)
             keyValue.second();

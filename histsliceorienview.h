@@ -22,14 +22,13 @@ public:
     void highlightXYSlice(int index);
     void highlightXZSlice(int index);
     void highlightYZSlice(int index);
-    void highlightHist(int flatId);
+    void setHoveredHist(std::array<int, 3> histIds, bool hovered);
 
 protected:
     virtual void initializeGL() override;
     virtual void paintGL() override;
     virtual void resizeGL(int w, int h) override;
     virtual void mousePressEvent(QMouseEvent* event) override;
-    virtual void mouseReleaseEvent(QMouseEvent* event) override;
     virtual void mouseMoveEvent(QMouseEvent* event) override;
 
 private:
@@ -37,6 +36,7 @@ private:
     QMatrix4x4 yzSliceMatrix(int index) const;
     QMatrix4x4 xzSliceMatrix(int index) const;
     QMatrix4x4 xySliceMatrix(int index) const;
+    QMatrix4x4 hoveredHistMatrix(std::array<int, 3> histIds);
 
 private:
     static const int NUM_SLICES = 3;
@@ -52,7 +52,10 @@ private:
     std::array<int, NUM_SLICES> _sliceIndices;
     yy::gl::vector<glm::vec3> _cube;
     std::shared_ptr<Camera> _camera;
-    QPointF mousePrev;
+    QPointF _mousePrev;
+    yy::gl::render_pass _hoveredRenderPass;
+    bool _histHovered;
+    std::array<int, 3> _hoveredHistIds;
 };
 
 #endif // HISTSLICEORIENVIEW_H

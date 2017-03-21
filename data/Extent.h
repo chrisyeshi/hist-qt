@@ -61,7 +61,6 @@ public:
     void flattoids(int flatId, Targs... ids) const
     {
         const int nDim = sizeof...(ids);
-//        std::cout << "nDim = " << nDim << std::endl;
         flattoidsinternal(nDim, flatId, ids...);
     }
 

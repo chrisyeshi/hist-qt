@@ -63,11 +63,29 @@ bool HistConfig::load(std::istream &in)
     mins.resize(nDim);
     maxs.resize(nDim);
     /// TODO: actually recognize the comments instead of using getline.
-    for (auto iDim = 0; iDim < nDim; ++iDim)
+    for (auto iDim = 0; iDim < nDim; ++iDim) {
         in >> vars[iDim] >> nBins[iDim] >> rangeMethods[iDim] >> mins[iDim] >>
                 maxs[iDim];
-    std::getline(in, line);
+        std::getline(in, line);
+    }
     return true;
+}
+
+/**
+ * @brief DataStep::DataStep
+ * @param dir
+ * @param dimProcs
+ * @param dimHistsPerDomain
+ * @param histConfigs
+ */
+DataStep::DataStep(std::string dir, std::vector<int> dimProcs,
+        std::vector<int> dimHistsPerDomain, std::vector<HistConfig> histConfigs,
+        QObject *parent)
+  : QObject(parent), m_dir(dir), m_dimProcs(dimProcs)
+  , m_dimHistsPerDomain(dimHistsPerDomain)
+  , m_histConfigs(histConfigs), m_histMask(nHist(), true)
+{
+
 }
 
 //////////////////////////////////////////////////////////////////////////////////////

@@ -5,33 +5,27 @@
 #include <yygl/glrenderpass.h>
 
 class Hist;
-class HistPainter;
+class HistFacade;
+class IHistPainter;
+class IHistCharter;
+class Painter;
 
-/// TODO: consider one HistView to render all different histograms, use
-/// different HistPainter for rendering. However, HistView should draw the axes
-/// while HistPainter only draws the histogram.
-/// TODO: Consider setting HistFacade instead of Hist, so that HistView can also
-/// modify the selected attribute of the Histograms.
-class HistView : public OpenGLWidget
-{
+class HistView : public OpenGLWidget {
+    Q_OBJECT
 public:
     explicit HistView(QWidget* parent = 0);
-};
-
-class Hist2DView : public HistView {
-public:
-    explicit Hist2DView(QWidget* parent = 0);
 
 public:
-    void setHist(std::shared_ptr<const Hist> hist);
+    void setHist(std::shared_ptr<const HistFacade> histFacade,
+            std::vector<int> displayDims);
 
 protected:
     virtual void paintGL() override;
-    virtual void resizeGL(int w, int h) override;
+    virtual void mouseMoveEvent(QMouseEvent* event) override;
+    virtual void leaveEvent(QEvent*) override;
 
 private:
-    std::shared_ptr<const Hist> _hist;
-    std::shared_ptr<HistPainter> _painter;
+    std::shared_ptr<IHistCharter> _histCharter;
 };
 
 #endif // HISTVIEW_H
