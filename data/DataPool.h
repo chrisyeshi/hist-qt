@@ -10,6 +10,7 @@
 #include "histfacadegrid.h"
 #include "Histogram.h"
 #include "tracerreader.h"
+#include "dataconfigreader.h"
 
 /**
  * @brief The QueryRule class
@@ -25,21 +26,6 @@ public:
 };
 std::ostream& operator<<(std::ostream& os, const QueryRule& rule);
 bool operator==(const QueryRule& a, const QueryRule& b);
-
-/**
- * @brief The HistConfig struct
- */
-struct HistConfig {
-    int nDim;
-    std::vector<std::string> vars;
-    std::vector<std::string> rangeMethods;
-    std::vector<std::string> nBins;
-    std::vector<double> mins;
-    std::vector<double> maxs;
-
-    std::string name() const;
-    bool load(std::istream& in);
-};
 
 /**
  *
@@ -201,6 +187,7 @@ private:
     std::vector<int> m_dimVoxels;
     std::vector<int> m_dimProcs;
     bool m_isOpen;
+    bool m_pdfInTracerDir;
     std::vector<int> m_dimHistsPerDomain;
     std::vector<float> m_volMin, m_volMax;
     std::vector<HistConfig> m_histConfigs;

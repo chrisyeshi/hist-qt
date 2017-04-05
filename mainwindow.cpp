@@ -88,7 +88,7 @@ MainWindow::MainWindow(QWidget *parent)
     }
     // open the sample dataset
 //    QTimer::singleShot(0, this, [this]() {
-//        this->open(tr("/Users/yey/work/data/s3d_run"));
+//        this->open(tr("/Users/yey/work/data/data_pdf"));
 //    });
 }
 
@@ -107,7 +107,8 @@ void MainWindow::open()
 
 void MainWindow::open(const QString &dir)
 {
-    _data.setDir(dir.toStdString());
+    if (!_data.setDir(dir.toStdString()))
+        return;
     _currTimeStep = 0;
     _timelineView->setNTimeSteps(_data.numSteps());
     _histVolumeView->setHistConfigs(_data.histConfigs());

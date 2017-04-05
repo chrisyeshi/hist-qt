@@ -2,13 +2,51 @@
 #include <sstream>
 #include <algorithm>
 #include <cstdio>
+#include "dataconfigreader.h"
 
 namespace {
-    const std::string s3d_in = "/input/s3d.in";
-    const std::string tracer_in = "/input/tracer.in";
-    const std::string pdf_in = "/input/histogram.in";
     const std::string data_out = "/data/";
     const std::string tracer_pre = "tracer-";
+    const std::string pdf_pre = "pdf-";
+}
+
+/**
+ * @brief HistConfig::name
+ * @return
+ */
+std::string HistConfig::name() const
+{
+    std::string ret = vars[0];
+    for (unsigned int i = 1; i < vars.size(); ++i) {
+        ret += "-" + vars[i];
+    }
+    return ret;
+}
+
+bool HistConfig::load(std::istream &in)
+{
+    std::string line;
+    std::string dimension;
+    in >> dimension;
+    if (dimension == "dimension") {
+        in >> nDim;
+    } else {
+        nDim = atoi(dimension.c_str());
+    }
+    std::getline(in, line);
+    if (!in) return false;
+    vars.resize(nDim);
+    rangeMethods.resize(nDim);
+    nBins.resize(nDim);
+    mins.resize(nDim);
+    maxs.resize(nDim);
+    /// TODO: actually recognize the comments instead of using getline.
+    for (auto iDim = 0; iDim < nDim; ++iDim) {
+        in >> vars[iDim] >> nBins[iDim] >> rangeMethods[iDim] >> mins[iDim] >>
+                maxs[iDim];
+        std::getline(in, line);
+    }
+    return true;
 }
 
 /**
@@ -40,38 +78,6 @@ bool operator==(const QueryRule &a, const QueryRule &b)
 }
 
 /**
- * @brief HistConfig::name
- * @return
- */
-std::string HistConfig::name() const
-{
-    std::string ret = vars[0];
-    for (unsigned int i = 1; i < vars.size(); ++i) {
-        ret += "-" + vars[i];
-    }
-    return ret;
-}
-
-bool HistConfig::load(std::istream &in)
-{
-    std::string line;
-    in >> nDim; std::getline(in, line);
-    if (!in) return false;
-    vars.resize(nDim);
-    rangeMethods.resize(nDim);
-    nBins.resize(nDim);
-    mins.resize(nDim);
-    maxs.resize(nDim);
-    /// TODO: actually recognize the comments instead of using getline.
-    for (auto iDim = 0; iDim < nDim; ++iDim) {
-        in >> vars[iDim] >> nBins[iDim] >> rangeMethods[iDim] >> mins[iDim] >>
-                maxs[iDim];
-        std::getline(in, line);
-    }
-    return true;
-}
-
-/**
  * @brief DataStep::DataStep
  * @param dir
  * @param dimProcs
@@ -88,133 +94,34 @@ DataStep::DataStep(std::string dir, std::vector<int> dimProcs,
 
 }
 
-//////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 bool DataPool::setDir(const std::string& dir)
 {
-    std::ifstream fs3d(    ( dir + s3d_in    ).c_str() );
-    std::ifstream ftracer( ( dir + tracer_in ).c_str() );
-    std::ifstream fhist(   ( dir + pdf_in    ).c_str() );
-
-    if (!fs3d || !ftracer || !fhist)
+    std::shared_ptr<DataConfigReader> dataConfigReader = nullptr;
+    std::ifstream fpdf((dir + "/pdf.config").c_str());
+    if (fpdf) {
+        dataConfigReader = std::make_shared<PdfDataConfigReader>(dir);
+        m_pdfInTracerDir = false;
+    } else {
+        dataConfigReader = std::make_shared<S3DDataConfigReader>(dir);
+        m_pdfInTracerDir = true;
+    }
+    if (!dataConfigReader || !dataConfigReader->read())
         return false;
+    m_dimVoxels = dataConfigReader->dimVoxels();
+    m_dimProcs = dataConfigReader->dimProcs();
+    int nTimes = dataConfigReader->nTimes();
+    int nTimesPerField = dataConfigReader->nTimesPerField();
+    m_volMin = dataConfigReader->volMin();
+    m_volMax = dataConfigReader->volMax();
+    float freqTracer = dataConfigReader->freqTracer();
+    m_dimHistsPerDomain = dataConfigReader->dimHistsPerDomain();
+    m_histConfigs = dataConfigReader->histConfigs();
 
-    printf( "%s\n", ( dir + s3d_in    ).c_str() );
-    printf( "%s\n", ( dir + tracer_in ).c_str() );
-    printf( "%s\n", ( dir + pdf_in    ).c_str() );
-
-    std::string line;
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    // m_dimVoxels
-    m_dimVoxels.resize(3);
-    fs3d >> m_dimVoxels[0]; std::getline(fs3d, line);
-    fs3d >> m_dimVoxels[1]; std::getline(fs3d, line);
-    fs3d >> m_dimVoxels[2]; std::getline(fs3d, line);
-    // m_dimProcs
-    m_dimProcs.resize(3);
-    fs3d >> m_dimProcs[0]; std::getline(fs3d, line);
-    fs3d >> m_dimProcs[1]; std::getline(fs3d, line);
-    fs3d >> m_dimProcs[2]; std::getline(fs3d, line);
-
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    // m_nSteps and m_interval
-    int nTimes, nTimesPerField;
-    fs3d >> nTimes;
-    std::getline(fs3d, line);
-    fs3d >> nTimesPerField;
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-    std::getline(fs3d, line);
-
-    m_volMin.resize(3);
-    m_volMax.resize(3);
-    fs3d >> m_volMin[0]; m_volMin[0] /= 100.f; std::getline(fs3d, line);
-    fs3d >> m_volMin[1]; m_volMin[1] /= 100.f; std::getline(fs3d, line);
-    fs3d >> m_volMin[2]; m_volMin[2] /= 100.f; std::getline(fs3d, line);
-    fs3d >> m_volMax[0]; m_volMax[0] /= 100.f; std::getline(fs3d, line);
-    fs3d >> m_volMax[1]; m_volMax[1] /= 100.f; std::getline(fs3d, line);
-    fs3d >> m_volMax[2]; m_volMax[2] /= 100.f; std::getline(fs3d, line);
-//    std::cout << "volmin: " << m_volMin[0] << ", " << m_volMin[1] << ", " << m_volMin[2] << std::endl;
-//    std::cout << "volmax: " << m_volMax[0] << ", " << m_volMax[1] << ", " << m_volMax[2] << std::endl;
-
-    float freqTracer;
-    std::getline(ftracer, line);
-    std::getline(ftracer, line);
-    std::getline(ftracer, line);
-    std::getline(ftracer, line);
-    ftracer >> freqTracer;
-    std::getline(ftracer, line);
     int nTimesPerStep = nTimesPerField * freqTracer;
-
     m_nSteps = nTimes / nTimesPerStep;
     m_interval = 0.5e-8 * nTimesPerStep;
-
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    fhist >> m_dimHistsPerDomain[0] >> m_dimHistsPerDomain[1] >> m_dimHistsPerDomain[2]; std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    std::getline(fhist, line);
-    while(fhist) {
-        HistConfig histConfig;
-        if (histConfig.load(fhist))
-            m_histConfigs.push_back(histConfig);
-    }
 
     m_dir = dir;
     m_data.clear();
@@ -257,7 +164,8 @@ const HistConfig &DataPool::histConfig(const std::string &name) const
 }
 
 TracerConfig DataPool::tracerConfig(int timestep) const {
-    TracerConfig config(stepDir(timestep), m_dimProcs, m_dimHistsPerDomain, m_dimVoxels);
+    TracerConfig config(
+            stepDir(timestep), m_dimProcs, m_dimHistsPerDomain, m_dimVoxels);
     return config;
 }
 
@@ -277,7 +185,8 @@ std::string DataPool::stepDir(int iStep) const
     float outstep = m_interval * (iStep + 1);
     char stepStr[100];
     sprintf(stepStr, "%.4E", outstep);
-    std::string dir = m_dir + "/" + data_out + "/" + tracer_pre + stepStr + "/";
-//    std::cout << "Tracer Dir: " << dir << std::endl;
-    return dir;
+    if (m_pdfInTracerDir)
+        return m_dir + "/" + data_out + "/" + tracer_pre + stepStr + "/";
+    else
+        return m_dir + "/" + pdf_pre + stepStr + "/";
 }

@@ -45,7 +45,8 @@ SOURCES += main.cpp\
     histfacadegrid.cpp \
     painter.cpp \
     histfacadepainter.cpp \
-    histcharter.cpp
+    histcharter.cpp \
+    data/dataconfigreader.cpp
 
 HEADERS  += mainwindow.h \
     histvolumeview.h \
@@ -226,7 +227,8 @@ HEADERS  += mainwindow.h \
     histfacadegrid.h \
     painter.h \
     histfacadepainter.h \
-    histcharter.h
+    histcharter.h \
+    data/dataconfigreader.h
 
 FORMS    += mainwindow.ui
 
