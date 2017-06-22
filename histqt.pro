@@ -46,7 +46,10 @@ SOURCES += main.cpp\
     painter.cpp \
     histfacadepainter.cpp \
     histcharter.cpp \
-    data/dataconfigreader.cpp
+    data/dataconfigreader.cpp \
+    histfacadeview.cpp \
+    histfacadecollectionview.cpp \
+    timeplotview.cpp
 
 HEADERS  += mainwindow.h \
     histvolumeview.h \
@@ -228,7 +231,12 @@ HEADERS  += mainwindow.h \
     painter.h \
     histfacadepainter.h \
     histcharter.h \
-    data/dataconfigreader.h
+    data/dataconfigreader.h \
+    histfacadeview.h \
+    histfacadecollectionview.h \
+    histdimscombo.h \
+    timeplotview.h \
+    opengl.h
 
 FORMS    += mainwindow.ui
 

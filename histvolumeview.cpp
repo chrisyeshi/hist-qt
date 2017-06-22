@@ -1,5 +1,6 @@
 #include "histvolumeview.h"
 #include <QComboBox>
+#include <QPushButton>
 #include <QScrollBar>
 #include <QStackedLayout>
 #include <QStackedWidget>
@@ -15,9 +16,12 @@
 #include <histview.h>
 #include <histsliceview.h>
 #include <histsliceorienview.h>
+#include <histfacadecollectionview.h>
+#include <histdimscombo.h>
 
 HistVolumeView::HistVolumeView(QWidget *parent)
   : Widget(parent)
+  , _histFacadeCollectionView(nullptr)
 {
     auto verticalLayout = new QVBoxLayout(this);
     verticalLayout->setMargin(5);
@@ -45,18 +49,18 @@ HistVolumeView::HistVolumeView(QWidget *parent)
                 this, &HistVolumeView::selectHistVolume);
         horizontalLayout->addWidget(_histVolumeCombo);
         // histogram dimension combo
-        _histDimensionCombo = new QComboBox(this);
-        connect(_histDimensionCombo,
-                static_cast<void(QComboBox::*)(const QString&)>(
-                    &QComboBox::currentTextChanged),
-                this, &HistVolumeView::selectHistDimension);
-        horizontalLayout->addWidget(_histDimensionCombo);
+        _histDimsCombo = new HistDimsCombo(this);
+        connect(_histDimsCombo, &HistDimsCombo::dimsChanged,
+                this, &HistVolumeView::selectHistDims);
+        horizontalLayout->addWidget(_histDimsCombo);
         return horizontalLayout;
     }());
     auto sliceView = new HistVolumeViewSlice(this);
     _stackedLayout = new QStackedLayout();
     _stackedLayout->insertWidget(SLICE, sliceView);
     _impls.insert(SLICE, sliceView);
+    connect(sliceView, &HistVolumeViewSlice::popHist,
+            this, &HistVolumeView::popHist);
     verticalLayout->addLayout(_stackedLayout);
 }
 
@@ -79,9 +83,12 @@ void HistVolumeView::setHistConfigs(std::vector<HistConfig> configs)
     // select the initial histogram volume
     _histName = _histVolumeCombo->itemText(0);
     // populate the histogram dimensions combo box
-    updateHistDimensions(configs[0]);
     // select the initial histogram dimensions
-    _histDims = _histDimStrToIndVec[_histDimensionCombo->itemText(0)];
+    _histDimsCombo->blockSignals(true);
+    _histDimsCombo->setItems(configs[0].vars);
+    _histDimsCombo->setCurrentIndex(0);
+    _histDimsCombo->blockSignals(false);
+    _histDims = _histDimsCombo->currentDims();
     currentImpl()->setHistDimensions(_histDims);
 }
 
@@ -110,34 +117,15 @@ void HistVolumeView::selectHistVolume(const QString &name)
         });
         return *itr;
     }();
-    updateHistDimensions(histConfig);
+    _histDimsCombo->blockSignals(true);
+    _histDimsCombo->setItems(histConfig.vars);
+    _histDimsCombo->setCurrentIndex(0);
+    _histDimsCombo->blockSignals(false);
     _histName = name;
+    _histDims = _histDimsCombo->currentDims();
     currentImpl()->setHistVolume(_dataStep->volume(_histName.toStdString()));
-    _histDims = _histDimStrToIndVec[_histDimensionCombo->itemText(0)];
     currentImpl()->setHistDimensions(_histDims);
     currentImpl()->update();
-}
-
-void HistVolumeView::updateHistDimensions(const HistConfig &histConfig)
-{
-    // populate the histogram dimension combo box
-    _histDimensionCombo->blockSignals(true);
-    _histDimensionCombo->clear();
-    _histDimStrToIndVec.clear();
-    const std::vector<std::string>& vars = histConfig.vars;
-    for (int i = 0; i < int(vars.size()); ++i)
-    for (int j = i + 1; j < int(vars.size()); ++j) {
-        QString dimStr = QString::fromStdString(vars[i] + "-" + vars[j]);
-        _histDimStrToIndVec.insert(dimStr, {i, j});
-        _histDimensionCombo->addItem(dimStr);
-    }
-    for (int i = 0; i < int(vars.size()); ++i) {
-        QString dimStr = QString::fromStdString(vars[i]);
-        _histDimStrToIndVec.insert(dimStr, {i});
-        _histDimensionCombo->addItem(dimStr);
-    }
-    _histDimensionCombo->setCurrentIndex(0);
-    _histDimensionCombo->blockSignals(false);
 }
 
 void HistVolumeView::selectHistDimension(const QString &dimStr)
@@ -145,6 +133,16 @@ void HistVolumeView::selectHistDimension(const QString &dimStr)
     auto indVec = _histDimStrToIndVec.value(dimStr);
     assert(!indVec.empty());
     _histDims = indVec;
+    currentImpl()->setHistDimensions(_histDims);
+    currentImpl()->update();
+}
+
+void HistVolumeView::selectHistDims(std::vector<int> dims)
+{
+    _histDimsCombo->blockSignals(true);
+    _histDimsCombo->setCurrentDims(dims);
+    _histDimsCombo->blockSignals(false);
+    _histDims = _histDimsCombo->currentDims();
     currentImpl()->setHistDimensions(_histDims);
     currentImpl()->update();
 }
@@ -159,6 +157,24 @@ void HistVolumeView::repaintSliceViews()
     currentImpl()->repaintSliceViews();
 }
 
+void HistVolumeView::popHist(std::shared_ptr<const HistFacade> histFacade,
+        std::vector<int> displayDims) {
+    if (!_histFacadeCollectionView) {
+        _histFacadeCollectionView =
+                new HistFacadeCollectionView(this, Qt::Window);
+        _histFacadeCollectionView->resize(200, 100);
+        _histFacadeCollectionView->setWindowTitle("Collection");
+        _histFacadeCollectionView->setAttribute(Qt::WA_DeleteOnClose);
+        connect(_histFacadeCollectionView, &HistFacadeCollectionView::destroyed,
+                this, [this]() {
+            _histFacadeCollectionView = nullptr;
+        });
+    }
+    if (histFacade)
+        _histFacadeCollectionView->appendHist(histFacade, displayDims);
+    _histFacadeCollectionView->show();
+}
+
 /**
  * @brief HistVolumeViewSlice::HistVolumeViewSlice
  * @param parent
@@ -171,6 +187,7 @@ HistVolumeViewSlice::HistVolumeViewSlice(QWidget *parent)
 {
     auto gridLayout = new QGridLayout(this);
     gridLayout->setMargin(0);
+    gridLayout->setSpacing(4);
     {
         _sliceIndexScrollBars[XY] = new QScrollBar(Qt::Horizontal, this);
         _sliceIndexScrollBars[XY]->setPageStep(1);
@@ -214,8 +231,23 @@ HistVolumeViewSlice::HistVolumeViewSlice(QWidget *parent)
         connect(yzView, &HistSliceView::histHovered,
                 this, &HistVolumeViewSlice::setHoveredHistFromYZSlice);
 
-        QComboBox* orienCombo = new QComboBox(this);
-        gridLayout->addWidget(orienCombo, 2, 1);
+        QHBoxLayout* orienCtrlLayout = new QHBoxLayout(this);
+        orienCtrlLayout->setMargin(0);
+        orienCtrlLayout->setSpacing(2);
+        gridLayout->addLayout(orienCtrlLayout, 2, 1);
+        _orienCombo = new QComboBox(this);
+        _orienCombo->addItem(tr("Orientation"));
+        _orienCombo->addItem(tr("Histogram"));
+        orienCtrlLayout->addWidget(_orienCombo, 1);
+        connect(_orienCombo, &QComboBox::currentTextChanged,
+                this, &HistVolumeViewSlice::setCurrentOrienWidget);
+        QPushButton* histPopButton = new QPushButton(this);
+        histPopButton->setText(tr("Pop"));
+        orienCtrlLayout->addWidget(histPopButton, 0);
+        connect(histPopButton, &QPushButton::clicked, this, [this]() {
+            emit popHist(_currHist, _histDims);
+        });
+
         _histOrienWidget = new QStackedWidget(this);
         gridLayout->addWidget(_histOrienWidget, 3, 1);
         _orienView = new HistSliceOrienView(this);
@@ -247,7 +279,7 @@ void HistVolumeViewSlice::setHistVolume(
 
 void HistVolumeViewSlice::setHistDimensions(const std::vector<int> &dims) {
     _histDims = dims;
-    _histOrienWidget->setCurrentWidget(_orienView);
+    setCurrentOrienWidget(tr("Orientation"));
     unsetCurrHist();
 }
 
@@ -344,10 +376,9 @@ void HistVolumeViewSlice::setCurrHist(
         return;
     }
     _currHist = hist;
-//    _histView->setHist(_currHist->hist(dims));
     _histView->setHist(_currHist, dims);
     _histView->update();
-    _histOrienWidget->setCurrentWidget(_histView);
+    setCurrentOrienWidget(tr("Histogram"));
     if (histIds[YZ] == _yzSliceIndex) {
         _sliceViews[YZ]->setClickedHist({{ histIds[1], histIds[2] }});
         _sliceViews[YZ]->update();
@@ -374,8 +405,8 @@ void HistVolumeViewSlice::setCurrHist(
 void HistVolumeViewSlice::unsetCurrHist()
 {
     _currHist = nullptr;
-    /// TODO: _histView->setHist(nullptr);
-    _histOrienWidget->setCurrentWidget(_orienView);
+    _histView->setHist(nullptr, {});
+    setCurrentOrienWidget(tr("Orientation"));
     _sliceViews[YZ]->setClickedHist({{ 0, 0 }}, false);
     _sliceViews[YZ]->update();
     _sliceViews[XZ]->setClickedHist({{ 0, 0 }}, false);
@@ -397,4 +428,18 @@ void HistVolumeViewSlice::setHoveredHist(
     _sliceViews[XY]->setHoveredHist({{ histIds[0], histIds[1] }},
             histIds[XY] == _xySliceIndex ? hovered : false);
     _sliceViews[XY]->update();
+}
+
+void HistVolumeViewSlice::setCurrentOrienWidget(QString text) {
+    if (tr("Histogram") == text) {
+        _orienCombo->blockSignals(true);
+        _orienCombo->setCurrentText(tr("Histogram"));
+        _orienCombo->blockSignals(false);
+        _histOrienWidget->setCurrentWidget(_histView);
+    } else if (tr("Orientation") == text) {
+        _orienCombo->blockSignals(true);
+        _orienCombo->setCurrentText(tr("Orientation"));
+        _orienCombo->blockSignals(false);
+        _histOrienWidget->setCurrentWidget(_orienView);
+    }
 }

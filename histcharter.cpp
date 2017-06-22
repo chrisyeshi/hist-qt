@@ -13,10 +13,14 @@
 std::shared_ptr<IHistCharter> IHistCharter::create(
         std::shared_ptr<const HistFacade> histFacade,
         std::vector<int> displayDims) {
+    if (!histFacade) {
+        return std::make_shared<HistNullCharter>();
+    }
     if (2 == displayDims.size()) {
         return std::make_shared<Hist2DFacadeCharter>(histFacade,
                 std::array<int, 2>{{ displayDims[0], displayDims[1] }});
-    } else if (1 == displayDims.size()) {
+    }
+    if (1 == displayDims.size()) {
         return std::make_shared<Hist1DFacadeCharter>(
                 histFacade, displayDims[0]);
     }

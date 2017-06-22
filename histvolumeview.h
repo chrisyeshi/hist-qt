@@ -19,6 +19,8 @@ class HistView;
 class Hist2DView;
 class HistSliceView;
 class HistSliceOrienView;
+class HistFacadeCollectionView;
+class HistDimsCombo;
 class Camera;
 
 /**
@@ -39,22 +41,29 @@ public:
 private:
     void setLayout(Layout layout);
     void selectHistVolume(const QString& name);
-    void updateHistDimensions(const HistConfig& histConfig);
     void selectHistDimension(const QString& dimStr);
+    void selectHistDims(std::vector<int> dims);
     HistVolumeViewImpl* currentImpl() const;
     void repaintSliceViews();
+    void popHist(std::shared_ptr<const HistFacade> histFacade,
+            std::vector<int> displayDims);
 
 private:
     QComboBox* _layoutCombo;
     QComboBox* _histVolumeCombo;
+    HistDimsCombo* _histDimsCombo;
+
     QComboBox* _histDimensionCombo;
     QMap<QString, std::vector<int>> _histDimStrToIndVec;
+
+
     QStackedLayout* _stackedLayout;
     QVector<HistVolumeViewImpl*> _impls;
     std::shared_ptr<DataStep> _dataStep;
     std::vector<HistConfig> _histConfigs;
     QString _histName;
     std::vector<int> _histDims;
+    HistFacadeCollectionView* _histFacadeCollectionView;
 };
 
 /// TODO: pull the following classes into separate files before implementing the
@@ -87,6 +96,10 @@ public:
     virtual void update() override;
     virtual void repaintSliceViews() override;
 
+signals:
+    void popHist(std::shared_ptr<const HistFacade> histFacade,
+            std::vector<int> displayDims);
+
 private:
     static const int NUM_SLICES = 3;
     static const int YZ = 0;
@@ -114,11 +127,13 @@ private:
             std::array<int, 2> rectIds, std::vector<int> dims, bool hovered);
     void setHoveredHist(
             std::array<int, 3> histIds, std::vector<int>, bool hovered);
+    void setCurrentOrienWidget(QString text);
 
 private:
     QVector<QScrollBar*> _sliceIndexScrollBars;
     QVector<HistSliceView*> _sliceViews;
     QStackedWidget* _histOrienWidget;
+    QComboBox* _orienCombo;
     HistSliceOrienView* _orienView;
     HistView* _histView;
     std::shared_ptr<const HistFacadeVolume> _histVolume;

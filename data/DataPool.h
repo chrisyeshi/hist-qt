@@ -166,7 +166,8 @@ public:
     std::shared_ptr<DataStep> step(int iStep);
     bool isOpen() { return m_isOpen; }
     bool setOpen( bool c ) { m_isOpen = c; return isOpen(); }
-    int numSteps() { return m_data.size(); }
+    float interval() const { return m_interval; }
+    int numSteps() const { return m_data.size(); }
     const std::vector<float>& volMin() const { return m_volMin; }
     const std::vector<float>& volMax() const { return m_volMax; }
     Extent dimHists() const;

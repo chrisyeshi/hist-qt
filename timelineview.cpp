@@ -2,21 +2,21 @@
 #include <QBoxLayout>
 #include <QSlider>
 #include <QScrollBar>
+#include <timeplotview.h>
 
 TimelineView::TimelineView(QWidget *parent)
   : Widget(parent, Qt::Dialog)
 {
     QVBoxLayout* vBoxLayout = new QVBoxLayout(this);
-    _timeSlider = new QScrollBar(Qt::Horizontal, this);
-    _timeSlider->setPageStep(1);
-    vBoxLayout->addWidget(_timeSlider);
-    connect(_timeSlider, &QScrollBar::valueChanged,
+    vBoxLayout->setMargin(4);
+    _timePlotView = new TimePlotView(this);
+    connect(_timePlotView, &TimePlotView::timeStepChanged,
             this, &TimelineView::timeStepChanged);
+    vBoxLayout->addWidget(_timePlotView);
 }
 
-void TimelineView::setNTimeSteps(int nTimeSteps)
+void TimelineView::setDataPool(DataPool* dataPool)
 {
-    _timeSlider->blockSignals(true);
-    _timeSlider->setRange(0, nTimeSteps - 1);
-    _timeSlider->blockSignals(false);
+    _timePlotView->setDataPool(dataPool);
+    _timePlotView->update();
 }

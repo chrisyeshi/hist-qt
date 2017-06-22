@@ -5,6 +5,8 @@
 
 class QSlider;
 class QScrollBar;
+class TimePlotView;
+class DataPool;
 
 class TimelineView : public Widget
 {
@@ -13,13 +15,13 @@ public:
     explicit TimelineView(QWidget *parent = 0);
 
 public:
-    void setNTimeSteps(int nTimeSteps);
+    void setDataPool(DataPool* dataPool);
 
 signals:
     void timeStepChanged(int);
 
 private:
-    QScrollBar* _timeSlider;
+    TimePlotView* _timePlotView;
 };
 
 #endif // TIMELINEVIEW_H

@@ -87,9 +87,9 @@ MainWindow::MainWindow(QWidget *parent)
         vLayout->addWidget(_timelineView, 0);
     }
     // open the sample dataset
-//    QTimer::singleShot(0, this, [this]() {
-//        this->open(tr("/Users/yey/work/data/data_pdf"));
-//    });
+    QTimer::singleShot(0, this, [this]() {
+        this->open(tr("/Users/yey/work/data/data_pdf"));
+    });
 }
 
 MainWindow::~MainWindow()
@@ -110,7 +110,7 @@ void MainWindow::open(const QString &dir)
     if (!_data.setDir(dir.toStdString()))
         return;
     _currTimeStep = 0;
-    _timelineView->setNTimeSteps(_data.numSteps());
+    _timelineView->setDataPool(&_data);
     _histVolumeView->setHistConfigs(_data.histConfigs());
     _histVolumeView->setDataStep(_data.step(_currTimeStep));
     _histVolumeView->update();

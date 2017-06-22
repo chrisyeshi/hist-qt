@@ -4,6 +4,7 @@
 #include <memory>
 #include <array>
 #include <vector>
+#include <string>
 
 class Hist;
 class HistFacade;
@@ -42,6 +43,20 @@ protected:
     float histRight() const { return 5.f * devicePixelRatioF(); }
     float histWidth() const { return width() - histLeft() - histRight(); }
     float histHeight() const { return height() - histBottom() - histTop(); }
+};
+
+class HistNullCharter : public IHistCharter {
+public:
+    virtual void chart() override {}
+    virtual void setSize(int, int, int) override {}
+    virtual void setRange(float, float) override {}
+    virtual std::string setMouseHover(float, float) override { return ""; }
+
+protected:
+    virtual int devicePixelRatio() const override { return 1; }
+    virtual float devicePixelRatioF() const override { return 1.f; }
+    virtual int width() const override { return 1; }
+    virtual int height() const override { return 1; }
 };
 
 /**

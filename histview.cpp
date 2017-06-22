@@ -8,8 +8,10 @@
 #include <data/Histogram.h>
 
 HistView::HistView(QWidget *parent)
-  : OpenGLWidget(parent) {
+  : OpenGLWidget(parent)
+  , _histCharter(IHistCharter::create(nullptr, {})){
     setMouseTracking(true);
+    setMinimumSize(200, 200);
     delayForInit([this]() {
         glClearColor(1.f, 1.f, 1.f, 1.f);
     });
@@ -19,6 +21,8 @@ void HistView::setHist(std::shared_ptr<const HistFacade> histFacade,
         std::vector<int> displayDims) {
     delayForInit([this, histFacade, displayDims]() {
         _histCharter = IHistCharter::create(histFacade, displayDims);
+        if (!histFacade)
+            return;
         auto hist2d = histFacade->hist(displayDims);
         float vMin = std::numeric_limits<float>::max();
         float vMax = std::numeric_limits<float>::lowest();
