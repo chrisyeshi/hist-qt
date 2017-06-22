@@ -2,10 +2,10 @@
 #define PARTICLEVIEW_H
 
 #include <widget.h>
+#include <yygl/glrenderpass.h>
 #include <openglwidget.h>
 #include <functional>
 #include <data/tracerreader.h>
-#include <yygl/glrenderpass.h>
 #include <camera.h>
 
 class ParticleOpenGLView;

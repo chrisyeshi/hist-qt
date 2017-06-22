@@ -2,7 +2,6 @@
 #define HISTPAINTER_H
 
 #include <memory>
-#include <QOpenGLFunctions_3_3_Core>
 #include <yygl/glbuffer.h>
 #include <yygl/glvector.h>
 #include <yygl/glvertexarray.h>

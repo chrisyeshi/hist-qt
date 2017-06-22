@@ -3,6 +3,7 @@
 
 #include <widget.h>
 #include <QVector>
+#include <memory>
 
 class QHBoxLayout;
 class HistFacade;

@@ -6,7 +6,6 @@
 #include <array>
 #include <vector>
 #include <string>
-#include <QOpenGLFunctions_3_3_Core>
 #include <data/Histogram.h>
 #include <yygl/glvector.h>
 

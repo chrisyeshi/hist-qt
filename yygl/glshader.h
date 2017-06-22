@@ -28,16 +28,13 @@
 //glUniformBlockBinding
 //glValidateProgram
 
-#ifdef __APPLE__
-#include <OpenGL/gl.h>
-#else
-#include <GL/gl.h>
-#endif
+#include <opengl.h>
 #include <string>
 #include <iostream>
 #include <initializer_list>
 #include <vector>
 #include <string>
+#include <cstring>
 #include <unordered_map>
 #include <glm/glm.hpp>
 #ifdef QT_VERSION

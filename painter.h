@@ -3,7 +3,6 @@
 
 #include <QImage>
 #include <QPainter>
-#include <QOpenGLFunctions_3_3_Core>
 #include <yygl/glrenderpass.h>
 
 class Painter

@@ -12,6 +12,7 @@
 #include <QFileDialog>
 #include <QTimer>
 #include <QDebug>
+#include <QProcessEnvironment>
 
 MainWindow::MainWindow(QWidget *parent)
   : QMainWindow(parent)
@@ -88,7 +89,8 @@ MainWindow::MainWindow(QWidget *parent)
     }
     // open the sample dataset
     QTimer::singleShot(0, this, [this]() {
-        this->open(tr("/Users/yey/work/data/data_pdf"));
+        auto home = QProcessEnvironment::systemEnvironment().value("HOME");
+        this->open(home + tr("/work/data/data_pdf"));
     });
 }
 

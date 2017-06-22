@@ -3,6 +3,7 @@
 
 #include <openglwidget.h>
 #include <array>
+#include <memory>
 
 class HistFacadeRect;
 class IHistPainter;

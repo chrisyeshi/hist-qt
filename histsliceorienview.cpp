@@ -3,7 +3,7 @@
 #include <QMouseEvent>
 
 HistSliceOrienView::HistSliceOrienView(QWidget *parent)
-  : QOpenGLWidget(parent)
+  : OpenGLWidget(parent)
   , _dimHists(2, 2, 2)
   , _sliceIndices({{ 0, 0, 0 }})
   , _cube({

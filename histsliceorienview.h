@@ -1,7 +1,7 @@
 #ifndef HISTSLICEORIENVIEW_H
 #define HISTSLICEORIENVIEW_H
 
-#include <QOpenGLWidget>
+#include <openglwidget.h>
 #include <data/Extent.h>
 #include <yygl/glrenderpass.h>
 #include <array>
@@ -11,7 +11,7 @@ class Camera;
 /**
  * @brief The HistSliceOrienView class
  */
-class HistSliceOrienView : public QOpenGLWidget {
+class HistSliceOrienView : public OpenGLWidget {
     Q_OBJECT
 public:
     explicit HistSliceOrienView(QWidget* parent);

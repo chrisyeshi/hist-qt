@@ -4,8 +4,8 @@
 #include <widget.h>
 #include <array>
 #include <QMap>
-#include <openglwidget.h>
 #include <data/DataPool.h>
+#include <openglwidget.h>
 #include <yygl/glrenderpass.h>
 
 class QSlider;

@@ -1,7 +1,9 @@
 #ifndef OPENGLWIDGET_H
 #define OPENGLWIDGET_H
 
+#include <opengl.h>
 #include <QOpenGLWidget>
+#include <functional>
 
 /**
  * @brief The OpenGLWidget class
@@ -15,6 +17,10 @@ public:
 
 protected:
     virtual void initializeGL() override {
+#ifndef __APPLE__
+        if(!gladLoadGL())
+            throw "gladLoadGL failed!";
+#endif
         for (auto& initFunc : _initFuncs)
             initFunc();
         _initFuncs.clear();
