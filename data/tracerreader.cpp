@@ -38,7 +38,7 @@ std::shared_ptr<TracerReader> TracerReader::create(const TracerConfig &config)
     if (fin) {
         return std::make_shared<OrigTracerReader>(config);
     }
-    return nullptr;
+    return std::make_shared<NullTracerReader>();
 }
 
 std::vector<Particle> OrigTracerReader::read(
@@ -240,7 +240,9 @@ std::vector<Particle> DomainTracerReader::read(
     std::vector<Particle> parts;
     QElapsedTimer timer;
     timer.start();
-    for (unsigned int iSelect = 0; iSelect < selectedHistFlatIds.size(); ++iSelect) {
+    for (unsigned int iSelect = 0;
+            iSelect < selectedHistFlatIds.size();
+            ++iSelect) {
         auto ids = m_config.dimHists().flattoids(selectedHistFlatIds[iSelect]);
         std::vector<int> dIds(ids.size());
         std::vector<int> hIds(ids.size());
@@ -258,15 +260,19 @@ std::vector<Particle> DomainTracerReader::read(
     return parts;
 }
 
-std::vector<Particle> ManyFilesTracerReader::readLocal(const std::string &dir, int dId, int hId) const
-{
+std::vector<Particle> ManyFilesTracerReader::readLocal(
+        const std::string &dir, int dId, int hId) const {
     std::vector<Particle> parts;
     // file names
     QString data_path = QString::fromStdString(dir);
-    QString helper_filename = data_path + QString("/sortedhelper.%1").arg(dId, 5, 10, QChar('0'));
-    QString id_filename = data_path + QString("/sortedid.%1").arg(dId, 5, 10, QChar('0'));
-    QString pos_filename = data_path + QString("/sortedposition.%1").arg(dId, 5, 10, QChar('0'));
-    QString data_filename = data_path + QString("/sortedtracer.%1").arg(dId, 5, 10, QChar('0'));
+    QString helper_filename =
+            data_path + QString("/sortedhelper.%1").arg(dId, 5, 10, QChar('0'));
+    QString id_filename =
+            data_path + QString("/sortedid.%1").arg(dId, 5, 10, QChar('0'));
+    QString pos_filename = data_path +
+            QString("/sortedposition.%1").arg(dId, 5, 10, QChar('0'));
+    QString data_filename = data_path +
+            QString("/sortedtracer.%1").arg(dId, 5, 10, QChar('0'));
 
     int read;
     int count;

@@ -47,13 +47,17 @@ public:
     static Hist* fromBuffer(bool isSparse, int ndim,
             const std::vector<int>& nbins,
             const std::vector<double>& mins, const std::vector<double>& maxs,
-            const std::vector<double>& logBases, const std::vector<std::string>& vars,
+            const std::vector<double>& logBases,
+            const std::vector<std::string>& vars,
             const std::vector<int>& buffer);
 
 public:
-    Hist(int nDim, const std::vector<double>& mins, const std::vector<double>& maxs,
-            const std::vector<double>& logBases, const std::vector<std::string>& vars)
-      : m_dim(nDim), m_mins(mins), m_maxs(maxs), m_logBases(logBases), m_vars(vars) {}
+    Hist(int nDim, const std::vector<double>& mins,
+            const std::vector<double>& maxs,
+            const std::vector<double>& logBases,
+            const std::vector<std::string>& vars)
+      : m_dim(nDim), m_mins(mins), m_maxs(maxs), m_logBases(logBases)
+      , m_vars(vars) {}
     virtual ~Hist() {}
 
 public:
@@ -61,21 +65,46 @@ public:
     /// TODO: change toFull to toDense as it goes better with the terminology
     virtual std::shared_ptr<Hist> toFull() = 0;
     virtual HistBin bin(const int flatId) const = 0;
-    virtual HistBin bin(const std::vector<int>& ids) const { return bin(Extent(m_dim).idstoflat(ids)); }
-    template<typename... Targs> HistBin bin(int currId, Targs... ids) const { return bin(Extent(m_dim).idstoflat(currId, ids...)); }
-    virtual const std::vector<double>& values() const { std::cout << "Are you sure the histogram is in dense representation?" << std::endl; static std::vector<double> hehe; return hehe; }
+    virtual HistBin bin(const std::vector<int>& ids) const {
+        return bin(Extent(m_dim).idstoflat(ids));
+    }
+    template<typename... Targs> HistBin bin(int currId, Targs... ids) const {
+        return bin(Extent(m_dim).idstoflat(currId, ids...));
+    }
+    virtual const std::vector<double>& values() const {
+        std::cout << "Are you sure the histogram is in dense representation?"
+                  << std::endl;
+        static std::vector<double> hehe;
+        return hehe;
+    }
     virtual HistBin binSum(std::vector<std::pair<int, int> > binRanges) const;
-    virtual bool checkRange(std::vector< std::pair<int, int> > binRanges, float threshold ) const;
-    virtual bool checkRange(const std::vector<Interval<float>>& intervals, float threshold) const;
+    virtual bool checkRange(std::vector< std::pair<int, int> > binRanges,
+            float threshold) const;
+    virtual bool checkRange(const std::vector<Interval<float>>& intervals,
+            float threshold) const;
 
 public:
     const Extent& dim() const { return m_dim; }
     int nDim() const { return dim().nDim(); }
-    int nBins() const { return [this](){ int prod = 1; for (auto dim : m_dim) prod *= dim; return prod; }(); }
-    double dimMin(int iDim) const { assert(iDim < m_dim.nDim()); return m_mins[iDim]; }
-    double dimMax(int iDim) const { assert(iDim < m_dim.nDim()); return m_maxs[iDim]; }
-    double logBase(int iDim) const { assert(iDim < m_dim.nDim()); return m_logBases[iDim]; }
-    const std::string& var(int iDim) const { assert(iDim < m_dim.nDim()); return m_vars[iDim]; }
+    int nBins() const {
+        return [this](){
+            int prod = 1;
+            for (auto dim : m_dim) prod *= dim;
+            return prod;
+        }();
+    }
+    double dimMin(int iDim) const {
+        assert(iDim < m_dim.nDim()); return m_mins[iDim];
+    }
+    double dimMax(int iDim) const {
+        assert(iDim < m_dim.nDim()); return m_maxs[iDim];
+    }
+    double logBase(int iDim) const {
+        assert(iDim < m_dim.nDim()); return m_logBases[iDim];
+    }
+    const std::string& var(int iDim) const {
+        assert(iDim < m_dim.nDim()); return m_vars[iDim];
+    }
 
 protected:
     Extent m_dim;
@@ -91,15 +120,18 @@ std::ostream& operator<<(std::ostream& out, const Hist& hist);
 class Hist1D : public Hist
 {
 public:
-    Hist1D(int dim, double min, double max, double logBase, const std::string& var,
+    Hist1D(int dim, double min, double max, double logBase,
+            const std::string& var, const std::vector<double>& values);
+    Hist1D(int dim, double min, double max, double logBase,
+            const std::string& var, const std::vector<int>& binIds,
             const std::vector<double>& values);
-    Hist1D(int dim, double min, double max, double logBase, const std::string& var,
-            const std::vector<int>& binIds, const std::vector<double>& values);
 
 public:
     virtual std::shared_ptr<Hist> toSparse() { return shared_from_this(); }
     virtual std::shared_ptr<Hist> toFull() { return shared_from_this(); }
-    virtual HistBin bin(const int flatId) const { return HistBin(m_values[flatId], m_values[flatId] / m_sum); }
+    virtual HistBin bin(const int flatId) const {
+        return HistBin(m_values[flatId], m_values[flatId] / m_sum);
+    }
     using Hist::bin;
     virtual const std::vector<double>& values() const { return m_values; }
 
@@ -117,11 +149,13 @@ class Hist2D : public Hist
 public:
     Hist2D(int dimx, int dimy,
             const std::vector<double>& mins, const std::vector<double>& maxs,
-            const std::vector<double>& logBases, const std::vector<std::string>& vars,
+            const std::vector<double>& logBases,
+            const std::vector<std::string>& vars,
             const std::vector<double>& values);
     Hist2D(int dimx, int dimy,
             const std::vector<double>& mins, const std::vector<double>& maxs,
-            const std::vector<double>& logBases, const std::vector<std::string>& vars,
+            const std::vector<double>& logBases,
+            const std::vector<std::string>& vars,
             const std::vector<int>& binIds, const std::vector<double>& values);
     Hist2D(Hist2D&& hist);
     virtual ~Hist2D() {}
@@ -131,10 +165,13 @@ public:
     std::shared_ptr<Hist1D> to1DPtr(int dimidx) const;
     virtual std::shared_ptr<Hist> toSparse() { return shared_from_this(); }
     virtual std::shared_ptr<Hist> toFull() { return shared_from_this(); }
-    virtual HistBin bin(const int flatId) const { return HistBin(m_values[flatId], m_values[flatId] / m_sum); }
+    virtual HistBin bin(const int flatId) const {
+        return HistBin(m_values[flatId], m_values[flatId] / m_sum);
+    }
     using Hist::bin;
     virtual const std::vector<double>& values() const { return m_values; }
-    virtual bool checkRange( std::vector< std::pair< int32_t, int32_t > > binRanges, float threshold ) const;
+    virtual bool checkRange(std::vector<std::pair<int32_t, int32_t>> binRanges,
+            float threshold) const;
 
 private:
     std::vector<double> m_values;
@@ -152,18 +189,23 @@ public:
     /// TODO: use a vector to substitute dimx, dimy, dimz.
     Hist3D(int dimx, int dimy, int dimz,
             const std::vector<double>& mins, const std::vector<double>& maxs,
-            const std::vector<double>& logBases, const std::vector<std::string>& vars)
-      : Hist(3, mins, maxs, logBases, vars) { m_dim[0] = dimx; m_dim[1] = dimy; m_dim[2] = dimz; }
+            const std::vector<double>& logBases,
+            const std::vector<std::string>& vars)
+      : Hist(3, mins, maxs, logBases, vars) {
+        m_dim[0] = dimx; m_dim[1] = dimy; m_dim[2] = dimz;
+    }
     static std::shared_ptr<Hist3D> create(int dimx, int dimy, int dimz,
             const std::vector<double>& mins, const std::vector<double>& maxs,
             const std::vector<double>& logBases, const std::vector<int>& binIds,
-            const std::vector<double>& values, const std::vector<std::string>& vars);
+            const std::vector<double>& values,
+            const std::vector<std::string>& vars);
     virtual ~Hist3D() {}
 
 public:
     Hist2D to2D(int dimidx, int dimidy) const;
     std::shared_ptr<Hist2D> to2DPtr(int dimidx, int dimidy) const;
-    virtual bool checkRange( std::vector< std::pair< int32_t, int32_t > > binRanges, float threshold ) const;
+    virtual bool checkRange(std::vector<std::pair<int32_t, int32_t>> binRanges,
+            float threshold ) const;
 };
 
 
@@ -202,7 +244,8 @@ class Hist3DSparse : public Hist3D
 public:
     Hist3DSparse(int dimx, int dimy, int dimz,
             const std::vector<double>& mins, const std::vector<double>& maxs,
-            const std::vector<double>& logBases, const std::vector<std::string>& vars,
+            const std::vector<double>& logBases,
+            const std::vector<std::string>& vars,
             const std::vector<int>& binIds, const std::vector<double>& values);
     virtual ~Hist3DSparse() {}
 
@@ -210,7 +253,8 @@ public:
     virtual std::shared_ptr<Hist> toSparse() { return shared_from_this(); }
     virtual std::shared_ptr<Hist> toFull();
     virtual HistBin bin(const int flatId) const;
-    virtual bool checkRange( std::vector< std::pair< int32_t, int32_t > > binRanges, float threshold ) const;
+    virtual bool checkRange(std::vector<std::pair<int32_t, int32_t>> binRanges,
+            float threshold ) const;
 
     using Hist3D::bin;
 
@@ -219,6 +263,7 @@ private:
     std::vector<double> m_values;
     double m_sum;
 };
+
 
 
 
@@ -234,6 +279,5 @@ public:
 private:
     std::shared_ptr<const Hist> m_hist;
 };
-
 
 #endif // _HISTOGRAM_H_

@@ -163,6 +163,16 @@ public:
 
 
 
+class NullTracerReader : public TracerReader {
+public:
+    virtual std::vector<Particle> read(
+            const std::vector<int>& selectedHistFlatIds) const override {
+        return std::vector<Particle>();
+    }
+};
+
+
+
 class OrigTracerReader : public TracerReader
 {
 public:
