@@ -20,13 +20,15 @@ signals:
     void histClicked(std::array<int, 2> rectIds, std::vector<int> dims);
     void histHovered(
             std::array<int, 2> rectIds, std::vector<int> dims, bool hovered);
+    void histMultiSelect(std::array<int, 2> rectIds, std::vector<int> dims);
 
 public:
     void setHistRect(std::shared_ptr<HistFacadeRect> histRect);
     void setHistDimensions(std::vector<int> histDims);
     void setSpacingColor(QColor color);
-    void setClickedHist(std::array<int,2> rectId, bool clicked = true);
+//    void setClickedHist(std::array<int,2> rectId, bool clicked = true);
     void setHoveredHist(std::array<int,2> rectId, bool hovered = true);
+    void setMultiHists(std::vector<std::array<int,2>> rectIds);
     void updateHistPainters();
 
 protected:
@@ -45,7 +47,8 @@ private:
     int scaledWidth() { return width() * devicePixelRatio(); }
     int scaledHeight() { return height() * devicePixelRatio(); }
     QColor fullColor() const;
-    QColor halfColor() const;
+    QColor quarterColor() const;
+    std::array<int,2> localPositionToHistRectId(int x, int y) const;
 
 private:
     std::shared_ptr<HistFacadeRect> _histRect;
@@ -53,10 +56,12 @@ private:
     std::vector<int> _histDims;
     QColor _spacingColor;
     QPointF _mousePress;
-    bool _histClicked = false;
-    std::array<int,2> _clickedHistRectId;
+    std::array<int,2> _histRectIdPress;
+//    bool _histClicked = false;
+//    std::array<int,2> _clickedHistRectId;
     bool _histHovered = false;
     std::array<int,2> _hoveredHistRectId;
+    std::vector<std::array<int,2>> _multiHistRectIds;
 
 private:
     static constexpr float _border = 4.f;

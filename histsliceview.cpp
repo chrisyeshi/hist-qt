@@ -35,7 +35,7 @@ void HistSliceView::setSpacingColor(QColor color)
 {
     _spacingColor = color;
     delayForInit([this]() {
-        QColor c = halfColor();
+        QColor c = quarterColor();
         glClearColor(c.redF(), c.greenF(), c.blueF(), c.alphaF());
     });
 }
@@ -46,10 +46,8 @@ void HistSliceView::setHoveredHist(std::array<int, 2> rectId, bool hovered)
     _histHovered = hovered;
 }
 
-void HistSliceView::setClickedHist(std::array<int, 2> rectId, bool clicked)
-{
-    _clickedHistRectId = rectId;
-    _histClicked = clicked;
+void HistSliceView::setMultiHists(std::vector<std::array<int, 2>> rectIds) {
+    _multiHistRectIds = rectIds;
 }
 
 void HistSliceView::paintGL()
@@ -57,24 +55,27 @@ void HistSliceView::paintGL()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     for (auto& painter : _histPainters)
         painter->paint();
-    // clicked histogram
     Painter painter(scaledWidth(), scaledHeight());
-    if (_histClicked) {
+    // multi selected histograms
+    if (!_multiHistRectIds.empty()) {
         painter.setPen(QPen(fullColor(), 6.f * _spacing));
-        painter.drawRect(
-                _border + _clickedHistRectId[0]
-                    * perHistWidthPixels(scaledWidth())
-                    + (_clickedHistRectId[0] + 0.5f) * _spacing,
-                _border + (_histRect->nHistY() - 1 - _clickedHistRectId[1])
-                    * perHistHeightPixels(scaledHeight())
-                    + (_histRect->nHistY() - 1 - _clickedHistRectId[1] - 1.f)
-                    * _spacing,
-                perHistWidthPixels(scaledWidth()) + _spacing,
-                perHistHeightPixels(scaledHeight()) + _spacing);
+        for (auto rectId : _multiHistRectIds) {
+            painter.setPen(QPen(fullColor(), 6.f * _spacing));
+            painter.drawRect(
+                    _border + rectId[0]
+                        * perHistWidthPixels(scaledWidth())
+                        + (rectId[0] + 0.5f) * _spacing,
+                    _border + (_histRect->nHistY() - 1 - rectId[1])
+                        * perHistHeightPixels(scaledHeight())
+                        + (_histRect->nHistY() - 1 - rectId[1] - 1.f)
+                        * _spacing,
+                    perHistWidthPixels(scaledWidth()) + _spacing,
+                    perHistHeightPixels(scaledHeight()) + _spacing);
+        }
     }
     // hovered histogram
     if (_histHovered) {
-        painter.setPen(QPen(halfColor(), 6.f * _spacing));
+        painter.setPen(QPen(quarterColor(), 6.f * _spacing));
         painter.drawRect(
                 _border + _hoveredHistRectId[0]
                     * perHistWidthPixels(scaledWidth())
@@ -97,36 +98,33 @@ void HistSliceView::resizeGL(int /*w*/, int /*h*/)
 void HistSliceView::mousePressEvent(QMouseEvent *event)
 {
     _mousePress = event->localPos();
+    _histRectIdPress =
+            localPositionToHistRectId(
+                event->localPos().x(), event->localPos().y());
 }
 
 void HistSliceView::mouseReleaseEvent(QMouseEvent *event)
 {
-    if (2.f < (event->localPos() - _mousePress).manhattanLength()) {
+    auto rectId =
+            localPositionToHistRectId(
+                event->localPos().x(), event->localPos().y());
+    if (rectId != _histRectIdPress) {
         return;
     }
-    float nx = event->localPos().x() / float(width());
-    float ny = 1.f - event->localPos().y() / float(height());
-    float dx = 1.f / float(_histRect->nHistX());
-    float dy = 1.f / float(_histRect->nHistY());
-    int iHistX = std::max(0, std::min(_histRect->nHistX() - 1, int(nx / dx)));
-    int iHistY = std::max(0, std::min(_histRect->nHistY() - 1, int(ny / dy)));
-    std::array<int,2> rectId = {{ iHistX, iHistY }};
+    if (Qt::ControlModifier & event->modifiers()) {
+        emit histMultiSelect(rectId, _histDims);
+        return;
+    }
     emit histClicked(rectId, _histDims);
-    QOpenGLWidget::update();
 }
 
 void HistSliceView::mouseMoveEvent(QMouseEvent *event)
 {
-    float nx = event->localPos().x() / float(width());
-    float ny = 1.f - event->localPos().y() / float(height());
-    float dx = 1.f / float(_histRect->nHistX());
-    float dy = 1.f / float(_histRect->nHistY());
-    int iHistX = std::max(0, std::min(_histRect->nHistX() - 1, int(nx / dx)));
-    int iHistY = std::max(0, std::min(_histRect->nHistY() - 1, int(ny / dy)));
-    std::array<int,2> rectId = {{ iHistX, iHistY }};
+    auto rectId =
+            localPositionToHistRectId(
+                event->localPos().x(), event->localPos().y());
     if (_hoveredHistRectId != rectId) {
         emit histHovered(rectId, _histDims, _histHovered);
-        QOpenGLWidget::update();
     }
 }
 
@@ -191,10 +189,20 @@ QColor HistSliceView::fullColor() const {
     return color;
 }
 
-QColor HistSliceView::halfColor() const {
+QColor HistSliceView::quarterColor() const {
     QColor color = _spacingColor;
     color.setAlphaF(0.25f * color.alphaF());
     return color;
+}
+
+std::array<int,2> HistSliceView::localPositionToHistRectId(int x, int y) const {
+    float nx = x / float(width());
+    float ny = 1.f - y / float(height());
+    float dx = 1.f / float(_histRect->nHistX());
+    float dy = 1.f / float(_histRect->nHistY());
+    int iHistX = std::max(0, std::min(_histRect->nHistX() - 1, int(nx / dx)));
+    int iHistY = std::max(0, std::min(_histRect->nHistY() - 1, int(ny / dy)));
+    return {{ iHistX, iHistY }};
 }
 
 void HistSliceView::updateHistRects(int w, int h)

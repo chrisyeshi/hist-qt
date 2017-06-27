@@ -51,7 +51,8 @@ SOURCES += main.cpp\
     histfacadeview.cpp \
     histfacadecollectionview.cpp \
     timeplotview.cpp \
-    glad/glad.c
+    glad/glad.c \
+    data/histmerger.cpp
 
 HEADERS  += mainwindow.h \
     histvolumeview.h \
@@ -240,7 +241,8 @@ HEADERS  += mainwindow.h \
     timeplotview.h \
     opengl.h \
     glad/glad.h \
-    glad/khrplatform.h
+    glad/khrplatform.h \
+    data/histmerger.h
 
 FORMS    += mainwindow.ui
 

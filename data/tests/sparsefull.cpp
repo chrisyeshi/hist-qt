@@ -5,7 +5,12 @@
 int main(void)
 {
 	std::vector<double> values = {0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 8.0};
-	auto full = std::make_shared<Hist3DFull>(2, 2, 2, values);
+	auto full = std::make_shared<Hist3DFull>(2, 2, 2,
+			std::vector<double>{0.0, 0.0, 0.0},
+			std::vector<double>{1.0, 1.0, 1.0},
+			std::vector<double>{0.0, 0.0, 0.0},
+			std::vector<std::string>{"a", "b", "c'"},
+			values);
 	auto sparse = full->toSparse();
 	assert(fabs(sparse->bin(1).value() - 2.0) < 0.0001);
 	assert(fabs(sparse->bin(4).value() - 0.0) < 0.0001);

@@ -1,6 +1,4 @@
 #include "histgrid.h"
-#include <QDebug>
-#include <QElapsedTimer>
 #include <fstream>
 #include "histreader.h"
 
@@ -129,8 +127,8 @@ HistVolume::HistVolume(const std::string& dir, const std::string& name,
   , m_vars(vars)
   , m_helperCached(false)
 {
-    QElapsedTimer timer;
-    timer.start();
+    // QElapsedTimer timer;
+    // timer.start();
 
     m_domains.resize(nDomains());
     if (isFileExist(dir + "/pdfs-ycolumn-001.00000")) {
@@ -159,10 +157,10 @@ HistVolume::HistVolume(const std::string& dir, const std::string& name,
         }
     }
 
-    auto elapsed = timer.elapsed();
-    auto vh = helper();
+    // auto elapsed = timer.elapsed();
+    // auto vh = helper();
 
-    qDebug() << "numHists:" << vh.N_HIST << "loadHistVolume:" << elapsed;
+    // qDebug() << "numHists:" << vh.N_HIST << "loadHistVolume:" << elapsed;
 
 }
 

@@ -2,6 +2,7 @@
 #define HISTFACADEGRID_H
 
 #include <data/histgrid.h>
+#include <histfacade.h>
 
 typedef IConstHGrid<HistFacade> IConstHistFacadeGrid;
 typedef IHGrid<HistFacade> IHistFacadeGrid;

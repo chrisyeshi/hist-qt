@@ -18,6 +18,7 @@
 #include <histsliceorienview.h>
 #include <histfacadecollectionview.h>
 #include <histdimscombo.h>
+#include <data/histmerger.h>
 
 HistVolumeView::HistVolumeView(QWidget *parent)
   : Widget(parent)
@@ -202,6 +203,8 @@ HistVolumeViewSlice::HistVolumeViewSlice(QWidget *parent)
                 this, &HistVolumeViewSlice::setCurrHistFromXYSlice);
         connect(xyView, &HistSliceView::histHovered,
                 this, &HistVolumeViewSlice::setHoveredHistFromXYSlice);
+        connect(xyView, &HistSliceView::histMultiSelect,
+                this, &HistVolumeViewSlice::multiSelectHistFromXYSlice);
 
         _sliceIndexScrollBars[XZ] = new QScrollBar(Qt::Horizontal, this);
         _sliceIndexScrollBars[XZ]->setPageStep(1);
@@ -216,6 +219,8 @@ HistVolumeViewSlice::HistVolumeViewSlice(QWidget *parent)
                 this, &HistVolumeViewSlice::setCurrHistFromXZSlice);
         connect(xzView, &HistSliceView::histHovered,
                 this, &HistVolumeViewSlice::setHoveredHistFromXZSlice);
+        connect(xzView, &HistSliceView::histMultiSelect,
+                this, &HistVolumeViewSlice::multiSelectHistFromXZSlice);
 
         _sliceIndexScrollBars[YZ] = new QScrollBar(Qt::Horizontal, this);
         _sliceIndexScrollBars[YZ]->setPageStep(1);
@@ -230,6 +235,8 @@ HistVolumeViewSlice::HistVolumeViewSlice(QWidget *parent)
                 this, &HistVolumeViewSlice::setCurrHistFromYZSlice);
         connect(yzView, &HistSliceView::histHovered,
                 this, &HistVolumeViewSlice::setHoveredHistFromYZSlice);
+        connect(yzView, &HistSliceView::histMultiSelect,
+                this, &HistVolumeViewSlice::multiSelectHistFromYZSlice);
 
         QHBoxLayout* orienCtrlLayout = new QHBoxLayout(this);
         orienCtrlLayout->setMargin(0);
@@ -366,40 +373,79 @@ void HistVolumeViewSlice::setHoveredHistFromXYSlice(
     setHoveredHist({{ rectIds[0], rectIds[1], _xySliceIndex }}, dims, hovered);
 }
 
-void HistVolumeViewSlice::setCurrHist(
-        std::array<int, 3> histIds, std::vector<int> dims)
+void HistVolumeViewSlice::multiSelectHistFromXYSlice(
+        std::array<int,2> rectIds, std::vector<int> dims) {
+    multiSelectHist({{ rectIds[0], rectIds[1], _xySliceIndex }}, dims);
+}
+
+void HistVolumeViewSlice::multiSelectHistFromXZSlice(
+        std::array<int,2> rectIds, std::vector<int> dims) {
+    multiSelectHist({{ rectIds[0], _xzSliceIndex, rectIds[1] }}, dims);
+}
+
+void HistVolumeViewSlice::multiSelectHistFromYZSlice(
+        std::array<int,2> rectIds, std::vector<int> dims) {
+    multiSelectHist({{ _yzSliceIndex, rectIds[0], rectIds[1] }}, dims);
+}
+
+void HistVolumeViewSlice::multiSelectHist(
+        std::array<int,3> histIds, std::vector<int> dims) {
+    if (0 < _multiHistIds.count(histIds)) {
+        _multiHistIds.erase(histIds);
+    } else {
+        _multiHistIds.insert(histIds);
+    }
+    updateCurrHist(dims);
+    updateSliceViewsMultiHists();
+}
+
+void HistVolumeViewSlice::updateCurrHist(std::vector<int> dims)
 {
-    std::shared_ptr<const HistFacade> hist =
-            _histVolume->hist(histIds[0], histIds[1], histIds[2]);
-    if (hist == _currHist) {
+    if (_multiHistIds.empty()) {
+        // unset current histogram
         unsetCurrHist();
         return;
     }
-    _currHist = hist;
-    _histView->setHist(_currHist, dims);
+    if (1 == _multiHistIds.size()) {
+        // singly set the current histogram
+        auto histIds = *_multiHistIds.begin();
+        _currHist = _histVolume->hist(histIds[0], histIds[1], histIds[2]);
+        _histView->setHist(_currHist, dims);
+        _histView->update();
+        setCurrentOrienWidget(tr("Histogram"));
+        return;
+    }
+    // merge the multi selected histograms and to to current histogram
+    std::vector<std::shared_ptr<const Hist>> hists;
+    for (auto histIds : _multiHistIds) {
+        hists.push_back(
+                _histVolume->hist(
+                    histIds[0], histIds[1], histIds[2])->hist(0));
+    }
+    Hist1DMerger merger;
+    std::shared_ptr<Hist> merged = merger.merge(hists);
+    std::shared_ptr<HistFacade> facade =
+            HistFacade::create(merged, { _histVolume->vars()[0] });
+    _histView->setHist(facade, {0});
     _histView->update();
-    setCurrentOrienWidget(tr("Histogram"));
-    if (histIds[YZ] == _yzSliceIndex) {
-        _sliceViews[YZ]->setClickedHist({{ histIds[1], histIds[2] }});
-        _sliceViews[YZ]->update();
-    } else {
-        _sliceViews[YZ]->setClickedHist({{ histIds[1], histIds[2] }}, false);
-        _sliceViews[YZ]->update();
+}
+
+void HistVolumeViewSlice::updateSliceViewsMultiHists() {
+    std::vector<std::array<int,2>> xyHistIds, xzHistIds, yzHistIds;
+    for (auto histIds : _multiHistIds) {
+        if (_xySliceIndex == histIds[2])
+            xyHistIds.push_back({{ histIds[0], histIds[1] }});
+        if (_xzSliceIndex == histIds[1])
+            xzHistIds.push_back({{ histIds[0], histIds[2] }});
+        if (_yzSliceIndex == histIds[0])
+            yzHistIds.push_back({{ histIds[1], histIds[2] }});
     }
-    if (histIds[XZ] == _xzSliceIndex) {
-        _sliceViews[XZ]->setClickedHist({{ histIds[0], histIds[2] }});
-        _sliceViews[XZ]->update();
-    } else {
-        _sliceViews[XZ]->setClickedHist({{ histIds[0], histIds[2] }}, false);
-        _sliceViews[XZ]->update();
-    }
-    if (histIds[XY] == _xySliceIndex) {
-        _sliceViews[XY]->setClickedHist({{ histIds[0], histIds[1] }});
-        _sliceViews[XY]->update();
-    } else {
-        _sliceViews[XY]->setClickedHist({{ histIds[0], histIds[1] }}, false);
-        _sliceViews[XY]->update();
-    }
+    _sliceViews[XY]->setMultiHists(xyHistIds);
+    _sliceViews[XY]->update();
+    _sliceViews[XZ]->setMultiHists(xzHistIds);
+    _sliceViews[XZ]->update();
+    _sliceViews[YZ]->setMultiHists(yzHistIds);
+    _sliceViews[YZ]->update();
 }
 
 void HistVolumeViewSlice::unsetCurrHist()
@@ -407,12 +453,20 @@ void HistVolumeViewSlice::unsetCurrHist()
     _currHist = nullptr;
     _histView->setHist(nullptr, {});
     setCurrentOrienWidget(tr("Orientation"));
-    _sliceViews[YZ]->setClickedHist({{ 0, 0 }}, false);
-    _sliceViews[YZ]->update();
-    _sliceViews[XZ]->setClickedHist({{ 0, 0 }}, false);
-    _sliceViews[XZ]->update();
-    _sliceViews[XY]->setClickedHist({{ 0, 0 }}, false);
-    _sliceViews[XY]->update();
+}
+
+void HistVolumeViewSlice::setCurrHist(
+        std::array<int, 3> histIds, std::vector<int> dims) {
+    if (1 == _multiHistIds.size() && 0 < _multiHistIds.count(histIds)) {
+        // deselect the histogram if it was singly selected.
+        _multiHistIds.clear();
+    } else {
+        // select the only histogram
+        _multiHistIds.clear();
+        _multiHistIds.insert(histIds);
+    }
+    updateCurrHist(dims);
+    updateSliceViewsMultiHists();
 }
 
 void HistVolumeViewSlice::setHoveredHist(
@@ -429,6 +483,8 @@ void HistVolumeViewSlice::setHoveredHist(
             histIds[XY] == _xySliceIndex ? hovered : false);
     _sliceViews[XY]->update();
 }
+
+
 
 void HistVolumeViewSlice::setCurrentOrienWidget(QString text) {
     if (tr("Histogram") == text) {

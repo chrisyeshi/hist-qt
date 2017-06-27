@@ -77,6 +77,7 @@ public:
         static std::vector<double> hehe;
         return hehe;
     }
+    virtual HistBin binSum() const;
     virtual HistBin binSum(std::vector<std::pair<int, int> > binRanges) const;
     virtual bool checkRange(std::vector< std::pair<int, int> > binRanges,
             float threshold) const;
@@ -105,6 +106,7 @@ public:
     const std::string& var(int iDim) const {
         assert(iDim < m_dim.nDim()); return m_vars[iDim];
     }
+    const std::vector<std::string>& vars() const { return m_vars; }
 
 protected:
     Extent m_dim;

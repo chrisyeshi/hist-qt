@@ -1,12 +1,15 @@
 #include <cassert>
 #include <cmath>
-#include <Histogram.h>
+#include <histgrid.h>
 
 int main(void)
 {
 	{
 		std::vector<int> dimDomains = {2, 2, 2};
-		std::shared_ptr<HistVolume> volume = std::make_shared<HistVolume>("./s3d_run/data/tracer-1.0000E-07/", "vx-vy-vz", dimDomains);
+		std::shared_ptr<HistVolume> volume =
+				std::make_shared<HistVolume>(
+					"./s3d_run/data/tracer-1.0000E-07/", "vx-vy-vz",
+					dimDomains);
 		assert(volume);
 		// helper
 		assert(volume->helper().N_HIST == 64 * 8);
@@ -24,7 +27,9 @@ int main(void)
 
 	{
 		std::vector<int> dimDomains = {3, 3, 3};
-		std::shared_ptr<HistVolume> volume = std::make_shared<HistVolume>("./s3d_run/data/333/", "vx-vy-vz", dimDomains);
+		std::shared_ptr<HistVolume> volume =
+				std::make_shared<HistVolume>("./s3d_run/data/333/", "vx-vy-vz",
+					dimDomains);
 		assert(volume);
 		// domain
 		assert(volume->nDomains() == 27);

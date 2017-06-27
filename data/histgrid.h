@@ -5,7 +5,6 @@
 #include <vector>
 #include "Extent.h"
 #include "Histogram.h"
-#include "histfacade.h"
 
 /// TODO: move per histogram variables to the histogram class.
 struct HistHelper

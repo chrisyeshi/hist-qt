@@ -4,8 +4,6 @@
 #include <iomanip>
 #include <cassert>
 #include <cmath>
-#include <QDebug>
-#include <QElapsedTimer>
 #include "histreader.h"
 
 bool operator==(const Interval<float> &a, const Interval<float> &b)
@@ -36,8 +34,8 @@ std::ostream& operator<<(std::ostream& out, const Hist& hist)
 
 Hist *Hist::fromBuffer(bool isSparse, int ndim, const std::vector<int> &nbins,
         const std::vector<double> &mins, const std::vector<double> &maxs,
-        const std::vector<double> &logBases, const std::vector<std::string> &vars, const std::vector<int> &buffer)
-{
+        const std::vector<double> &logBases,
+        const std::vector<std::string> &vars, const std::vector<int> &buffer) {
     if (isSparse && ndim == 3) {
         std::vector<int> binIds;
         std::vector<double> values;
@@ -45,8 +43,8 @@ Hist *Hist::fromBuffer(bool isSparse, int ndim, const std::vector<int> &nbins,
             binIds.push_back(buffer[i]);
             values.push_back(double(buffer[i + 1]));
         }
-        return new Hist3DSparse(
-                nbins[0], nbins[1], nbins[2], mins, maxs, logBases, vars, binIds, values);
+        return new Hist3DSparse(nbins[0], nbins[1], nbins[2], mins, maxs,
+                logBases, vars, binIds, values);
     }
     if (!isSparse && ndim == 3) {
         assert(int(buffer.size()) == nbins[0] * nbins[1] * nbins[2]);
@@ -54,8 +52,8 @@ Hist *Hist::fromBuffer(bool isSparse, int ndim, const std::vector<int> &nbins,
         for (unsigned int i = 0; i < buffer.size(); ++i) {
             values[i] = double(buffer[i]);
         }
-        return new Hist3DFull(
-                nbins[0], nbins[1], nbins[2], mins, maxs, logBases, vars, values);
+        return new Hist3DFull(nbins[0], nbins[1], nbins[2], mins, maxs,
+                logBases, vars, values);
     }
     if (isSparse && ndim == 2) {
         std::vector<int> binIds;
@@ -64,14 +62,16 @@ Hist *Hist::fromBuffer(bool isSparse, int ndim, const std::vector<int> &nbins,
             binIds.push_back(buffer[i]);
             values.push_back(double(buffer[i + 1]));
         }
-        return new Hist2D(nbins[0], nbins[1], mins, maxs, logBases, vars, binIds, values);
+        return new Hist2D(nbins[0], nbins[1], mins, maxs, logBases, vars,
+                binIds, values);
     }
     if (!isSparse && ndim == 2) {
         assert(int(buffer.size()) == nbins[0] * nbins[1]);
         std::vector<double> values(nbins[0] * nbins[1]);
         for (unsigned int i = 0; i < buffer.size(); ++i)
             values[i] = double(buffer[i]);
-        return new Hist2D(nbins[0], nbins[1], mins, maxs, logBases, vars, values);
+        return new Hist2D(
+                nbins[0], nbins[1], mins, maxs, logBases, vars, values);
     }
     if (isSparse && ndim == 1) {
         std::vector<int> binIds;
@@ -80,16 +80,29 @@ Hist *Hist::fromBuffer(bool isSparse, int ndim, const std::vector<int> &nbins,
             binIds.push_back(buffer[i]);
             values.push_back(double(buffer[i + 1]));
         }
-        return new Hist1D(nbins[0], mins[0], maxs[0], logBases[0], vars[0], binIds, values);
+        return new Hist1D(nbins[0], mins[0], maxs[0], logBases[0], vars[0],
+                binIds, values);
     }
     if (!isSparse && ndim == 1) {
         assert(int(buffer.size()) == nbins[0]);
         std::vector<double> values(nbins[0]);
         for (unsigned int i = 0; i < buffer.size(); ++i)
             values[i] = double(buffer[i]);
-        return new Hist1D(nbins[0], mins[0], maxs[0], logBases[0], vars[0], values);
+        return new Hist1D(
+                nbins[0], mins[0], maxs[0], logBases[0], vars[0], values);
     }
     assert(false);
+}
+
+HistBin Hist::binSum() const
+{
+    double value = 0.0;
+    float percent = 0.f;
+    for (int iBin = 0; iBin < nBins(); ++iBin) {
+        value += bin(iBin).value();
+        value += bin(iBin).percent();
+    }
+    return HistBin(value, percent);
 }
 
 HistBin Hist::binSum(std::vector<std::pair<int, int> > binRanges) const
@@ -112,7 +125,6 @@ HistBin Hist::binSum(std::vector<std::pair<int, int> > binRanges) const
     std::vector<int> incs(binRanges.size(), 0);
     for (int iBin = 0; iBin < nBin; ++iBin)
     {
-        // std::cout << iBins[0] << ", " << iBins[1] << ", " << iBins[2] << std::endl;
         value += bin(iBins).value();
         percent += bin(iBins).percent();
         // increment (so complicating... Orz)
@@ -121,9 +133,13 @@ HistBin Hist::binSum(std::vector<std::pair<int, int> > binRanges) const
 
         for (int iDim = 0; iDim < BIN_RANGE_SZ - 1; ++iDim)
         {
-            // std::cout << "incs[" << iDim << "] = " << incs[iDim] << std::endl;
-            incs[iDim + 1] = (iBins[iDim] + incs[iDim] - binRanges[iDim].first) / (nBins[iDim]);
-            iBins[iDim] = binRanges[iDim].first + (iBins[iDim] + incs[iDim] - binRanges[iDim].first) % (nBins[iDim]);
+            incs[iDim + 1] =
+                    (iBins[iDim] + incs[iDim] - binRanges[iDim].first) /
+                    (nBins[iDim]);
+            iBins[iDim] =
+                    binRanges[iDim].first +
+                    (iBins[iDim] + incs[iDim] - binRanges[iDim].first) %
+                    (nBins[iDim]);
         }
         iBins[BIN_RANGE_SZ - 1] += incs[BIN_RANGE_SZ - 1];
     }
@@ -153,24 +169,24 @@ bool Hist::checkRange(
 }
 
 
-////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 // Hist1D
 
-Hist1D::Hist1D(int dim, double min, double max, double logBase, const std::string &var,
-        const std::vector<double> &values)
-    : Hist(1, {min}, {max}, {logBase}, {var})
+Hist1D::Hist1D(int dim, double min, double max, double logBase,
+        const std::string &var, const std::vector<double> &values)
+  : Hist(1, {min}, {max}, {logBase}, {var})
   , m_values(values)
-  , m_sum(0.0)
-{
+  , m_sum(0.0) {
     assert(dim == int(values.size()));
     m_dim[0] = dim;
     for (double value : values)
         m_sum += value;
 }
 
-Hist1D::Hist1D(int dim, double min, double max, double logBase, const std::string& var,
-        const std::vector<int> &binIds, const std::vector<double> &values)
-    : Hist(1, {min}, {max}, {logBase}, {var})
+Hist1D::Hist1D(int dim, double min, double max, double logBase,
+        const std::string& var, const std::vector<int> &binIds,
+        const std::vector<double> &values)
+  : Hist(1, {min}, {max}, {logBase}, {var})
   , m_values(dim, 0.0)
   , m_sum(0.0)
 {
@@ -320,6 +336,7 @@ Hist2D Hist3D::to2D(int dimidx, int dimidy) const
             values[flatId] += bin(binId3).value();
         }
     }
+
     return Hist2D(dimx, dimy, mins, maxs, logBases, vars, values);
 }
 

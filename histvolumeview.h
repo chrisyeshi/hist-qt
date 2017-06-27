@@ -4,6 +4,7 @@
 #include <widget.h>
 #include <array>
 #include <QMap>
+#include <set>
 #include <data/DataPool.h>
 #include <openglwidget.h>
 #include <yygl/glrenderpass.h>
@@ -127,6 +128,15 @@ private:
             std::array<int, 2> rectIds, std::vector<int> dims, bool hovered);
     void setHoveredHist(
             std::array<int, 3> histIds, std::vector<int>, bool hovered);
+    void multiSelectHistFromXYSlice(
+            std::array<int,2> rectIds, std::vector<int> dims);
+    void multiSelectHistFromXZSlice(
+            std::array<int,2> rectIds, std::vector<int> dims);
+    void multiSelectHistFromYZSlice(
+            std::array<int,2> rectIds, std::vector<int> dims);
+    void multiSelectHist(std::array<int,3> histIds, std::vector<int> dims);
+    void updateCurrHist(std::vector<int> dims);
+    void updateSliceViewsMultiHists();
     void setCurrentOrienWidget(QString text);
 
 private:
@@ -140,6 +150,7 @@ private:
     std::vector<int> _histDims;
     int _xySliceIndex, _xzSliceIndex, _yzSliceIndex;
     std::shared_ptr<const HistFacade> _currHist;
+    std::set<std::array<int,3>> _multiHistIds;
 };
 
 #endif // HISTVOLUMEVIEW_H
