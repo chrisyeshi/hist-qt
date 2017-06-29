@@ -44,6 +44,11 @@ private:
 class Hist : public std::enable_shared_from_this<Hist>
 {
 public:
+    static Hist* fromDenseValues(int ndim, const std::vector<int>& nbins,
+            const std::vector<double>& mins, const std::vector<double>& maxs,
+            const std::vector<double>& logBases,
+            const std::vector<std::string>& vars,
+            const std::vector<double>& values);
     static Hist* fromBuffer(bool isSparse, int ndim,
             const std::vector<int>& nbins,
             const std::vector<double>& mins, const std::vector<double>& maxs,

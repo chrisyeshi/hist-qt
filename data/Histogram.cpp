@@ -32,6 +32,27 @@ std::ostream& operator<<(std::ostream& out, const Hist& hist)
     return out;
 }
 
+Hist* Hist::fromDenseValues(int ndim, const std::vector<int>& nbins,
+        const std::vector<double>& mins, const std::vector<double>& maxs,
+        const std::vector<double>& logBases,
+        const std::vector<std::string>& vars,
+        const std::vector<double>& values) {
+    if (3 == ndim) {
+        return new Hist3DFull(nbins[0], nbins[1], nbins[2], mins, maxs,
+                logBases, vars, values);
+    }
+    if (2 == ndim) {
+        return new Hist2D(
+                nbins[0], nbins[1], mins, maxs, logBases, vars, values);
+    }
+    if (1 == ndim) {
+        return new Hist1D(
+                nbins[0], mins[0], maxs[0], logBases[0], vars[0], values);
+    }
+    assert(false);
+    return nullptr;
+}
+
 Hist *Hist::fromBuffer(bool isSparse, int ndim, const std::vector<int> &nbins,
         const std::vector<double> &mins, const std::vector<double> &maxs,
         const std::vector<double> &logBases,
@@ -46,15 +67,6 @@ Hist *Hist::fromBuffer(bool isSparse, int ndim, const std::vector<int> &nbins,
         return new Hist3DSparse(nbins[0], nbins[1], nbins[2], mins, maxs,
                 logBases, vars, binIds, values);
     }
-    if (!isSparse && ndim == 3) {
-        assert(int(buffer.size()) == nbins[0] * nbins[1] * nbins[2]);
-        std::vector<double> values(nbins[0] * nbins[1] * nbins[2]);
-        for (unsigned int i = 0; i < buffer.size(); ++i) {
-            values[i] = double(buffer[i]);
-        }
-        return new Hist3DFull(nbins[0], nbins[1], nbins[2], mins, maxs,
-                logBases, vars, values);
-    }
     if (isSparse && ndim == 2) {
         std::vector<int> binIds;
         std::vector<double> values;
@@ -64,14 +76,6 @@ Hist *Hist::fromBuffer(bool isSparse, int ndim, const std::vector<int> &nbins,
         }
         return new Hist2D(nbins[0], nbins[1], mins, maxs, logBases, vars,
                 binIds, values);
-    }
-    if (!isSparse && ndim == 2) {
-        assert(int(buffer.size()) == nbins[0] * nbins[1]);
-        std::vector<double> values(nbins[0] * nbins[1]);
-        for (unsigned int i = 0; i < buffer.size(); ++i)
-            values[i] = double(buffer[i]);
-        return new Hist2D(
-                nbins[0], nbins[1], mins, maxs, logBases, vars, values);
     }
     if (isSparse && ndim == 1) {
         std::vector<int> binIds;
@@ -83,15 +87,13 @@ Hist *Hist::fromBuffer(bool isSparse, int ndim, const std::vector<int> &nbins,
         return new Hist1D(nbins[0], mins[0], maxs[0], logBases[0], vars[0],
                 binIds, values);
     }
-    if (!isSparse && ndim == 1) {
-        assert(int(buffer.size()) == nbins[0]);
-        std::vector<double> values(nbins[0]);
-        for (unsigned int i = 0; i < buffer.size(); ++i)
-            values[i] = double(buffer[i]);
-        return new Hist1D(
-                nbins[0], mins[0], maxs[0], logBases[0], vars[0], values);
+    // dense representation
+    assert(!isSparse);
+    std::vector<double> values(buffer.size());
+    for (unsigned int i = 0; i < buffer.size(); ++i) {
+        values[i] = double(buffer[i]);
     }
-    assert(false);
+    return fromDenseValues(ndim, nbins, mins, maxs, logBases, vars, values);
 }
 
 HistBin Hist::binSum() const

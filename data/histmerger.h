@@ -4,29 +4,34 @@
 #include <memory>
 #include "Histogram.h"
 
-class HistMerger {
+class BinCount {
 public:
-    virtual std::shared_ptr<Hist> merge(
-            const std::vector<std::shared_ptr<const Hist>>& hists) const = 0;
+    BinCount() : _binCount(-1), _methodName("sturges") {}
+    BinCount(int binCount) : _binCount(binCount) {}
+    BinCount(std::string methodName) : _binCount(-1), _methodName(methodName) {}
+
+public:
+    int _binCount;
+    std::string _methodName;
 };
 
-class Hist1DMerger : public HistMerger {
+class HistMerger {
 public:
-    Hist1DMerger() {}
-    Hist1DMerger(int nBins) : _nBins(nBins) {}
-    Hist1DMerger(std::string methodName) : _methodName(methodName) {}
+    HistMerger() {}
+    HistMerger(std::vector<BinCount> binCounts) : _binCounts(binCounts) {}
 
 public:
     virtual std::shared_ptr<Hist> merge(
-            const std::vector<std::shared_ptr<const Hist>> &hists)
-                const override;
+            const std::vector<std::shared_ptr<const Hist>>& hists) const;
+
+protected:
+    int calcBinCount(int iDim,
+            const std::vector<std::shared_ptr<const Hist>>& hists) const;
+    std::vector<int> calcBinCounts(
+            const std::vector<std::shared_ptr<const Hist>>& hists) const;
 
 private:
-    int calcNBins(const std::vector<std::shared_ptr<const Hist>> &hists) const;
-
-private:
-    int _nBins = -1;
-    std::string _methodName = "sturges";
+    std::vector<BinCount> _binCounts;
 };
 
 #endif // HISTMERGER_H

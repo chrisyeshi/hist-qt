@@ -415,18 +415,18 @@ void HistVolumeViewSlice::updateCurrHist(std::vector<int> dims)
         setCurrentOrienWidget(tr("Histogram"));
         return;
     }
-    // merge the multi selected histograms and to to current histogram
-    std::vector<std::shared_ptr<const Hist>> hists;
+    // merge the multi selected histograms to the current histogram
+    std::vector<std::shared_ptr<const Hist>> selectedHists;
+    selectedHists.reserve(_multiHistIds.size());
     for (auto histIds : _multiHistIds) {
-        hists.push_back(
-                _histVolume->hist(
-                    histIds[0], histIds[1], histIds[2])->hist(0));
+        std::vector<int> ids(histIds.begin(), histIds.end());
+        selectedHists.push_back(_histVolume->hist(ids)->hist());
     }
-    Hist1DMerger merger;
-    std::shared_ptr<Hist> merged = merger.merge(hists);
-    std::shared_ptr<HistFacade> facade =
-            HistFacade::create(merged, { _histVolume->vars()[0] });
-    _histView->setHist(facade, {0});
+    std::vector<BinCount> binCounts(
+            selectedHists[0]->nDim(), BinCount("freedman"));
+    std::shared_ptr<Hist> merged = HistMerger(binCounts).merge(selectedHists);
+    _currHist = HistFacade::create(merged, merged->vars());
+    _histView->setHist(_currHist, dims);
     _histView->update();
 }
 
