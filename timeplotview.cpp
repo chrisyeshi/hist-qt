@@ -3,6 +3,16 @@
 #include <painter.h>
 #include <QMouseEvent>
 
+namespace {
+
+template<class T>
+constexpr const T& clamp( const T& v, const T& lo, const T& hi )
+{
+    return std::max(lo, std::min(hi, v));
+}
+
+} // namespace unnamed
+
 const QColor TimePlotView::_hoveredColor = QColor(231, 76, 60, 50);
 const QColor TimePlotView::_selectedColor = QColor(231, 76, 60, 150);
 
@@ -114,7 +124,7 @@ int TimePlotView::localPosToStep(float x, float /*y*/) const
     int w = width();
     int nSteps = _data->numSteps();
     float stepWidth = float(w) / float(nSteps);
-    return x / stepWidth;
+    return clamp(int(x / stepWidth), 0, nSteps - 1);
 }
 
 void TimePlotView::setSelectedStep(int step)

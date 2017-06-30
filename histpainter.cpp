@@ -309,7 +309,7 @@ std::shared_ptr<yy::gl::program> Hist2DTexturePainter::sharedShaderProgram()
                 out vec4 f_color;
                 void main() {
                     float val = texture(tex, vf_texCoord).r;
-                    float freq = (val - vMin) / (vMax - vMin);
+                    float freq = log(val - vMin + 1) / log(vMax - vMin + 1);
                     f_color = texture(colormap, freq);
                 }
             )GLSL");
