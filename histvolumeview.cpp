@@ -100,7 +100,8 @@ void HistVolumeView::setDataStep(std::shared_ptr<DataStep> dataStep)
     _dataStep = dataStep;
     connect(_dataStep.get(), &DataStep::histSelectionChanged,
             this, &HistVolumeView::repaintSliceViews);
-    currentImpl()->setHistVolume(_dataStep->volume(_histName.toStdString()));
+    currentImpl()->setHistVolume(
+            _dataStep->smartVolume(_histName.toStdString()));
 }
 
 void HistVolumeView::setLayout(HistVolumeView::Layout layout)
@@ -124,7 +125,8 @@ void HistVolumeView::selectHistVolume(const QString &name)
     _histDimsCombo->blockSignals(false);
     _histName = name;
     _histDims = _histDimsCombo->currentDims();
-    currentImpl()->setHistVolume(_dataStep->volume(_histName.toStdString()));
+    currentImpl()->setHistVolume(
+            _dataStep->smartVolume(_histName.toStdString()));
     currentImpl()->setHistDimensions(_histDims);
     currentImpl()->update();
 }

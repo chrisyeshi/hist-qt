@@ -6,6 +6,7 @@
 #include <memory>
 #include <map>
 #include <QObject>
+#include <QtConcurrent/QtConcurrent>
 #include "histgrid.h"
 #include "histfacadegrid.h"
 #include "Histogram.h"
@@ -27,6 +28,47 @@ public:
 std::ostream& operator<<(std::ostream& os, const QueryRule& rule);
 bool operator==(const QueryRule& a, const QueryRule& b);
 
+///////////////////////////////////////////////////////////////////////////////
+
+class DataLoader : public QObject {
+    Q_OBJECT
+public:
+    typedef std::pair<int,std::string> HistVolumeId;
+    typedef std::vector<HistVolumeId> HistVolumeIds;
+
+public:
+    DataLoader() {}
+    void initialize(std::string dir, std::vector<int> dimProcs,
+            float stepInterval, bool pdfInTracerDir,
+            std::vector<HistConfig> configs);
+
+public slots:
+    std::string stepDir(int iStep) const;
+    std::shared_ptr<HistFacadeVolume> load(const HistVolumeId& histVolumeId);
+    void processQueue();
+
+public:
+    void asyncLoad(HistVolumeId histVolumeId);
+    void asyncLoad(const HistVolumeIds& histVolumeIds);
+    void clearAsync();
+    void waitForAsync();
+
+signals:
+    void histVolumeLoaded(HistVolumeId, std::shared_ptr<HistFacadeVolume>);
+
+private:
+    QMutex _queueMutex;
+    HistVolumeIds _queue;
+    bool _isLoading = false;
+    std::string _dir;
+    std::vector<int> _dimProcs;
+    float _stepInterval;
+    bool _pdfInTracerDir;
+    std::vector<HistConfig> _histConfigs;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+
 /**
  *
  */
@@ -35,131 +77,50 @@ class DataStep : public QObject
     Q_OBJECT
 public:
     explicit DataStep(QObject* parent = 0) : QObject(parent) {}
-    DataStep(std::string dir, std::vector<int> dimProcs,
+    DataStep(int stepId, std::vector<int> dimProcs,
             std::vector<int> dimHistsPerDomain,
-            std::vector<HistConfig> histConfigs, QObject* parent = 0);
+            std::vector<HistConfig> histConfigs, DataLoader* dataLoader,
+            QObject* parent = 0);
 
 signals:
     void histSelectionChanged();
+    void signalLoadHistVolume(DataLoader::HistVolumeId);
 
 public:
-    int nHist() const {
-        int prod = 1;
-        for (unsigned int iDim = 0; iDim < m_dimProcs.size(); ++iDim) {
-            prod *= m_dimProcs[iDim] * m_dimHistsPerDomain[iDim];
-        }
-        return prod;
-    }
+    int nHist() const;
     const std::vector<HistConfig>& histConfigs() const { return m_histConfigs; }
-    const HistConfig& histConfig(const std::string& name) const {
-        auto itr = std::find_if(m_histConfigs.begin(), m_histConfigs.end(),
-                [name](HistConfig histConfig) {
-            return histConfig.name() == name;
-        });
-        assert(itr != m_histConfigs.end());
-        return (*itr);
-    }
-    std::shared_ptr<HistFacadeVolume> volume(const std::string& name) {
-        if (m_data.count(name) > 0)
-            return m_data[name];
-        // else, try to load the data
-        if (!this->load(name))
-            return nullptr;
-        return m_data[name];
-    }
-    void setQueryRules(const std::vector<QueryRule>& rules) {
-        m_queryRules = rules;
-        applyQueryRules();
-    }
-    std::vector<int> selectedFlatIds() const {
-        std::vector<int> flatIds;
-        for (int iHist = 0; iHist < nHist(); ++iHist)
-            if (m_histMask[iHist])
-                flatIds.push_back(iHist);
-        return flatIds;
-    }
+    const HistConfig& histConfig(const std::string& name) const;
+    void setVolume(std::string name, std::shared_ptr<HistFacadeVolume> volume);
+    std::shared_ptr<HistFacadeVolume> dumbVolume(const std::string& name);
+    std::shared_ptr<HistFacadeVolume> smartVolume(const std::string& name);
+    void setQueryRules(const std::vector<QueryRule>& rules);
+    std::vector<int> selectedFlatIds() const;
 
 private:
-    void applyQueryRules() {
-        // separate the rules as they are targetting different hist configs.
-        std::unordered_map<std::string, std::vector<QueryRule>> histNameToRules;
-        for (const QueryRule& rule : m_queryRules) {
-            histNameToRules[rule.histName].push_back(rule);
-        }
-        // reset to all true
-        m_histMask.resize(nHist());
-        m_histMask.assign(nHist(), true);
-        // for each histogram config
-        for (const auto& keyValue : histNameToRules) {
-            const std::string& histName = keyValue.first;
-            const std::vector<QueryRule>& rules = keyValue.second;
-            auto histVolume = volume(histName);
-            // for each histogram in a histogram volume
-            for (int iHist = 0; iHist < nHist(); ++iHist) {
-                auto hist = histVolume->hist(iHist);
-                bool histSelected = m_histMask[iHist];
-                // for each rule targettting this hist config
-                for (auto rule : rules) {
-                    // check if the histogram is selected
-                    bool selected =
-                            hist->checkRange(rule.intervals, rule.threshold);
-                    histSelected = histSelected && selected;
-                    if (!histSelected)
-                        break;
-                }
-                // put it in the mask
-                m_histMask[iHist] = histSelected;
-            }
-        }
-        // set selected in the hist facades
-        for (auto keyValue : m_data)
-        for (int iHist = 0; iHist < nHist(); ++iHist) {
-            keyValue.second->hist(iHist)->setSelected(m_histMask[iHist]);
-        }
-        // emit signal
-        emit histSelectionChanged();
-    }
-    bool load(const std::string& name) {
-        auto itr = std::find_if(m_histConfigs.begin(), m_histConfigs.end(),
-                [name](HistConfig histConfig){
-            return histConfig.name() == name;
-        });
-        if (m_histConfigs.end() == itr)
-            return false;
-        int index = itr - m_histConfigs.begin() + 1;
-        char idcstr[5];
-        sprintf(idcstr, "%03d", index);
-        auto histVol = std::make_shared<HistFacadeVolume>(
-                m_dir, std::string(idcstr), m_dimProcs, itr->vars);
-        /// TODO: separate into it's own function for better performance?
-        for (int iHist = 0; iHist < nHist(); ++iHist)
-            histVol->hist(iHist)->setSelected(m_histMask[iHist]);
-        m_data[name] = histVol;
-        return true;
-    }
+    void applyQueryRules();
+//    bool load(const std::string& name);
 
 private:
     std::map<std::string, std::shared_ptr<HistFacadeVolume>> m_data;
-    std::string m_dir;
+    int m_stepId;
     std::vector<int> m_dimProcs, m_dimHistsPerDomain;
     std::vector<HistConfig> m_histConfigs;
     std::vector<QueryRule> m_queryRules;
     std::vector<bool> m_histMask;
+    DataLoader* m_dataLoader;
 };
 
-/////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 /**
  * @brief The DataPool class
  */
-class DataPool
+class DataPool : public QObject
 {
+    Q_OBJECT
 public:
-    DataPool()
-      : m_isOpen( false )
-      , m_dimHistsPerDomain(3)
-      , m_volMin(3, 1.f), m_volMax(3, 1.f) {}
-    ~DataPool() {}
+    DataPool();
+    ~DataPool();
 
 public:
     bool setDir(const std::string& dir);
@@ -171,16 +132,25 @@ public:
     const std::vector<float>& volMin() const { return m_volMin; }
     const std::vector<float>& volMax() const { return m_volMax; }
     Extent dimHists() const;
-    const std::vector<int>& dimHistsPerDomain() const { return m_dimHistsPerDomain; }
+    const std::vector<int>& dimHistsPerDomain() const {
+        return m_dimHistsPerDomain;
+    }
     const std::vector<HistConfig>& histConfigs() const { return m_histConfigs; }
     const HistConfig& histConfig(const std::string& name) const;
     TracerConfig tracerConfig(int timestep) const;
     void setQueryRules(const std::vector<QueryRule>& rules);
 
+public slots:
+    void histVolumeLoaded(DataLoader::HistVolumeId histVolumeId,
+            std::shared_ptr<HistFacadeVolume> histVolume);
+    void loadHistVolume(DataLoader::HistVolumeId histVolumeId);
+
 private:
     std::string stepDir(int iStep) const;
 
 private:
+    QThread m_dataLoaderThread;
+    DataLoader* m_dataLoader;
     std::vector<std::shared_ptr<DataStep> > m_data;
     std::string m_dir;
     int m_nSteps;
@@ -195,8 +165,6 @@ private:
     std::vector<QueryRule> m_queryRules;
 };
 
-
-/////////////////////////////////////////////////////////////////////////////////////////
-
+///////////////////////////////////////////////////////////////////////////////
 
 #endif // _DATAPOOL_H_

@@ -9,7 +9,7 @@
 #include <cassert>
 #include <cstring>
 
-//#define YESSWAP
+#define YESSWAP
 class ByteOrder
 {
 public:

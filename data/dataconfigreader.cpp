@@ -13,6 +13,45 @@ namespace {
 }
 
 /**
+ * @brief HistConfig::name
+ * @return
+ */
+std::string HistConfig::name() const
+{
+    std::string ret = vars[0];
+    for (unsigned int i = 1; i < vars.size(); ++i) {
+        ret += "-" + vars[i];
+    }
+    return ret;
+}
+
+bool HistConfig::load(std::istream &in)
+{
+    std::string line;
+    std::string dimension;
+    in >> dimension;
+    if (dimension == "dimension") {
+        in >> nDim;
+    } else {
+        nDim = atoi(dimension.c_str());
+    }
+    std::getline(in, line);
+    if (!in) return false;
+    vars.resize(nDim);
+    rangeMethods.resize(nDim);
+    nBins.resize(nDim);
+    mins.resize(nDim);
+    maxs.resize(nDim);
+    /// TODO: actually recognize the comments instead of using getline.
+    for (auto iDim = 0; iDim < nDim; ++iDim) {
+        in >> vars[iDim] >> nBins[iDim] >> rangeMethods[iDim] >> mins[iDim] >>
+                maxs[iDim];
+        std::getline(in, line);
+    }
+    return true;
+}
+
+/**
  * @brief S3DDataConfigReader::S3DDataConfigReader
  * @param dir
  */

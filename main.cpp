@@ -1,7 +1,8 @@
 #include "mainwindow.h"
 #include <QApplication>
 #include <QSurfaceFormat>
-#include <opengl.h>
+#include <QStyleFactory>
+#include <QDebug>
 
 int main(int argc, char *argv[])
 {

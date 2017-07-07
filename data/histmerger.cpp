@@ -34,7 +34,8 @@ public:
             res.upper() = std::min(range.upper(), res.upper());
         }
         // std::cout << res << std::endl;
-        assert(res.lower() <= res.upper());
+        double epsilon = std::numeric_limits<double>::epsilon();
+        assert(res.lower() <= res.upper() + 10.0 * epsilon);
         return res;
     }
 
@@ -134,11 +135,12 @@ std::vector<Range> histsToRanges(
 auto calcEndBinId = [](Range binRange, Range range, double singleBinRange,
         int nBins) {
     double delta = 10.0 * std::numeric_limits<double>::epsilon();
-    assert(binRange[1] <= range[1] + delta);
-    if (range[1] - delta <= binRange[1] && binRange[1] < range[1] + delta) {
+    assert(binRange.upper() <= range.upper() + delta);
+    if (range.upper() - delta <= binRange.upper()
+            && binRange.upper() < range.upper() + delta) {
         return nBins - 1;
     }
-    return int((binRange[1] - range[0]) / singleBinRange);
+    return int((binRange.upper() - range.lower()) / singleBinRange);
 };
 
 template <typename T>
@@ -168,11 +170,11 @@ std::vector<std::vector<int>> makeIdsArray(
 
 int HistMerger::calcBinCount(
         int iDim, const std::vector<std::shared_ptr<const Hist>>& hists) const {
-    if (_binCounts.size() > iDim && _binCounts[iDim]._binCount > 0) {
+    if (int(_binCounts.size()) > iDim && _binCounts[iDim]._binCount > 0) {
         return _binCounts[iDim]._binCount;
     }
     /// TODO: extract these into HistBinWidthCalculator?
-    if (_binCounts.size() <= iDim
+    if (int(_binCounts.size()) <= iDim
             || "sturges" == _binCounts[iDim]._methodName) {
         double totalValue = 0.0;
         for (auto hist : hists) {
@@ -284,7 +286,7 @@ std::shared_ptr<Hist> HistMerger::merge(
         // std::cout << "yHist" << histRanges[1] << std::endl;
 
         std::vector<std::vector<int>> histBinIdsCols(nDim);
-        for (unsigned int iDim = 0; iDim < nDim; ++iDim) {
+        for (int iDim = 0; iDim < nDim; ++iDim) {
             auto& col = histBinIdsCols[iDim];
             col.resize(hist->dim()[iDim]);
             std::iota(col.begin(), col.end(), 0);
@@ -345,7 +347,7 @@ std::shared_ptr<Hist> HistMerger::merge(
             //         << " | endBinIds[1] = " << endBinIds[1] << std::endl;
 
             std::vector<std::vector<int>> binIdsCols(nDim);
-            for (unsigned int iDim = 0; iDim < nDim; ++iDim) {
+            for (int iDim = 0; iDim < nDim; ++iDim) {
                 auto& col = binIdsCols[iDim];
                 col.resize(endBinIds[iDim] - begBinIds[iDim] + 1);
                 std::iota(col.begin(), col.end(), begBinIds[iDim]);
@@ -366,16 +368,21 @@ std::shared_ptr<Hist> HistMerger::merge(
                 std::vector<double> portions =
                         map<std::tuple<Range, Range>, double>(
                             [](const std::tuple<Range, Range>& tuple) {
-                    return Range::intersectRanges(
+                    double range = Range::intersectRanges(
                             { std::get<0>(tuple), std::get<1>(tuple) }).range();
+                    double epsilon = std::numeric_limits<double>::epsilon();
+                    assert(range > -10.0 * epsilon);
+                    return std::max(0.0, range);
                 }, zip(binRanges, histBinRanges));
                 double portionProduct = multiplyEach(portions);
+                assert(portionProduct >= 0.0);
                 double histBinRangeProduct = std::accumulate(
                         histBinRanges.begin(), histBinRanges.end(), 1.0,
                         [](double product, const Range& b) {
                     return product * b.range();
                 });
                 double ratio = portionProduct / histBinRangeProduct;
+                assert(ratio >= 0.0);
                 int iBin = Extent(nBins).idstoflat(binIds);
 
                 // std::cout << "iBin = " << iBin << std::endl;
