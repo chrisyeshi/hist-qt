@@ -222,6 +222,9 @@ int HistMerger::calcBinCount(
             ++itr;
         }
         double iqr = thirdKey - firstKey;
+        if (iqr <= 10 * std::numeric_limits<double>::epsilon()) {
+            return 10;
+        }
         double binWidth = 2 * iqr / std::pow(totalValue, 1.0 / 3.0);
         return std::ceil((totalMax - totalMin) /  binWidth);
     }
