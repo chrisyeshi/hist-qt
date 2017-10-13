@@ -90,7 +90,7 @@ MainWindow::MainWindow(QWidget *parent)
     // open the sample dataset
     QTimer::singleShot(0, this, [this]() {
         auto home = QProcessEnvironment::systemEnvironment().value("HOME");
-        this->open(home + tr("/work/data/data_pdf"));
+        this->open(home + tr("/work/histqt/data_pdf"));
     });
 }
 
