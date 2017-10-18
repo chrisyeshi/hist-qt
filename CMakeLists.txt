@@ -1,0 +1,29 @@
+cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
+project(histqt)
+
+find_package(OpenGL REQUIRED)
+find_package(Qt5Core REQUIRED)
+find_package(Qt5Widgets REQUIRED)
+find_package(Qt5OpenGL REQUIRED)
+find_package(Qt5Network REQUIRED)
+
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(CMAKE_AUTOMOC ON)
+
+#add_subdirectory(volren)
+
+file(GLOB SOURCES *.cpp data/*.cpp glad/*.c )
+file(GLOB HEADERS *.h data/*.h glad/*.h glm/*.hpp yygl/*.h)
+file(GLOB UI_FILES *.ui)
+file(GLOB SHADERS *.vert *.frag)
+file(GLOB RESOURCE_FILES *.qrc)
+
+qt5_add_resources(RESOURCES ${RESOURCE_FILES})
+qt5_wrap_ui(UI_HEADERS ${UI_FILES})
+add_executable(histqt ${SOURCES} ${HEADERS} ${UI_HEADERS} ${RESOURCES} ${SHADERS})
+#target_include_directories(histqt PRIVATE volren ${OpenCV_INCLUDE_DIRS})
+#target_link_libraries(histqt ${OPENGL_LIBRARIES} volren ${OpenCV_LIBS})
+target_link_libraries(histqt ${OPENGL_LIBRARIES} ${CMAKE_DL_LIBS})
+target_compile_features(histqt PRIVATE cxx_range_for)
+qt5_use_modules(histqt Core Widgets OpenGL Network)
+#add_custom_command(TARGET histqt POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/volren/volume/samples $<TARGET_FILE_DIR:histqt>)
