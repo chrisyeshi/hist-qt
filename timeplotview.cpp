@@ -41,18 +41,26 @@ void TimePlotView::paintGL()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     if (!_data)
         return;
-    int w = width() * devicePixelRatio();
-    int h = height() * devicePixelRatio();
-    Painter painter(w, h);
+//    int deviceRatio = devicePixelRatio();
+//    float deviceRatioF = devicePixelRatioF();
+    int deviceRatio = 1;
+    float deviceRatioF = 1.f;
+    int w = width() * deviceRatio;
+    int h = height() * deviceRatio;
+    Painter painter(this);
     painter.setPen(QPen(Qt::black, 0.25f));
-    painter.setFont(QFont("mono", 8.f * devicePixelRatioF()));
+    painter.setFont(QFont("mono", 8.f * deviceRatioF));
     // label rect
-    QRect labelRect;
-    painter.drawText(0, 0, 100, 100, Qt::AlignBottom | Qt::AlignLeft,
-            QString::number(0.012345678, 'g', 5), &labelRect);
+//    QRect labelRect(0, 0, 100, 100);
+//    painter.painter()->drawText(0, 0, 100, 100, Qt::AlignBottom | Qt::AlignLeft,
+//            QString::number(0.012345678, 'g', 5), &labelRect);
+    QRect labelRect =
+            painter.boundingRect(
+                0, 0, 100, 100,
+                Qt::AlignBottom | Qt::AlignLeft,
+                QString::number(0.012345678, 'g', 5));
     // variables
     int nSteps = _data->numSteps();
-//    int nSteps = 100;
     float stepWidth = float(w) / float(nSteps);
     float left = 0.f;
     float top = 0.f;

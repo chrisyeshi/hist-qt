@@ -8,7 +8,6 @@ class Hist;
 class HistFacade;
 class IHistPainter;
 class IHistCharter;
-class Painter;
 
 class HistView : public OpenGLWidget {
     Q_OBJECT

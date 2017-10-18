@@ -25,13 +25,13 @@ public:
     void setHoveredHist(std::array<int, 3> histIds, bool hovered);
 
 protected:
-    virtual void initializeGL() override;
     virtual void paintGL() override;
     virtual void resizeGL(int w, int h) override;
     virtual void mousePressEvent(QMouseEvent* event) override;
     virtual void mouseMoveEvent(QMouseEvent* event) override;
 
 private:
+    void initialize();
     void updateMVP();
     QMatrix4x4 yzSliceMatrix(int index) const;
     QMatrix4x4 xzSliceMatrix(int index) const;

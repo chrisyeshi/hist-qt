@@ -12,17 +12,19 @@
  */
 std::shared_ptr<IHistCharter> IHistCharter::create(
         std::shared_ptr<const HistFacade> histFacade,
-        std::vector<int> displayDims) {
+        std::vector<int> displayDims, QPaintDevice *paintDevice) {
     if (!histFacade) {
         return std::make_shared<HistNullCharter>();
     }
     if (2 == displayDims.size()) {
-        return std::make_shared<Hist2DFacadeCharter>(histFacade,
-                std::array<int, 2>{{ displayDims[0], displayDims[1] }});
+        return std::make_shared<Hist2DFacadeCharter>(
+                histFacade,
+                std::array<int, 2>{{ displayDims[0], displayDims[1] }},
+                paintDevice);
     }
     if (1 == displayDims.size()) {
         return std::make_shared<Hist1DFacadeCharter>(
-                histFacade, displayDims[0]);
+                histFacade, displayDims[0], paintDevice);
     }
     assert(false);
 }
@@ -32,11 +34,11 @@ std::shared_ptr<IHistCharter> IHistCharter::create(
  * @param histFacade
  * @param displayDims
  */
-Hist2DFacadeCharter::Hist2DFacadeCharter(
-        std::shared_ptr<const HistFacade> histFacade,
-        std::array<int, 2> displayDims)
+Hist2DFacadeCharter::Hist2DFacadeCharter(std::shared_ptr<const HistFacade> histFacade,
+        std::array<int, 2> displayDims, QPaintDevice *paintDevice)
   : _histFacade(histFacade)
-  , _displayDims(displayDims) {
+  , _displayDims(displayDims)
+  , _paintDevice(paintDevice) {
     _histPainter = std::make_shared<Hist2DTexturePainter>();
     _histPainter->initialize();
     _histPainter->setTexture(_histFacade->texture(_displayDims));
@@ -84,7 +86,8 @@ void Hist2DFacadeCharter::chart() {
         _histPainter->paint();
     }
     // axes
-    Painter painter(width(), height());
+    Painter painter =
+            _paintDevice ? Painter(_paintDevice) : Painter(width(), height());
     painter.setPen(QPen(Qt::black, 0.25f));
     auto hist2d = hist();
     float dx = histWidth() / hist2d->dim()[0];
@@ -172,9 +175,11 @@ std::shared_ptr<const Hist> Hist2DFacadeCharter::hist() const {
  * @param displayDim
  */
 Hist1DFacadeCharter::Hist1DFacadeCharter(
-        std::shared_ptr<const HistFacade> histFacade, int displayDim)
-  : _histFacade(histFacade), _displayDim(displayDim) {
-
+        std::shared_ptr<const HistFacade> histFacade, int displayDim,
+        QPaintDevice* paintDevice)
+  : _histFacade(histFacade)
+  , _displayDim(displayDim)
+  , _paintDevice(paintDevice) {
     _histPainter = std::make_shared<Hist1DVBOPainter>();
     _histPainter->initialize();
     _histPainter->setVBO(_histFacade->vbo(_displayDim));
@@ -220,7 +225,9 @@ void Hist1DFacadeCharter::chart()
     const int nTicks = 6;
     // ticks under the histogram
     {
-        Painter painter(width(), height());
+        Painter painter =
+                _paintDevice ?
+                    Painter(_paintDevice) : Painter(width(), height());
         painter.setPen(QPen(Qt::black, 0.25f));
         for (auto i = 0; i < nTicks - 1; ++i) {
             float y = height() - histBottom()
@@ -240,7 +247,8 @@ void Hist1DFacadeCharter::chart()
     }
     glDisable(GL_BLEND);
     // axes
-    Painter painter(width(), height());
+    Painter painter =
+            _paintDevice ? Painter(_paintDevice) : Painter(width(), height());
     painter.setPen(QPen(Qt::black, 0.5f));
     auto hist = _histFacade->hist(_displayDim);
     painter.drawLine(

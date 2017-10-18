@@ -16,9 +16,8 @@ HistSliceOrienView::HistSliceOrienView(QWidget *parent)
         { -1.f,  1.f,  1.f },
         {  1.f,  1.f,  1.f }
     })
-  , _camera(new Camera())
-{
-
+  , _camera(new Camera()) {
+    initialize();
 }
 
 void HistSliceOrienView::setHistDims(int w, int h, int d)
@@ -67,140 +66,6 @@ void HistSliceOrienView::setHoveredHist(
     update();
 }
 
-void HistSliceOrienView::initializeGL()
-{
-    glClearColor(1.f, 1.f, 1.f, 1.f);
-    // bounding box render pass
-    _boundingBoxRenderPass.setProgram(
-            yy::gl::shader::VERTEX_SHADER,
-            R"GLSL(
-                #version 330
-                uniform mat4 mvp;
-                in vec4 v_position;
-                void main() {
-                    gl_Position = mvp * v_position;
-                }
-            )GLSL",
-            yy::gl::shader::FRAGMENT_SHADER,
-            R"GLSL(
-                #version 330
-                out vec4 f_color;
-                void main() {
-                    f_color = vec4(0.25, 0.25, 0.25, 1.0);
-                }
-            )GLSL");
-    _boundingBoxRenderPass.setVBO<glm::vec3>("v_position", _cube);
-    _boundingBoxRenderPass.setIBO<GLuint>({
-        0, 1, 0, 2, 2, 3, 1, 3, 4, 5, 4, 6, 6, 7, 5, 7, 0, 4, 1, 5, 2, 6, 3, 7
-    });
-    _boundingBoxRenderPass.setDrawMode(yy::gl::render_pass::LINES);
-    _boundingBoxRenderPass.setFirstVertexIndex(0);
-    _boundingBoxRenderPass.setVertexCount(24);
-    // highlight region shader program
-    _highlightProgram = std::make_shared<yy::gl::program>(
-            yy::gl::shader::VERTEX_SHADER,
-            R"GLSL(
-                #version 330
-                uniform mat4 mvp;
-                in vec4 v_position;
-                out vec3 vg_position;
-                void main() {
-                    gl_Position = mvp * v_position;
-                    vg_position = v_position.xyz;
-                }
-            )GLSL",
-            yy::gl::shader::GEOMETRY_SHADER,
-            R"GLSL(
-                #version 330
-                layout(triangles) in;
-                layout(triangle_strip, max_vertices = 3) out;
-                uniform mat3 nm;
-                in vec3 vg_position[];
-                out vec3 gf_normal;
-                void main() {
-                    vec3 a = vg_position[0];
-                    vec3 b = vg_position[1];
-                    vec3 c = vg_position[2];
-                    vec3 normal = nm * normalize(cross(b - a, c - a));
-                    for (int i = 0; i < 3; ++i) {
-                        gl_Position = gl_in[i].gl_Position;
-                        gf_normal = normal;
-                        EmitVertex();
-                    }
-                    EndPrimitive();
-                }
-            )GLSL",
-            yy::gl::shader::FRAGMENT_SHADER,
-            R"GLSL(
-                #version 330
-                uniform vec4 color;
-                in vec3 gf_normal;
-                out vec4 f_color;
-                void main() {
-                    vec3 normal = normalize(gf_normal);
-                    float df = abs(dot(normal, vec3(0.0, 0.0, 1.0)));
-                    vec3 ambient = 0.4 * color.rgb;
-                    vec3 diffuse = 1.6 * color.rgb * df;
-                    f_color = vec4(ambient + diffuse, color.a);
-                }
-            )GLSL");
-    // highlight render passes
-    for (int dir = 0; dir < NUM_SLICES; ++dir) {
-        yy::gl::render_pass& pass = _highlightRenderPasses[dir];
-        pass.setProgram(_highlightProgram);
-        pass.setVBO("v_position", _cube);
-        /// TODO: also share the IBO.
-        pass.setIBO<GLuint>({
-            0, 1, 2, 1, 3, 2, /* xy min */
-            0, 2, 6, 0, 6, 4, /* yz min */
-            4, 7, 5, 4, 6, 7, /* xy max */
-            1, 5, 3, 3, 5, 7, /* yz max */
-            2, 3, 6, 6, 3, 7, /* xz max */
-            0, 4, 1, 1, 4, 5  /* xz min */
-        });
-        pass.setDrawMode(yy::gl::render_pass::TRIANGLES);
-        pass.setFirstVertexIndex(0);
-        pass.setVertexCount(36);
-    }
-    _highlightRenderPasses[YZ].setUniform(
-            "color", glm::vec4(1.f, 0.f, 0.f, 0.2f));
-    _highlightRenderPasses[XZ].setUniform(
-            "color", glm::vec4(0.f, 1.f, 0.f, 0.2f));
-    _highlightRenderPasses[XY].setUniform(
-            "color", glm::vec4(0.f, 0.f, 1.f, 0.2f));
-    /// TODO: this is the same program as the bounding box render pass.
-    // hovered render pass
-    _hoveredRenderPass.setProgram(
-            yy::gl::shader::VERTEX_SHADER,
-            R"GLSL(
-                #version 330
-                uniform mat4 mvp;
-                in vec4 v_position;
-                void main() {
-                    gl_Position = mvp * v_position;
-                }
-            )GLSL",
-            yy::gl::shader::FRAGMENT_SHADER,
-            R"GLSL(
-                #version 330
-                out vec4 f_color;
-                void main() {
-                    f_color = vec4(0.25, 0.25, 0.25, 0.5);
-                }
-            )GLSL");
-    _hoveredRenderPass.setVBO<glm::vec3>("v_position", _cube);
-    _hoveredRenderPass.setIBO<GLuint>({
-        0, 1, 0, 2, 2, 3, 1, 3, 4, 5, 4, 6, 6, 7, 5, 7, 0, 4, 1, 5, 2, 6, 3, 7
-    });
-    _hoveredRenderPass.setDrawMode(yy::gl::render_pass::LINES);
-    _hoveredRenderPass.setFirstVertexIndex(0);
-    _hoveredRenderPass.setVertexCount(24);
-    // camera
-    _camera->reset({ -1.f, -1.f, -1.f }, { 1.f, 1.f, 1.f });
-    _camera->setFOV(_camera->fov() * 0.9);
-    updateMVP();
-}
-
 void HistSliceOrienView::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -244,21 +109,158 @@ void HistSliceOrienView::mouseMoveEvent(QMouseEvent *event)
     update();
 }
 
+void HistSliceOrienView::initialize() {
+    delayForInit([this]() {
+        glClearColor(1.f, 1.f, 1.f, 1.f);
+        // bounding box render pass
+        _boundingBoxRenderPass.setProgram(
+                yy::gl::shader::VERTEX_SHADER,
+                R"GLSL(
+                    #version 330
+                    uniform mat4 mvp;
+                    in vec4 v_position;
+                    void main() {
+                        gl_Position = mvp * v_position;
+                    }
+                )GLSL",
+                yy::gl::shader::FRAGMENT_SHADER,
+                R"GLSL(
+                    #version 330
+                    out vec4 f_color;
+                    void main() {
+                        f_color = vec4(0.25, 0.25, 0.25, 1.0);
+                    }
+                )GLSL");
+        _boundingBoxRenderPass.setVBO<glm::vec3>("v_position", _cube);
+        _boundingBoxRenderPass.setIBO<GLuint>({
+            0, 1, 0, 2, 2, 3, 1, 3, 4, 5, 4, 6,
+            6, 7, 5, 7, 0, 4, 1, 5, 2, 6, 3, 7
+        });
+        _boundingBoxRenderPass.setDrawMode(yy::gl::render_pass::LINES);
+        _boundingBoxRenderPass.setFirstVertexIndex(0);
+        _boundingBoxRenderPass.setVertexCount(24);
+        // highlight region shader program
+        _highlightProgram = std::make_shared<yy::gl::program>(
+                yy::gl::shader::VERTEX_SHADER,
+                R"GLSL(
+                    #version 330
+                    uniform mat4 mvp;
+                    in vec4 v_position;
+                    out vec3 vg_position;
+                    void main() {
+                        gl_Position = mvp * v_position;
+                        vg_position = v_position.xyz;
+                    }
+                )GLSL",
+                yy::gl::shader::GEOMETRY_SHADER,
+                R"GLSL(
+                    #version 330
+                    layout(triangles) in;
+                    layout(triangle_strip, max_vertices = 3) out;
+                    uniform mat3 nm;
+                    in vec3 vg_position[];
+                    out vec3 gf_normal;
+                    void main() {
+                        vec3 a = vg_position[0];
+                        vec3 b = vg_position[1];
+                        vec3 c = vg_position[2];
+                        vec3 normal = nm * normalize(cross(b - a, c - a));
+                        for (int i = 0; i < 3; ++i) {
+                            gl_Position = gl_in[i].gl_Position;
+                            gf_normal = normal;
+                            EmitVertex();
+                        }
+                        EndPrimitive();
+                    }
+                )GLSL",
+                yy::gl::shader::FRAGMENT_SHADER,
+                R"GLSL(
+                    #version 330
+                    uniform vec4 color;
+                    in vec3 gf_normal;
+                    out vec4 f_color;
+                    void main() {
+                        vec3 normal = normalize(gf_normal);
+                        float df = abs(dot(normal, vec3(0.0, 0.0, 1.0)));
+                        vec3 ambient = 0.4 * color.rgb;
+                        vec3 diffuse = 1.6 * color.rgb * df;
+                        f_color = vec4(ambient + diffuse, color.a);
+                    }
+                )GLSL");
+        // highlight render passes
+        for (int dir = 0; dir < NUM_SLICES; ++dir) {
+            yy::gl::render_pass& pass = _highlightRenderPasses[dir];
+            pass.setProgram(_highlightProgram);
+            pass.setVBO("v_position", _cube);
+            /// TODO: also share the IBO.
+            pass.setIBO<GLuint>({
+                0, 1, 2, 1, 3, 2, /* xy min */
+                0, 2, 6, 0, 6, 4, /* yz min */
+                4, 7, 5, 4, 6, 7, /* xy max */
+                1, 5, 3, 3, 5, 7, /* yz max */
+                2, 3, 6, 6, 3, 7, /* xz max */
+                0, 4, 1, 1, 4, 5  /* xz min */
+            });
+            pass.setDrawMode(yy::gl::render_pass::TRIANGLES);
+            pass.setFirstVertexIndex(0);
+            pass.setVertexCount(36);
+        }
+        _highlightRenderPasses[YZ].setUniform(
+                "color", glm::vec4(1.f, 0.f, 0.f, 0.2f));
+        _highlightRenderPasses[XZ].setUniform(
+                "color", glm::vec4(0.f, 1.f, 0.f, 0.2f));
+        _highlightRenderPasses[XY].setUniform(
+                "color", glm::vec4(0.f, 0.f, 1.f, 0.2f));
+        /// TODO: this is the same program as the bounding box render pass.
+        // hovered render pass
+        _hoveredRenderPass.setProgram(
+                yy::gl::shader::VERTEX_SHADER,
+                R"GLSL(
+                    #version 330
+                    uniform mat4 mvp;
+                    in vec4 v_position;
+                    void main() {
+                        gl_Position = mvp * v_position;
+                    }
+                )GLSL",
+                yy::gl::shader::FRAGMENT_SHADER,
+                R"GLSL(
+                    #version 330
+                    out vec4 f_color;
+                    void main() {
+                        f_color = vec4(0.25, 0.25, 0.25, 0.5);
+                    }
+                )GLSL");
+        _hoveredRenderPass.setVBO<glm::vec3>("v_position", _cube);
+        _hoveredRenderPass.setIBO<GLuint>({
+            0, 1, 0, 2, 2, 3, 1, 3, 4, 5, 4, 6,
+            6, 7, 5, 7, 0, 4, 1, 5, 2, 6, 3, 7
+        });
+        _hoveredRenderPass.setDrawMode(yy::gl::render_pass::LINES);
+        _hoveredRenderPass.setFirstVertexIndex(0);
+        _hoveredRenderPass.setVertexCount(24);
+        // camera
+        _camera->reset({ -1.f, -1.f, -1.f }, { 1.f, 1.f, 1.f });
+        _camera->setFOV(_camera->fov() * 0.9);
+        updateMVP();
+    });
+}
+
 void HistSliceOrienView::updateMVP()
 {
-    makeCurrent();
-    auto vp = _camera->matProj() * _camera->matView();
-    _boundingBoxRenderPass.setUniform("mvp", vp);
-    auto yzMVP = vp * yzSliceMatrix(_sliceIndices[YZ]);
-    _highlightRenderPasses[YZ].setUniforms(
-            "mvp", yzMVP, "nm", yzMVP.normalMatrix());
-    auto xzMVP = vp * xzSliceMatrix(_sliceIndices[XZ]);
-    _highlightRenderPasses[XZ].setUniforms(
-            "mvp", xzMVP, "nm", xzMVP.normalMatrix());
-    auto xyMVP = vp * xySliceMatrix(_sliceIndices[XY]);
-    _highlightRenderPasses[XY].setUniforms(
-            "mvp", xyMVP, "nm", xyMVP.normalMatrix());
-    doneCurrent();
+    delayForInit([this]() {
+        auto vp = _camera->matProj() * _camera->matView();
+        _boundingBoxRenderPass.setUniform("mvp", vp);
+        auto yzMVP = vp * yzSliceMatrix(_sliceIndices[YZ]);
+        _highlightRenderPasses[YZ].setUniforms(
+                "mvp", yzMVP, "nm", yzMVP.normalMatrix());
+        auto xzMVP = vp * xzSliceMatrix(_sliceIndices[XZ]);
+        _highlightRenderPasses[XZ].setUniforms(
+                "mvp", xzMVP, "nm", xzMVP.normalMatrix());
+        auto xyMVP = vp * xySliceMatrix(_sliceIndices[XY]);
+        _highlightRenderPasses[XY].setUniforms(
+                "mvp", xyMVP, "nm", xyMVP.normalMatrix());
+    });
 }
 
 QMatrix4x4 HistSliceOrienView::yzSliceMatrix(int index) const

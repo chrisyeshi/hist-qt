@@ -22,8 +22,13 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = 0);
+    explicit MainWindow(
+            const std::string& layout = "particle", QWidget *parent = 0);
     ~MainWindow();
+
+private:
+    void createParticleLayout();
+    void createSimpleLayout();
 
 private:
     void open();

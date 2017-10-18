@@ -218,12 +218,6 @@ public:
                     type, data);
         });
     }
-    void texImage2D(TARGET target, INTERNAL_FORMAT internalFormat,
-            GLsizei width, GLsizei height, FORMAT format, DATA_TYPE type,
-            const GLvoid* data) {
-        texImage2D(target, 0, internalFormat, width, height, 0, format, type,
-                data);
-    }
     void texImage2D(TARGET target, GLint level, INTERNAL_FORMAT internalFormat,
             GLsizei width, GLsizei height, GLint border, FORMAT format,
             DATA_TYPE type, const GLvoid* data) {
@@ -231,6 +225,37 @@ public:
             glTexImage2D(target, level, internalFormat, width, height, border,
                     format, type, data);
         });
+    }
+    void texImage2D(TARGET target, INTERNAL_FORMAT internalFormat,
+            GLsizei width, GLsizei height, FORMAT format, DATA_TYPE type,
+            const GLvoid* data) {
+        texImage2D(target, 0, internalFormat, width, height, 0, format, type,
+                data);
+    }
+    void texImage2D(INTERNAL_FORMAT internalFormat, GLsizei width,
+            GLsizei height, FORMAT format, DATA_TYPE type, const GLvoid* data) {
+        texImage2D(
+                TEXTURE_2D, internalFormat, width, height, format, type, data);
+    }
+    void texImage3D(TARGET target, GLint level, INTERNAL_FORMAT internalFormat,
+            GLsizei width, GLsizei height, GLsizei depth, GLint border,
+            FORMAT format, DATA_TYPE type, const GLvoid* data) {
+        bound(target, [&]() {
+            glTexImage3D(target, level, internalFormat, width, height, depth,
+                    border, format, type, data);
+        });
+    }
+    void texImage3D(TARGET target, INTERNAL_FORMAT internalFormat,
+            GLsizei width, GLsizei height, GLsizei depth, FORMAT format,
+            DATA_TYPE type, const GLvoid* data) {
+        texImage3D(target, 0, internalFormat, width, height, depth, 0, format,
+                type, data);
+    }
+    void texImage3D(INTERNAL_FORMAT internalFormat, GLsizei width,
+            GLsizei height, GLsizei depth, FORMAT format, DATA_TYPE type,
+            const GLvoid* data) {
+        texImage3D(TEXTURE_3D, internalFormat, width, height, depth, format,
+            type, data);
     }
 
 public:
@@ -248,7 +273,8 @@ public:
     void setWrapModeR(TARGET target, WRAP_MODE wrapMode) {
         texParameteri(target, TEXTURE_WRAP_R, wrapMode);
     }
-    void setTextureMinMagFilter(TARGET target, MIN_FILTER minFilter, MAG_FILTER magFilter) {
+    void setTextureMinMagFilter(
+            TARGET target, MIN_FILTER minFilter, MAG_FILTER magFilter) {
         setTextureMinFilter(target, minFilter);
         setTextureMagFilter(target, magFilter);
     }
@@ -265,30 +291,30 @@ public:
     }
 
 public:
-    void activeBind(GLenum texture, TARGET target) {
+    void activeBind(GLenum texture, TARGET target) const {
         activeTexture(texture);
         bind(target);
     }
-    void activeBindByLocation(GLint location, TARGET target) {
+    void activeBindByLocation(GLint location, TARGET target) const {
         activeTextureByLocation(location);
         bind(target);
     }
-    void activeRelease(GLenum texture, TARGET target) {
+    void activeRelease(GLenum texture, TARGET target) const {
         activeTexture(texture);
         release(target);
     }
-    void activeReleaseByLocation(GLint location, TARGET target) {
+    void activeReleaseByLocation(GLint location, TARGET target) const {
         activeTextureByLocation(location);
         release(target);
     }
     void activeBound(GLenum texture, TARGET target,
-            const std::function<void()>& functor) {
+            const std::function<void()>& functor) const {
         activeBind(texture, target);
         functor();
         activeRelease(texture, target);
     }
     void activeBoundByLocation(GLint location, TARGET target,
-            const std::function<void()>& functor) {
+            const std::function<void()>& functor) const {
         activeBindByLocation(location, target);
         functor();
         activeRelease(location, target);

@@ -10,6 +10,7 @@ class Painter
 public:
     Painter();
     Painter(int w, int h);
+    Painter(QPaintDevice* device);
 
 public:
     void resize(int w, int h);
@@ -31,7 +32,10 @@ public:
     void setFont(Args... args) { _painter->setFont(args...); }
 
 public:
+    std::shared_ptr<QPainter> painter() const { return _painter; }
     void clear();
+    template <typename... Args>
+    QRect boundingRect(Args... args) { return _painter->boundingRect(args...); }
     template <typename... Args>
     void drawLine(Args... args) { _painter->drawLine(args...); }
     template <typename... Args>

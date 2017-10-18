@@ -27,7 +27,6 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    histvolumeview.cpp \
     histcompareview.cpp \
     queryview.cpp \
     particleview.cpp \
@@ -52,7 +51,9 @@ SOURCES += main.cpp\
     histfacadecollectionview.cpp \
     timeplotview.cpp \
     glad/glad.c \
-    data/histmerger.cpp
+    data/histmerger.cpp \
+    histvolumesliceview.cpp \
+    histvolumephysicalview.cpp
 
 HEADERS  += mainwindow.h \
     histvolumeview.h \
@@ -242,7 +243,9 @@ HEADERS  += mainwindow.h \
     opengl.h \
     glad/glad.h \
     glad/khrplatform.h \
-    data/histmerger.h
+    data/histmerger.h \
+    histvolumesliceview.h \
+    histvolumephysicalview.h
 
 FORMS    += mainwindow.ui
 

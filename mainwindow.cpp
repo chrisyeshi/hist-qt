@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include <histvolumeview.h>
+#include <histvolumesliceview.h>
+#include "histvolumephysicalview.h"
 #include <histcompareview.h>
 #include <queryview.h>
 #include <particleview.h>
@@ -13,10 +14,11 @@
 #include <QTimer>
 #include <QDebug>
 #include <QProcessEnvironment>
+#include <QResizeEvent>
 
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(const std::string &layout, QWidget *parent)
   : QMainWindow(parent)
-  , _histVolumeView(new HistVolumeView(this))
+  , _histVolumeView(nullptr)
   , _histCompareView(new HistCompareView(this))
   , _queryView(new QueryView(this))
   , _timelineView(new TimelineView(this))
@@ -29,6 +31,26 @@ MainWindow::MainWindow(QWidget *parent)
     auto ctrlw = new QShortcut(QKeySequence(tr("Ctrl+w")), this);
     connect(ctrlw, &QShortcut::activated, this, &MainWindow::close);
     // layout
+    if ("particle" == layout) {
+        createParticleLayout();
+    } else if ("physical" == layout) {
+        createSimpleLayout();
+    } else {
+        assert(false);
+    }
+    // open the sample dataset
+    QTimer::singleShot(0, this, [this]() {
+        auto home = QProcessEnvironment::systemEnvironment().value("HOME");
+        this->open(home + tr("/work/histqt/data_pdf"));
+    });
+}
+
+MainWindow::~MainWindow() {
+    delete ui;
+}
+
+void MainWindow::createParticleLayout() {
+    _histVolumeView = new HistVolumeSliceView(this);
     auto vLayout = new QVBoxLayout(ui->centralWidget);
     vLayout->setMargin(0);
     vLayout->setSpacing(0);
@@ -87,16 +109,21 @@ MainWindow::MainWindow(QWidget *parent)
         vLayout->addWidget(_histVolumeView, 1);
         vLayout->addWidget(_timelineView, 0);
     }
-    // open the sample dataset
-    QTimer::singleShot(0, this, [this]() {
-        auto home = QProcessEnvironment::systemEnvironment().value("HOME");
-        this->open(home + tr("/work/histqt/data_pdf"));
-    });
 }
 
-MainWindow::~MainWindow()
-{
-    delete ui;
+void MainWindow::createSimpleLayout() {
+    _histVolumeView = new HistVolumePhysicalView(this);
+//    _histVolumeView = new HistVolumeNullView(this);
+    _histCompareView->hide();
+    _particleView->hide();
+
+    auto vLayout = new QVBoxLayout(ui->centralWidget);
+    vLayout->setMargin(0);
+    vLayout->setSpacing(0);
+    vLayout->addWidget(_histVolumeView);
+    vLayout->addWidget(_timelineView);
+    connect(_timelineView, &TimelineView::timeStepChanged,
+            this, &MainWindow::setTimeStep);
 }
 
 void MainWindow::open()

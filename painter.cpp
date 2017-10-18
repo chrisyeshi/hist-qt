@@ -43,8 +43,18 @@ Painter::Painter(int w, int h)
     _renderPass.setVertexCount(4);
 }
 
+Painter::Painter(QPaintDevice *device)
+  : _painter(new QPainter(device))
+  , _image(nullptr)
+  , _texture(nullptr) {
+    _painter->setRenderHint(QPainter::Antialiasing);
+}
+
 void Painter::resize(int w, int h)
 {
+    if (!_image) {
+        return;
+    }
     _image = std::make_shared<QImage>(w, h, QImage::Format_RGBA8888);
     _image->fill(QColor(0, 0, 0, 0));
     _painter = std::make_shared<QPainter>(_image.get());
@@ -52,6 +62,9 @@ void Painter::resize(int w, int h)
 }
 
 void Painter::paint() {
+    if (!_image) {
+        return;
+    }
     _texture->texImage2D(
             yy::gl::texture::TEXTURE_2D, yy::gl::texture::INTERNAL_RGBA8,
             _image->width(), _image->height(), yy::gl::texture::FORMAT_RGBA,

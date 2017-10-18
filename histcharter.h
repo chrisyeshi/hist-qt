@@ -10,6 +10,7 @@ class Hist;
 class HistFacade;
 class Hist2DTexturePainter;
 class Hist1DVBOPainter;
+class QPaintDevice;
 
 /**
  * @brief The IHistCharter class
@@ -17,8 +18,9 @@ class Hist1DVBOPainter;
 class IHistCharter {
 public:
     static std::shared_ptr<IHistCharter> create(
-            std::shared_ptr<const HistFacade> histFacade,
-            std::vector<int> displayDims);
+            std::shared_ptr<const HistFacade> histFacade = nullptr,
+            std::vector<int> displayDims = {},
+            QPaintDevice* paintDevice = nullptr);
 
 public:
     virtual void chart() = 0;
@@ -65,7 +67,7 @@ protected:
 class Hist2DFacadeCharter : public IHistCharter {
 public:
     Hist2DFacadeCharter(std::shared_ptr<const HistFacade> histFacade,
-            std::array<int, 2> displayDims);
+            std::array<int, 2> displayDims, QPaintDevice* paintDevice);
 
 public:
     virtual void chart() override;
@@ -89,6 +91,7 @@ private:
     int _width = 0, _height = 0, _devicePixelRatio = 1;
     std::shared_ptr<const HistFacade> _histFacade;
     std::array<int, 2> _displayDims;
+    QPaintDevice* _paintDevice = nullptr;
     std::shared_ptr<Hist2DTexturePainter> _histPainter;
     std::array<int, 2> _hoveredBin = {{ -1, -1 }};
 };
@@ -99,7 +102,8 @@ private:
 class Hist1DFacadeCharter : public IHistCharter {
 public:
     Hist1DFacadeCharter(
-            std::shared_ptr<const HistFacade> histFacade, int displayDim);
+            std::shared_ptr<const HistFacade> histFacade, int displayDim,
+            QPaintDevice* paintDevice);
 
 public:
     virtual void chart() override;
@@ -120,6 +124,7 @@ private:
     float _vMin, _vMax;
     std::shared_ptr<const HistFacade> _histFacade;
     int _displayDim;
+    QPaintDevice* _paintDevice = nullptr;
     std::shared_ptr<Hist1DVBOPainter> _histPainter;
     int _hoveredBin = -1;
 };
