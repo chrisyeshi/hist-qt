@@ -1,11 +1,13 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <histview.h>
 #include <histvolumesliceview.h>
 #include "histvolumephysicalview.h"
 #include <histcompareview.h>
 #include <queryview.h>
 #include <particleview.h>
 #include <timelineview.h>
+#include <lazyui.h>
 #include <QGridLayout>
 #include <QComboBox>
 #include <QPushButton>
@@ -13,6 +15,7 @@
 #include <QFileDialog>
 #include <QTimer>
 #include <QDebug>
+#include <QScrollArea>
 #include <QProcessEnvironment>
 #include <QResizeEvent>
 
@@ -112,18 +115,42 @@ void MainWindow::createParticleLayout() {
 }
 
 void MainWindow::createSimpleLayout() {
+    _histView = new HistView(this);
     _histVolumeView = new HistVolumePhysicalView(this);
 //    _histVolumeView = new HistVolumeNullView(this);
     _histCompareView->hide();
     _particleView->hide();
 
     auto vLayout = new QVBoxLayout(ui->centralWidget);
-    vLayout->setMargin(0);
-    vLayout->setSpacing(0);
-    vLayout->addWidget(_histVolumeView);
+    vLayout->setMargin(5);
+    vLayout->setSpacing(5);
+    vLayout->addLayout([this]() {
+        auto hLayout = new QHBoxLayout();
+        hLayout->addLayout([this]() {
+            auto vLayout = new QVBoxLayout();
+            LazyUI::instance().panel()->setMinimumSize(150, 100);
+            LazyUI::instance().panel()->setSizePolicy(
+                    QSizePolicy::Expanding, QSizePolicy::Expanding);
+            QScrollArea* scrollArea = new QScrollArea();
+            scrollArea->setWidget(LazyUI::instance().panel());
+            scrollArea->setFrameStyle(QFrame::NoFrame);
+            scrollArea->setWidgetResizable(true);
+            scrollArea->setAlignment(Qt::AlignTop);
+            scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            vLayout->addWidget(scrollArea);
+            vLayout->addWidget(_histView);
+            return vLayout;
+        }(), 1);
+        hLayout->addWidget(_histVolumeView, 3);
+        return hLayout;
+    }(), 1);
+//    vLayout->addWidget(_histVolumeView, 1);
     vLayout->addWidget(_timelineView);
     connect(_timelineView, &TimelineView::timeStepChanged,
             this, &MainWindow::setTimeStep);
+    LazyUI::instance().button(tr("Open"), this, [this]() { open(); });
+//    LazyUI::instance().labeledButton(
+//            tr("File"), tr("Open"), this, [this]() { open(); });
 }
 
 void MainWindow::open()
@@ -143,6 +170,13 @@ void MainWindow::open(const QString &dir)
     _histVolumeView->setHistConfigs(_data.histConfigs());
     _histVolumeView->setDataStep(_data.step(_currTimeStep));
     _histVolumeView->update();
+
+    auto dataStep = _data.step(_currTimeStep);
+    auto name = dataStep->histConfigs()[0].name();
+    auto hist = dataStep->smartVolume(name)->hist(0);
+    _histView->setHist(hist, {0});
+    _histView->update();
+
     _queryView->setHistConfigs(_data.histConfigs());
     _particleView->setVisible(false);
     glm::vec3 lower(_data.volMin()[0], _data.volMin()[1], _data.volMin()[2]);

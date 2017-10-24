@@ -6,6 +6,7 @@
 
 int main(int argc, char *argv[])
 {
+    Q_INIT_RESOURCE(volren);
     // set opengl version to 3.3 core profile
     QSurfaceFormat surfaceFormat = QSurfaceFormat::defaultFormat();
     surfaceFormat.setVersion(3, 3);

@@ -5,6 +5,7 @@
 #include <data/DataPool.h>
 #include <queryview.h>
 
+class HistView;
 class HistVolumeView;
 class HistCompareView;
 class QueryView;
@@ -51,6 +52,7 @@ private:
     QueryView* _queryView;
     TimelineView* _timelineView;
     ParticleView* _particleView;
+    HistView* _histView;
 
 private:
     QPushButton* _queryViewToggleButton;

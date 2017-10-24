@@ -8,7 +8,7 @@ TimelineView::TimelineView(QWidget *parent)
   : Widget(parent, Qt::Dialog)
 {
     QVBoxLayout* vBoxLayout = new QVBoxLayout(this);
-    vBoxLayout->setMargin(4);
+    vBoxLayout->setMargin(0);
     _timePlotView = new TimePlotView(this);
     connect(_timePlotView, &TimePlotView::timeStepChanged,
             this, &TimelineView::timeStepChanged);

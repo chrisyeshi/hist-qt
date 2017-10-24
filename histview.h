@@ -18,6 +18,10 @@ public:
     void setHist(std::shared_ptr<const HistFacade> histFacade,
             std::vector<int> displayDims);
 
+public:
+    virtual int heightForWidth(int w) const override { return w; }
+    virtual bool hasHeightForWidth() const override { return true; }
+
 protected:
     virtual void paintGL() override;
     virtual void mouseMoveEvent(QMouseEvent* event) override;

@@ -12,6 +12,9 @@ HistView::HistView(QWidget *parent)
   , _histCharter(IHistCharter::create(nullptr, {})){
     setMouseTracking(true);
     setMinimumSize(200, 200);
+    QSizePolicy policy(sizePolicy());
+    policy.setHeightForWidth(true);
+    setSizePolicy(policy);
     delayForInit([this]() {
         glClearColor(1.f, 1.f, 1.f, 1.f);
     });
