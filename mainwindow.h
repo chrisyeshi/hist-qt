@@ -27,6 +27,9 @@ public:
             const std::string& layout = "particle", QWidget *parent = 0);
     ~MainWindow();
 
+protected:
+    virtual void closeEvent(QCloseEvent *event) override;
+
 private:
     void createParticleLayout();
     void createSimpleLayout();
@@ -42,6 +45,7 @@ private:
     void setRules(const std::vector<QueryRule>& rules);
     std::vector<Particle> loadTracers(
             int timeStep, const std::vector<int>& selectedHistFlatIds);
+    void readSettings();
 
 private:
     unsigned int nHist() const;

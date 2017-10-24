@@ -52,6 +52,13 @@ MainWindow::~MainWindow() {
     delete ui;
 }
 
+void MainWindow::closeEvent(QCloseEvent *event) {
+    QSettings settings("VIDi", "Histogram");
+    settings.setValue("geometry", saveGeometry());
+    settings.setValue("windowState", saveState());
+    QMainWindow::closeEvent(event);
+}
+
 void MainWindow::createParticleLayout() {
     _histVolumeView = new HistVolumeSliceView(this);
     auto vLayout = new QVBoxLayout(ui->centralWidget);
@@ -151,6 +158,7 @@ void MainWindow::createSimpleLayout() {
     LazyUI::instance().button(tr("Open"), this, [this]() { open(); });
 //    LazyUI::instance().labeledButton(
 //            tr("File"), tr("Open"), this, [this]() { open(); });
+    readSettings();
 }
 
 void MainWindow::open()
@@ -269,6 +277,12 @@ std::vector<Particle> MainWindow::loadTracers(
         part.temp = (part.temp - tMin) / (tMax - tMin);
     }
     return parts;
+}
+
+void MainWindow::readSettings() {
+    QSettings settings("VIDi", "Histogram");
+    restoreGeometry(settings.value("geometry").toByteArray());
+    restoreState(settings.value("windowState").toByteArray());
 }
 
 unsigned int MainWindow::nHist() const
