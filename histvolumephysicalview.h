@@ -58,10 +58,13 @@ protected:
     void mousePressEvent(QMouseEvent *event);
     void mouseMoveEvent(QMouseEvent *event);
     void wheelEvent(QWheelEvent *event);
+    void enterEvent(QEvent *);
+    void leaveEvent(QEvent *);
 
 private:
     QRectF calcDefaultSliceRect() const;
     QRectF calcSliceRect() const;
+    QRectF calcHistRect(std::array<int, 2> histSliceIds);
     void boundSliceTransform();
     void updateCurrSlice();
     void createHistPainters();
@@ -69,12 +72,17 @@ private:
     void setRangesToHistPainters();
     void updateHistPainterRects();
     void updateSliceIdScrollBar();
-    int getSliceCountInDirection(Extent dimHists, Orien orien);
+    int getSliceCountInDirection(Extent dimHists, Orien orien) const;
+    std::array<int, 2> localPositionToHistSliceId(QPointF localPos) const;
+    bool isHistSliceIdsValid(std::array<int, 2> histSliceIds) const;
+    QColor quarterColor() const;
 
 private:
     const float _defaultZoom = 1.f;
 //    const float _border = 0.1f;
     const float _borderPixel = 10.0f;
+    const float _histSpacing = 1.f;
+    const QColor _spacingColor = QColor(255, 100, 100);
     static constexpr QVector2D _defaultTranslate = QVector2D(0.5f, 0.5f);
     const std::vector<int> _defaultDims = {0};
     static const Orien _defaultOrien = XY;
@@ -90,6 +98,7 @@ private:
     QVector2D _currTranslate = _defaultTranslate;
     QPointF _mousePrev;
     std::vector<std::shared_ptr<HistFacadePainter>> _histPainters;
+    std::array<int, 2> _hoveredHistSliceIds = {{-1, -1}};
 
     //    std::vector<std::shared_ptr<yy::VolumeGL>> _avgVolumes;
     //    std::unique_ptr<yy::volren::VolRen> _volren;
