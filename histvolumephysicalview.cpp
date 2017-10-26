@@ -145,7 +145,6 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
 void HistVolumePhysicalOpenGLView::setHistVolume(
         HistConfig histConfig,
         std::shared_ptr<HistFacadeVolume> histVolume) {
-//    _histConfig = histConfig;
     _histVolume = histVolume;
     _currDims = _defaultDims;
     _currSliceId = _defaultSliceId;
@@ -329,14 +328,19 @@ QRectF HistVolumePhysicalOpenGLView::calcSliceRect() const {
 void HistVolumePhysicalOpenGLView::boundSliceTransform() {
     float w = width() * devicePixelRatioF();
     float h = height() * devicePixelRatioF();
-    _currZoom = std::max(_defaultZoom, _currZoom);
     QRectF defaultSliceRect = calcDefaultSliceRect();
+
+    float defaultHistWidth = defaultSliceRect.width() / _currSlice->nHistX();
+    float defaultHistHeight = defaultSliceRect.height() / _currSlice->nHistY();
+    float maxZoom = std::min((w - 2.f * _borderPixel) / defaultHistWidth,
+                             (h - 2.f * _borderPixel) / defaultHistHeight);
+    _currZoom = std::min(maxZoom, std::max(_defaultZoom, _currZoom));
+
     QSizeF sliceSize = defaultSliceRect.size() * _currZoom;
     float left = (0.5f * w - _borderPixel) / sliceSize.width();
     float right = 1.f - (w - _borderPixel - 0.5f * w) / sliceSize.width();
     float bottom = (0.5f * h - _borderPixel) / sliceSize.height();
     float top = 1.f - (h - _borderPixel - 0.5f * h) / sliceSize.height();
-//    qDebug() << left << right << bottom << top;
     if (right < left) {
         _currTranslate.setX(0.5f);
     } else {

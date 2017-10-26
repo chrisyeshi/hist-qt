@@ -81,7 +81,6 @@ private:
     static const int _defaultSliceId = 0;
 
 private:
-    HistConfig _histConfig;
     std::shared_ptr<HistFacadeVolume> _histVolume = nullptr;
     std::vector<int> _currDims = _defaultDims;
     Orien _currOrien = _defaultOrien;
