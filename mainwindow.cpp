@@ -19,6 +19,7 @@
 #include <QScrollArea>
 #include <QProcessEnvironment>
 #include <QResizeEvent>
+#include <QStackedLayout>
 
 namespace {
 
@@ -44,6 +45,61 @@ std::shared_ptr<const Hist> mergeHists(
 
 } // unnamed namespace
 
+/**
+ * @brief HistViewHolder::HistViewHolder
+ * @param parent
+ */
+HistViewHolder::HistViewHolder(QWidget *parent)
+      : QWidget(parent),
+        _histView(new HistView()),
+        _label(new QLabel()) {
+    // size policy
+    QSizePolicy policy(sizePolicy());
+    policy.setHeightForWidth(true);
+    setSizePolicy(policy);
+    // background color
+    QPalette pal = palette();
+    pal.setColor(QPalette::Background, Qt::white);
+    setAutoFillBackground(true);
+    setPalette(pal);
+    // label
+    _label->setWordWrap(true);
+    _label->setMargin(10);
+    _label->setAlignment(Qt::AlignCenter);
+    // layout
+    _layout = new QStackedLayout(this);
+    _layout->addWidget(_histView);
+    _layout->addWidget(_label);
+}
+
+void HistViewHolder::setHist(std::shared_ptr<const HistFacade> histFacade,
+        std::vector<int> displayDims) {
+    _histView->setHist(histFacade, displayDims);
+    showHist();
+}
+
+void HistViewHolder::setText(const QString &text) {
+    _label->setText(text);
+    showText();
+}
+
+void HistViewHolder::showText() {
+    _layout->setCurrentWidget(_label);
+}
+
+void HistViewHolder::showHist() {
+    _layout->setCurrentWidget(_histView);
+}
+
+void HistViewHolder::update() {
+    _histView->update();
+}
+
+/**
+ * @brief MainWindow::MainWindow
+ * @param layout
+ * @param parent
+ */
 MainWindow::MainWindow(const std::string &layout, QWidget *parent)
   : QMainWindow(parent)
   , _histVolumeView(nullptr)
@@ -147,7 +203,8 @@ void MainWindow::createParticleLayout() {
 }
 
 void MainWindow::createSimpleLayout() {
-    _histView = new HistView(this);
+    _histView = new HistViewHolder(this);
+    _histView->setText(tr("Please open a dataset."));
     auto physicalView = new HistVolumePhysicalView(this);
     connect(physicalView, &HistVolumePhysicalView::selectedHistsChanged, this,
             [this](std::vector<std::shared_ptr<const Hist>> hists) {
@@ -155,10 +212,13 @@ void MainWindow::createSimpleLayout() {
         auto histFacade = HistFacade::create(merged, merged->vars());
         auto dims = createIncrementVector(0, merged->nDim());
         _histView->setHist(histFacade, dims);
+        if (dims.empty()) {
+            _histView->setText(
+                    tr("Selected/merged histogram will be shown here."));
+        }
         _histView->update();
     });
     _histVolumeView = physicalView;
-//    _histVolumeView = new HistVolumeNullView(this);
     _histCompareView->hide();
     _particleView->hide();
 
@@ -178,7 +238,7 @@ void MainWindow::createSimpleLayout() {
             scrollArea->setWidgetResizable(true);
             scrollArea->setAlignment(Qt::AlignTop);
             scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-            vLayout->addWidget(scrollArea);
+            vLayout->addWidget(scrollArea, 1);
             vLayout->addWidget(_histView);
             return vLayout;
         }(), 1);
@@ -209,9 +269,6 @@ void MainWindow::open(const QString &dir)
     _histVolumeView->setHistConfigs(_data.histConfigs());
     _histVolumeView->setDataStep(_data.step(_currTimeStep));
     _histVolumeView->update();
-
-    _histView->setHist(std::make_shared<HistNullFacade>(), {});
-    _histView->update();
 
     _queryView->setHistConfigs(_data.histConfigs());
     _particleView->setVisible(false);

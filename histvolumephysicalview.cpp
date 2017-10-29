@@ -310,6 +310,9 @@ void HistVolumePhysicalOpenGLView::mouseClickEvent(QMouseEvent *event) {
 }
 
 void HistVolumePhysicalOpenGLView::mouseMoveEvent(QMouseEvent *event) {
+    if (!_histVolume) {
+        return;
+    }
     auto mouseCurr = event->localPos();
 
     _hoveredHistSliceIds = localPositionToHistSliceId(mouseCurr);

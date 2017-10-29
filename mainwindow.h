@@ -13,6 +13,29 @@ class ParticleView;
 class TimelineView;
 class QComboBox;
 class QPushButton;
+class QStackedLayout;
+
+class HistViewHolder : public QWidget {
+public:
+    HistViewHolder(QWidget* parent = nullptr);
+
+public:
+    void update();
+    void setHist(std::shared_ptr<const HistFacade> histFacade,
+            std::vector<int> displayDims);
+    void setText(const QString& text);
+    void showText();
+    void showHist();
+
+public:
+    virtual int heightForWidth(int w) const override { return w; }
+    virtual bool hasHeightForWidth() const override { return true; }
+
+private:
+    QStackedLayout* _layout;
+    HistView* _histView;
+    QLabel* _label;
+};
 
 namespace Ui {
 class MainWindow;
@@ -56,7 +79,7 @@ private:
     QueryView* _queryView;
     TimelineView* _timelineView;
     ParticleView* _particleView;
-    HistView* _histView;
+    HistViewHolder* _histView;
 
 private:
     QPushButton* _queryViewToggleButton;

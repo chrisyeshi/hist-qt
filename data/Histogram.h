@@ -135,7 +135,7 @@ public:
         return HistBin(-1.0, -1.f);
     }
     using Hist::bin;
-    virtual const std::vector<double>& values() const {
+    virtual const std::vector<double>& values() const override {
         static std::vector<double> v;
         return v;
     }
