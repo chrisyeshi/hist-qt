@@ -33,7 +33,7 @@ std::vector<int> createIncrementVector(int first, int count) {
 std::shared_ptr<const Hist> mergeHists(
         const std::vector<std::shared_ptr<const Hist>>& hists) {
     if (hists.empty()) {
-        return nullptr;
+        return std::make_shared<HistNull>();
     }
     if (hists.size() == 1) {
         return hists[0];
@@ -210,10 +210,7 @@ void MainWindow::open(const QString &dir)
     _histVolumeView->setDataStep(_data.step(_currTimeStep));
     _histVolumeView->update();
 
-    auto dataStep = _data.step(_currTimeStep);
-    auto name = dataStep->histConfigs()[0].name();
-    auto hist = dataStep->smartVolume(name)->hist(0);
-    _histView->setHist(hist, {0});
+    _histView->setHist(std::make_shared<HistNullFacade>(), {});
     _histView->update();
 
     _queryView->setHistConfigs(_data.histConfigs());

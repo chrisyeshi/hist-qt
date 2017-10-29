@@ -105,7 +105,7 @@ private:
     const QColor _spacingColor = QColor(255, 100, 100);
     const QVector2D _defaultTranslate = QVector2D(0.5f, 0.5f);
     const std::vector<int> _defaultDims = {0};
-    static const Orien _defaultOrien = XY;
+    static const Orien _defaultOrien = YZ;
     static const int _defaultSliceId = 0;
 
 private:

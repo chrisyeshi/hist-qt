@@ -164,11 +164,15 @@ void HistVolumePhysicalOpenGLView::setHistVolume(
         std::vector<int> dims = varsToDims[text];
         assert(!dims.empty());
         _currDims = dims;
+        _selectedHistIds.clear();
+        emitSelectedHistsChanged();
         updateSliceIdScrollBar();
         updateCurrSlice();
         update();
     });
     updateSliceIdScrollBar();
+    _selectedHistIds.clear();
+    emitSelectedHistsChanged();
     delayForInit([this]() {
         updateCurrSlice();
 

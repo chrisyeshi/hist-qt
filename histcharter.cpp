@@ -13,7 +13,7 @@
 std::shared_ptr<IHistCharter> IHistCharter::create(
         std::shared_ptr<const HistFacade> histFacade,
         std::vector<int> displayDims, QPaintDevice *paintDevice) {
-    if (!histFacade) {
+    if (!histFacade || displayDims.empty()) {
         return std::make_shared<HistNullCharter>();
     }
     if (2 == displayDims.size()) {

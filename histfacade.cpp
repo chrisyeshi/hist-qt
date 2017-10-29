@@ -27,6 +27,9 @@ std::shared_ptr<HistFacade> HistFacade::create(
         auto hist1d = std::static_pointer_cast<const Hist1D>(hist);
         return std::make_shared<Hist1DFacade>(hist1d, vars[0]);
     }
+    if (0 == hist->nDim()) {
+        return std::make_shared<HistNullFacade>();
+    }
     return nullptr;
 }
 

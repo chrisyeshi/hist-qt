@@ -80,6 +80,28 @@ private:
 };
 
 /**
+ * @brief The HistNullFacade class
+ */
+class HistNullFacade : public HistFacade {
+    Q_OBJECT
+public:
+    virtual bool selected() const override { return false; }
+    virtual void setSelected(bool) override {}
+    virtual std::vector<std::string> vars() const override {
+        static std::vector<std::string> v;
+        return v;
+    }
+    virtual std::shared_ptr<const Hist> hist() const override {
+        static std::shared_ptr<HistNull> h = std::make_shared<HistNull>();
+        return h;
+    }
+    virtual std::shared_ptr<const Hist> hist(
+            const std::vector<int>& dims) const override {
+        return hist();
+    }
+};
+
+/**
  * @brief The Hist3DFacade class
  */
 class Hist3DFacade : public HistFacade {

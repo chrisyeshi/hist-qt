@@ -122,6 +122,26 @@ std::ostream& operator<<(std::ostream& out, const Hist& hist);
 
 
 
+class HistNull : public Hist {
+public:
+    HistNull() : Hist(0, {}, {}, {}, {}) {}
+    virtual std::shared_ptr<Hist> toSparse() override {
+        return shared_from_this();
+    }
+    virtual std::shared_ptr<Hist> toFull() override {
+        return shared_from_this();
+    }
+    virtual HistBin bin(const int flatId) const override {
+        return HistBin(-1.0, -1.f);
+    }
+    using Hist::bin;
+    virtual const std::vector<double>& values() const {
+        static std::vector<double> v;
+        return v;
+    }
+};
+
+
 
 /// TODO: only dense representation for 1D histogram for now.
 class Hist1D : public Hist
