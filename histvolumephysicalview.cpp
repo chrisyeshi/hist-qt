@@ -1,6 +1,7 @@
 #include "histvolumephysicalview.h"
 #include <QBoxLayout>
 #include <QLabel>
+#include <QGestureEvent>
 #include <QMouseEvent>
 #include <QPainter>
 #include <histview.h>
@@ -74,6 +75,12 @@ HistVolumePhysicalView::HistVolumePhysicalView(QWidget *parent)
     hLayout->setMargin(0);
     hLayout->setSpacing(5);
     hLayout->addWidget(_histVolumeView, 3);
+    connect(_histVolumeView,
+            SIGNAL(
+                selectedHistsChanged(std::vector<std::shared_ptr<const Hist>>)),
+            this,
+            SIGNAL(
+                selectedHistsChanged(std::vector<std::shared_ptr<const Hist>>)));
 }
 
 void HistVolumePhysicalView::update() {
@@ -222,6 +229,15 @@ void HistVolumePhysicalOpenGLView::paintGL() {
         painter.setPen(QPen(quarterColor(), 6.f * _histSpacing));
         painter.drawRect(calcHistRect(_hoveredHistSliceIds));
     }
+    // selected histograms
+    auto selectedHistSliceIds = filterByCurrSlice(_selectedHistIds);
+    if (!selectedHistSliceIds.empty()) {
+        QPainter painter(this);
+        painter.setPen(QPen(fullColor(), 6.f * _histSpacing));
+        for (auto histSliceIds : selectedHistSliceIds) {
+            painter.drawRect(calcHistRect(histSliceIds));
+        }
+    }
 
 //    _volren->setMatVP(_camera->matView(), _camera->matProj());
 //    _volren->render();
@@ -231,21 +247,75 @@ void HistVolumePhysicalOpenGLView::paintGL() {
 }
 
 void HistVolumePhysicalOpenGLView::mousePressEvent(QMouseEvent *event) {
+    _mousePress = event->localPos();
     _mousePrev = event->localPos();
+}
+
+void HistVolumePhysicalOpenGLView::mouseReleaseEvent(QMouseEvent *event) {
+    auto mouseCurr = event->localPos();
+    QVector2D mouseDelta(mouseCurr - _mousePress);
+    if (mouseDelta.length() < _clickDelta) {
+        mouseClickEvent(event);
+    }
+}
+
+void HistVolumePhysicalOpenGLView::mouseClickEvent(QMouseEvent *event) {
+    auto histSliceIds = localPositionToHistSliceId(event->localPos());
+    if (Qt::NoModifier == event->modifiers()) {
+        if (isHistSliceIdsValid(histSliceIds)) {
+            if (filterByCurrSlice(_selectedHistIds).size() >= 2) {
+                _selectedHistIds.clear();
+                _selectedHistIds.push_back(sliceIdsToHistIds(histSliceIds));
+            } else {
+                auto histIds = sliceIdsToHistIds(histSliceIds);
+                auto itr = std::find(_selectedHistIds.begin(),
+                        _selectedHistIds.end(), histIds);
+                if (_selectedHistIds.end() != itr) {
+                    _selectedHistIds.erase(itr);
+                } else {
+                    _selectedHistIds.clear();
+                    _selectedHistIds.push_back(histIds);
+                }
+            }
+        } else {
+            _selectedHistIds.clear();
+        }
+        emitSelectedHistsChanged();
+
+    } else if (
+            (Qt::ControlModifier & event->modifiers()) == Qt::ControlModifier) {
+        if (isHistSliceIdsValid(histSliceIds)) {
+            auto histIds = sliceIdsToHistIds(histSliceIds);
+            auto itr = std::find(_selectedHistIds.begin(),
+                    _selectedHistIds.end(), histIds);
+            if (_selectedHistIds.end() != itr) {
+                _selectedHistIds.erase(itr);
+            } else {
+                _selectedHistIds.push_back(histIds);
+            }
+            emitSelectedHistsChanged();
+        }
+    }
+//    // print for debug
+//    for (auto ids : _selectedHistSliceIds) {
+//        std::cout << "(" << ids[0] << "," << ids[1] << ") ";
+//    }
+//    std::cout << std::endl;
+    // update
+    update();
 }
 
 void HistVolumePhysicalOpenGLView::mouseMoveEvent(QMouseEvent *event) {
     auto mouseCurr = event->localPos();
 
-    auto yInverted = QPointF(mouseCurr.x(), height() - mouseCurr.y());
-    _hoveredHistSliceIds = localPositionToHistSliceId(yInverted);
+    _hoveredHistSliceIds = localPositionToHistSliceId(mouseCurr);
 
     auto mouseDirPixel = QVector2D(mouseCurr - _mousePrev);
     mouseDirPixel.setY(-mouseDirPixel.y());
-    auto mouseDir =
-            QVector2D(
-                (mouseCurr - _mousePrev) / (height() * devicePixelRatio()));
-    mouseDir.setY(-mouseDir.y());
+//    auto mouseDir =
+//            QVector2D(
+//                (mouseCurr - _mousePrev) / (shf()));
+//    mouseDir.setY(-mouseDir.y());
     if (event->buttons() & Qt::LeftButton) {
         //        _camera->orbit(mouseDir);
         QRectF sliceRect = calcSliceRect();
@@ -288,8 +358,8 @@ void HistVolumePhysicalOpenGLView::leaveEvent(QEvent *) {
 QRectF HistVolumePhysicalOpenGLView::calcDefaultSliceRect() const {
     int nHistX = _currSlice->nHistX();
     int nHistY = _currSlice->nHistY();
-    int w = width() * devicePixelRatio();
-    int h = height() * devicePixelRatio();
+    int w = sw();
+    int h = sh();
     QSizeF defaultSliceSize;
     QPointF defaultSliceLowerLeft(0.f, 0.f);
     QPointF defaultSliceUpperRight(w, h);
@@ -315,16 +385,24 @@ QRectF HistVolumePhysicalOpenGLView::calcDefaultSliceRect() const {
                 0.5f * w + 0.5f * defaultSliceSize.width());
         defaultSliceUpperRight.setY(h - borderPixel);
     }
-    return QRectF(defaultSliceLowerLeft, defaultSliceUpperRight);
+    QPointF topLeft =
+            QPointF(
+                defaultSliceLowerLeft.x(), shf() - defaultSliceUpperRight.y());
+    QPointF bottomRight =
+            QPointF(
+                defaultSliceUpperRight.x(), shf() - defaultSliceLowerLeft.y());
+    return QRectF(topLeft, bottomRight);
 }
 
 QRectF HistVolumePhysicalOpenGLView::calcSliceRect() const {
-    int w = width() * devicePixelRatio();
-    int h = height() * devicePixelRatio();
+    int w = sw();
+    int h = sh();
     QRectF defaultSliceRect = calcDefaultSliceRect();
     QSizeF defaultSliceSize = defaultSliceRect.size();
-    QPointF defaultSliceLowerLeft = defaultSliceRect.topLeft();
-    QPointF defaultSliceUpperRight = defaultSliceRect.bottomRight();
+    QPointF defaultSliceLowerLeft(
+            defaultSliceRect.left(), h - defaultSliceRect.bottom());
+    QPointF defaultSliceUpperRight(
+            defaultSliceRect.right(), h - defaultSliceRect.top());
 
     QVector2D defaultSliceSizeVec(
             defaultSliceSize.width(), defaultSliceSize.height());
@@ -340,23 +418,32 @@ QRectF HistVolumePhysicalOpenGLView::calcSliceRect() const {
     sliceLowerLeft = _currZoom * (sliceLowerLeft - center) + center;
     sliceUpperRight = _currZoom * (sliceUpperRight - center) + center;
 
-    return QRectF(sliceLowerLeft, sliceUpperRight);
+    QPointF topLeft(sliceLowerLeft.x(), h - sliceUpperRight.y());
+    QPointF bottomRight(sliceUpperRight.x(), h - sliceLowerLeft.y());
+
+    return QRectF(topLeft, bottomRight);
 }
 
 QRectF HistVolumePhysicalOpenGLView::calcHistRect(
         std::array<int, 2> histSliceIds) {
     QRectF sliceRect = calcSliceRect();
-    auto histWidth = sliceRect.width() / _currSlice->nHistX();
-    auto histHeight = sliceRect.height() / _currSlice->nHistY();
-    auto histLeft = histSliceIds[0] * histWidth + sliceRect.left();
-    auto histBottom = histSliceIds[1] * histHeight + sliceRect.top();
-    return QRectF(histLeft, height() - histBottom - histHeight, histWidth,
-            histHeight);
+    auto nHistX = _currSlice->nHistX();
+    auto nHistY = _currSlice->nHistY();
+    auto histWidth = (sliceRect.width() - (nHistX - 1) * _histSpacing) / nHistX;
+    auto histHeight =
+            (sliceRect.height() - (nHistY - 1) * _histSpacing) / nHistY;
+    auto histLeft =
+            sliceRect.left() + histSliceIds[0] * (histWidth + _histSpacing);
+    auto sliceBottom = shf() - sliceRect.bottom();
+    auto histBottom =
+            sliceBottom + histSliceIds[1] * (histHeight + _histSpacing);
+    auto histTop = shf() - histBottom - histHeight;
+    return QRectF(histLeft, histTop, histWidth, histHeight);
 }
 
 void HistVolumePhysicalOpenGLView::boundSliceTransform() {
-    float w = width() * devicePixelRatioF();
-    float h = height() * devicePixelRatioF();
+    int w = sw();
+    int h = sh();
     QRectF defaultSliceRect = calcDefaultSliceRect();
 
     float defaultHistWidth = defaultSliceRect.width() / _currSlice->nHistX();
@@ -438,22 +525,11 @@ void HistVolumePhysicalOpenGLView::updateHistPainterRects() {
     int nHistY = _currSlice->nHistY();
     for (auto x = 0; x < nHistX; ++x)
     for (auto y = 0; y < nHistY; ++y) {
-        QRectF sliceRect = calcSliceRect();
-        QPointF sliceLowerLeft = sliceRect.topLeft();
-        QPointF sliceUpperRight = sliceRect.bottomRight();
-        QPointF sliceSizeVector = sliceUpperRight - sliceLowerLeft;
-        QSizeF sliceSize(sliceSizeVector.x(), sliceSizeVector.y());
-        QSizeF histSize(
-                (sliceSize.width() - (nHistX - 1) * _histSpacing) / nHistX,
-                (sliceSize.height() - (nHistY - 1) * _histSpacing) / nHistY);
-        float leftPixel =
-                sliceLowerLeft.x() + x * histSize.width() + x * _histSpacing;
-        float left = leftPixel / width() * devicePixelRatioF();
-        float bottomPixel =
-                sliceLowerLeft.y() + y * histSize.height() + y * _histSpacing;
-        float bottom = bottomPixel / height() * devicePixelRatioF();
-        float histWidth = histSize.width() / width() * devicePixelRatioF();
-        float histHeight = histSize.height() / height() * devicePixelRatioF();
+        QRectF histRect = calcHistRect({{x, y}});
+        float left = histRect.left() / swf();
+        float bottom = (shf() - histRect.bottom()) / shf();
+        float histWidth = histRect.width() / swf();
+        float histHeight = histRect.height() / shf();
         _histPainters[x + nHistX * y]->setRect(
                 left, bottom, histWidth, histHeight);
     }
@@ -490,7 +566,8 @@ std::array<int, 2> HistVolumePhysicalOpenGLView::localPositionToHistSliceId(
     auto histWidth = sliceRect.width() / _currSlice->nHistX();
     auto histHeight = sliceRect.height() / _currSlice->nHistY();
     int x = std::floor((localPos.x() - sliceRect.left()) / histWidth);
-    int y = std::floor((localPos.y() - sliceRect.top()) / histHeight);
+    int y = std::floor(
+            ((shf() - localPos.y()) - shf() + sliceRect.bottom()) / histHeight);
     return {{x, y}};
 }
 
@@ -507,6 +584,52 @@ bool HistVolumePhysicalOpenGLView::isHistSliceIdsValid(
 
 QColor HistVolumePhysicalOpenGLView::quarterColor() const {
     QColor color = _spacingColor;
-    color.setAlphaF(0.25f * color.alphaF());
+    color.setAlphaF(0.45f * color.alphaF());
     return color;
+}
+
+QColor HistVolumePhysicalOpenGLView::fullColor() const {
+    QColor color = _spacingColor;
+    color.setAlphaF(0.75f * color.alphaF());
+    return color;
+}
+
+void HistVolumePhysicalOpenGLView::emitSelectedHistsChanged() {
+    std::vector<std::shared_ptr<const Hist>> hists;
+    hists.reserve(_selectedHistIds.size());
+    for (auto histIds : _selectedHistIds) {
+        auto histFacade = _histVolume->hist(histIds[0], histIds[1], histIds[2]);
+        hists.push_back(histFacade->hist(_currDims));
+    }
+    emit selectedHistsChanged(hists);
+}
+
+std::array<int, 3> HistVolumePhysicalOpenGLView::sliceIdsToHistIds(
+        std::array<int, 2> histSliceIds) {
+    if (YZ == _currOrien) {
+        return {{_currSliceId, histSliceIds[0], histSliceIds[1]}};
+    }
+    if (XZ == _currOrien) {
+        return {{histSliceIds[0], _currSliceId, histSliceIds[2]}};
+    }
+    if (XY == _currOrien) {
+        return {{histSliceIds[0], histSliceIds[1], _currSliceId}};
+    }
+    assert(false);
+    return {{-1, -1, -1}};
+}
+
+std::vector<std::array<int, 2>> HistVolumePhysicalOpenGLView::filterByCurrSlice(
+        const std::vector<std::array<int, 3>> &histIds) {
+    std::vector<std::array<int, 2>> histSliceIds;
+    for (auto histId : histIds) {
+        if (YZ == _currOrien && _currSliceId == histId[0]) {
+            histSliceIds.push_back({{histId[1], histId[2]}});
+        } else if (XZ == _currOrien && _currSliceId == histId[1]) {
+            histSliceIds.push_back({{histId[0], histId[2]}});
+        } else if (XY == _currOrien && _currSliceId == histId[2]) {
+            histSliceIds.push_back({{histId[0], histId[1]}});
+        }
+    }
+    return histSliceIds;
 }

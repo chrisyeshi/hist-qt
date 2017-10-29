@@ -4,6 +4,7 @@
 #include <histvolumesliceview.h>
 #include "histvolumephysicalview.h"
 #include <histcompareview.h>
+#include <data/histmerger.h>
 #include <queryview.h>
 #include <particleview.h>
 #include <timelineview.h>
@@ -18,6 +19,30 @@
 #include <QScrollArea>
 #include <QProcessEnvironment>
 #include <QResizeEvent>
+
+namespace {
+
+std::vector<int> createIncrementVector(int first, int count) {
+    std::vector<int> result(count);
+    for (unsigned int i = 0; i < result.size(); ++i) {
+        result[i] = i + first;
+    }
+    return result;
+}
+
+std::shared_ptr<const Hist> mergeHists(
+        const std::vector<std::shared_ptr<const Hist>>& hists) {
+    if (hists.empty()) {
+        return nullptr;
+    }
+    if (hists.size() == 1) {
+        return hists[0];
+    }
+    std::vector<BinCount> binCounts(hists[0]->nDim(), BinCount("freedman"));
+    return HistMerger(binCounts).merge(hists);
+}
+
+} // unnamed namespace
 
 MainWindow::MainWindow(const std::string &layout, QWidget *parent)
   : QMainWindow(parent)
@@ -123,7 +148,16 @@ void MainWindow::createParticleLayout() {
 
 void MainWindow::createSimpleLayout() {
     _histView = new HistView(this);
-    _histVolumeView = new HistVolumePhysicalView(this);
+    auto physicalView = new HistVolumePhysicalView(this);
+    connect(physicalView, &HistVolumePhysicalView::selectedHistsChanged, this,
+            [this](std::vector<std::shared_ptr<const Hist>> hists) {
+        std::shared_ptr<const Hist> merged = mergeHists(hists);
+        auto histFacade = HistFacade::create(merged, merged->vars());
+        auto dims = createIncrementVector(0, merged->nDim());
+        _histView->setHist(histFacade, dims);
+        _histView->update();
+    });
+    _histVolumeView = physicalView;
 //    _histVolumeView = new HistVolumeNullView(this);
     _histCompareView->hide();
     _particleView->hide();
@@ -151,13 +185,10 @@ void MainWindow::createSimpleLayout() {
         hLayout->addWidget(_histVolumeView, 3);
         return hLayout;
     }(), 1);
-//    vLayout->addWidget(_histVolumeView, 1);
     vLayout->addWidget(_timelineView);
     connect(_timelineView, &TimelineView::timeStepChanged,
             this, &MainWindow::setTimeStep);
     LazyUI::instance().button(tr("Open"), this, [this]() { open(); });
-//    LazyUI::instance().labeledButton(
-//            tr("File"), tr("Open"), this, [this]() { open(); });
     readSettings();
 }
 
