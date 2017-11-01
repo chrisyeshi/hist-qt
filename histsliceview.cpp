@@ -55,7 +55,8 @@ void HistSliceView::paintGL()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     for (auto& painter : _histPainters)
         painter->paint();
-    Painter painter(scaledWidth(), scaledHeight());
+    Painter painter(this);
+//    Painter painter(scaledWidth(), scaledHeight());
     // multi selected histograms
     if (!_multiHistRectIds.empty()) {
         painter.setPen(QPen(fullColor(), 6.f * _spacing));
@@ -87,7 +88,7 @@ void HistSliceView::paintGL()
                 perHistWidthPixels(scaledWidth()) + _spacing,
                 perHistHeightPixels(scaledHeight()) + _spacing);
     }
-    painter.paint();
+//    painter.paint();
 }
 
 void HistSliceView::resizeGL(int /*w*/, int /*h*/)

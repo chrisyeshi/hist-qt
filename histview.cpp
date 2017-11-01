@@ -23,7 +23,9 @@ HistView::HistView(QWidget *parent)
 void HistView::setHist(std::shared_ptr<const HistFacade> histFacade,
         std::vector<int> displayDims) {
     delayForInit([this, histFacade, displayDims]() {
-        _histCharter = IHistCharter::create(histFacade, displayDims);
+        _histCharter =
+                IHistCharter::create(
+                    histFacade, displayDims, this /*paintDevice*/);
         if (!histFacade)
             return;
         auto hist2d = histFacade->hist(displayDims);
@@ -40,7 +42,7 @@ void HistView::setHist(std::shared_ptr<const HistFacade> histFacade,
 void HistView::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    _histCharter->setSize(width(), height(), devicePixelRatio());
+    _histCharter->setSize(width(), height(), 1);
     _histCharter->chart();
 }
 

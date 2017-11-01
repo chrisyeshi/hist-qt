@@ -86,8 +86,9 @@ void Hist2DFacadeCharter::chart() {
         _histPainter->paint();
     }
     // axes
-    Painter painter =
-            _paintDevice ? Painter(_paintDevice) : Painter(width(), height());
+    Painter painter(_paintDevice);
+//    Painter painter =
+//            _paintDevice ? Painter(_paintDevice) : Painter(width(), height());
     painter.setPen(QPen(Qt::black, 0.25f));
     auto hist2d = hist();
     float dx = histWidth() / hist2d->dim()[0];
@@ -162,7 +163,7 @@ void Hist2DFacadeCharter::chart() {
             Qt::AlignBottom | Qt::AlignHCenter,
             QString::fromStdString(hist2d->var(1)));
     painter.restore();
-    painter.paint();
+//    painter.paint();
 }
 
 std::shared_ptr<const Hist> Hist2DFacadeCharter::hist() const {
@@ -225,9 +226,10 @@ void Hist1DFacadeCharter::chart()
     const int nTicks = 6;
     // ticks under the histogram
     {
-        Painter painter =
-                _paintDevice ?
-                    Painter(_paintDevice) : Painter(width(), height());
+//        Painter painter =
+//                _paintDevice ?
+//                    Painter(_paintDevice) : Painter(width(), height());
+        Painter painter(_paintDevice);
         painter.setPen(QPen(Qt::black, 0.25f));
         for (auto i = 0; i < nTicks - 1; ++i) {
             float y = height() - histBottom()
@@ -235,7 +237,7 @@ void Hist1DFacadeCharter::chart()
             painter.drawLine(
                     QLineF(histLeft(), y, histLeft() + histWidth(), y));
         }
-        painter.paint();
+//        painter.paint();
     }
     // histogram
     glEnable(GL_BLEND);
@@ -247,8 +249,9 @@ void Hist1DFacadeCharter::chart()
     }
     glDisable(GL_BLEND);
     // axes
-    Painter painter =
-            _paintDevice ? Painter(_paintDevice) : Painter(width(), height());
+//    Painter painter =
+//            _paintDevice ? Painter(_paintDevice) : Painter(width(), height());
+    Painter painter(_paintDevice);
     painter.setPen(QPen(Qt::black, 0.5f));
     auto hist = _histFacade->hist(_displayDim);
     painter.drawLine(
@@ -257,8 +260,10 @@ void Hist1DFacadeCharter::chart()
             QLineF(histLeft(), height() - histBottom(),
                 histLeft() + histWidth(), height() - histBottom()));
     // ticks
-    painter.setFont(QFont("mono", 8.f * devicePixelRatioF()));
-    const float labelPixels = 28.f * devicePixelRatioF();
+    auto font = QFont("mono", 8.f * devicePixelRatioF());
+    auto fontMetrics = QFontMetricsF(font);
+    painter.setFont(font);
+    const float labelPixels = fontMetrics.height() * 3.f * devicePixelRatioF();
     float dx = histWidth() / hist->dim()[0];
     int xFactor =
             std::max(
@@ -274,7 +279,7 @@ void Hist1DFacadeCharter::chart()
         double number = float(ix) / hist->dim()[0] * (max - min) + min;
         painter.drawText(
                 -50 * devicePixelRatio(), 0 * devicePixelRatio(),
-                50 * devicePixelRatio(), 10 * devicePixelRatio(),
+                50 * devicePixelRatio(), fontMetrics.height(),
                 Qt::AlignTop | Qt::AlignRight, QString::number(number, 'g', 3));
         painter.restore();
     }
@@ -292,7 +297,7 @@ void Hist1DFacadeCharter::chart()
         double number = float(iy) / nTicks * (max - min) + min;
         painter.drawText(
                 -50 * devicePixelRatio(), -10 * devicePixelRatio(),
-                50 * devicePixelRatio(), 10 * devicePixelRatio(),
+                50 * devicePixelRatio(), fontMetrics.height(),
                 Qt::AlignBottom | Qt::AlignRight,
                 QString::number(number, 'g', 3));
         painter.restore();
@@ -314,5 +319,5 @@ void Hist1DFacadeCharter::chart()
     painter.drawText(histBottom(), 0, histHeight(), labelLeft(),
             Qt::AlignBottom | Qt::AlignHCenter, "frequency");
     painter.restore();
-    painter.paint();
+//    painter.paint(_paintDevice);
 }

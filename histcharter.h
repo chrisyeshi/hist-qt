@@ -41,8 +41,8 @@ protected:
     float histBottom() const {
         return 40.f * devicePixelRatioF() + labelBottom();
     }
-    float histTop() const { return 5.f * devicePixelRatioF(); }
-    float histRight() const { return 5.f * devicePixelRatioF(); }
+    float histTop() const { return 10.f * devicePixelRatioF(); }
+    float histRight() const { return 10.f * devicePixelRatioF(); }
     float histWidth() const { return width() - histLeft() - histRight(); }
     float histHeight() const { return height() - histBottom() - histTop(); }
 };

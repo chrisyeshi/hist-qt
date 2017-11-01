@@ -217,7 +217,7 @@ void MainWindow::createSimpleLayout() {
                     tr("Selected/merged histogram will be shown here."));
         }
         _histView->update();
-    });
+    }, Qt::QueuedConnection);
     _histVolumeView = physicalView;
     _histCompareView->hide();
     _particleView->hide();

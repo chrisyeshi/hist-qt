@@ -7,6 +7,7 @@
 #include <histview.h>
 #include <lazyui.h>
 #include <histfacadepainter.h>
+#include <painter.h>
 
 namespace {
 
@@ -96,7 +97,7 @@ void HistVolumePhysicalView::setHistConfigs(std::vector<HistConfig> configs) {
     _histDims = {0};
     LazyUI::instance().labeledCombo(
             tr("histVolume"), tr("Histogram Volumes"),
-            getHistConfigNames(_histConfigs), this,
+            getHistConfigNames(_histConfigs), FluidLayout::Item::Large, this,
             [this](const QString& text) {
         QStringList names = getHistConfigNames(_histConfigs);
         assert(names.contains(text));
@@ -121,6 +122,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
       : OpenGLWidget(parent)
 //      , _camera(std::make_shared<Camera>())
 {
+    qRegisterMetaType<std::vector<std::shared_ptr<const Hist>>>();
     setMouseTracking(true);
     delayForInit([this]() {
         LazyUI::instance().labeledCombo(
@@ -159,7 +161,8 @@ void HistVolumePhysicalOpenGLView::setHistVolume(
     _currSliceId = _defaultSliceId;
     LazyUI::instance().labeledCombo(
             tr("histVar"), tr("Histogram Variables"),
-            getHistDimVars(histConfig), this, [=](const QString& text) {
+            getHistDimVars(histConfig), FluidLayout::Item::Large, this,
+            [=](const QString& text) {
         auto varsToDims = getVarsToDims(histConfig);
         std::vector<int> dims = varsToDims[text];
         assert(!dims.empty());
@@ -229,15 +232,17 @@ void HistVolumePhysicalOpenGLView::paintGL() {
     }
     // hovered histogram
     if (isHistSliceIdsValid(_hoveredHistSliceIds)) {
-        QPainter painter(this);
-        painter.setPen(QPen(quarterColor(), 6.f * _histSpacing));
+        Painter painter(this);
+        painter.setPen(
+                QPen(quarterColor(), 6.f * _histSpacing / devicePixelRatioF()));
         painter.drawRect(calcHistRect(_hoveredHistSliceIds));
     }
     // selected histograms
     auto selectedHistSliceIds = filterByCurrSlice(_selectedHistIds);
     if (!selectedHistSliceIds.empty()) {
-        QPainter painter(this);
-        painter.setPen(QPen(fullColor(), 6.f * _histSpacing));
+        Painter painter(this);
+        painter.setPen(
+                QPen(fullColor(), 6.f * _histSpacing / devicePixelRatioF()));
         for (auto histSliceIds : selectedHistSliceIds) {
             painter.drawRect(calcHistRect(histSliceIds));
         }
@@ -545,7 +550,8 @@ void HistVolumePhysicalOpenGLView::updateHistPainterRects() {
 void HistVolumePhysicalOpenGLView::updateSliceIdScrollBar() {
     int nSlices = getSliceCountInDirection(_histVolume->dimHists(), _currOrien);
     LazyUI::instance().labeledScrollBar(tr("sliceId"), tr("Slice Index"),
-            0, nSlices - 1, _currSliceId, this, [this](int value) {
+            0, nSlices - 1, _currSliceId, FluidLayout::Item::FullLine, this,
+            [this](int value) {
         _currSliceId = value;
         updateCurrSlice();
         update();
@@ -617,7 +623,7 @@ std::array<int, 3> HistVolumePhysicalOpenGLView::sliceIdsToHistIds(
         return {{_currSliceId, histSliceIds[0], histSliceIds[1]}};
     }
     if (XZ == _currOrien) {
-        return {{histSliceIds[0], _currSliceId, histSliceIds[2]}};
+        return {{histSliceIds[0], _currSliceId, histSliceIds[1]}};
     }
     if (XY == _currOrien) {
         return {{histSliceIds[0], histSliceIds[1], _currSliceId}};

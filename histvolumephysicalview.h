@@ -126,4 +126,6 @@ private:
     //    std::shared_ptr<Camera> _camera;
 };
 
+Q_DECLARE_METATYPE(std::vector<std::shared_ptr<const Hist>>)
+
 #endif // HISTVOLUMEPHYSICALVIEW_H

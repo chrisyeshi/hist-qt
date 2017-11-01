@@ -89,7 +89,7 @@ void TimePlotView::paintGL()
         painter.fillRect(QRectF(_hoveredStep * stepWidth, top, stepWidth, h),
                 _hoveredColor);
     }
-    painter.paint();
+//    painter.paint();
 }
 
 void TimePlotView::mouseMoveEvent(QMouseEvent *event)
