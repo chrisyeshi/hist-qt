@@ -49,6 +49,9 @@ class HistVolumePhysicalOpenGLView : public OpenGLWidget {
     Q_OBJECT
 public:
     enum Orien : int {XY = 2, XZ = 1, YZ = 0};
+    enum NormalizedPer : int {
+        NormPer_Histogram, NormPer_HistSlice, NormPer_HistVolume
+    };
 
 public:
     HistVolumePhysicalOpenGLView(QWidget* parent = nullptr);
@@ -106,6 +109,7 @@ private:
     const QVector2D _defaultTranslate = QVector2D(0.5f, 0.5f);
     const std::vector<int> _defaultDims = {0};
     static const Orien _defaultOrien = YZ;
+    static const NormalizedPer _defaultNormPer = NormPer_HistVolume;
     static const int _defaultSliceId = 0;
 
 private:
@@ -120,6 +124,7 @@ private:
     std::vector<std::shared_ptr<HistFacadePainter>> _histPainters;
     std::array<int, 2> _hoveredHistSliceIds = {{-1, -1}};
     std::vector<std::array<int, 3>> _selectedHistIds;
+    NormalizedPer _currNormPer = _defaultNormPer;
 
     //    std::vector<std::shared_ptr<yy::VolumeGL>> _avgVolumes;
     //    std::unique_ptr<yy::volren::VolRen> _volren;

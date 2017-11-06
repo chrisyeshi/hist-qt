@@ -258,7 +258,7 @@ public:
             _widgets[name] = button;
         }
         QPushButton* button = static_cast<QPushButton*>(_widgets[name]);
-        button->disconnect(SIGNAL(clicked()));
+        disconnect(button, nullptr, context, nullptr);
         connect(button, &QPushButton::clicked, context, func);
     }
     void labeledButton(const QString& label, const QString& buttonText,
@@ -278,7 +278,7 @@ public:
         auto labeledButton =
                 static_cast<LabeledWidget<QPushButton>*>(_widgets[buttonText]);
         auto button = labeledButton->widget();
-        button->disconnect(SIGNAL(clicked()));
+        disconnect(button, nullptr, context, nullptr);
         connect(button, &QPushButton::clicked, context, func);
     }
     void labeledCombo(QString key, const QString& label,
@@ -301,7 +301,7 @@ public:
         combo->clear();
         combo->addItems(items);
         combo->blockSignals(false);
-        combo->disconnect(SIGNAL(currentTextChanged(const QString&)));
+        disconnect(combo, nullptr, context, nullptr);
         connect(combo, &QComboBox::currentTextChanged, context, func);
     }
     void labeledScrollBar(QString key, const QString& label, int minimum,
@@ -327,7 +327,7 @@ public:
         scrollBar->setRange(minimum, maximum);
         scrollBar->setValue(value);
         scrollBar->blockSignals(false);
-        scrollBar->disconnect(SIGNAL(valueChanged(int)));
+        disconnect(scrollBar, nullptr, context, nullptr);
         connect(scrollBar, &QScrollBar::valueChanged, context, func);
     }
 

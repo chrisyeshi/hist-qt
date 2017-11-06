@@ -124,7 +124,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
 {
     qRegisterMetaType<std::vector<std::shared_ptr<const Hist>>>();
     setMouseTracking(true);
-    delayForInit([this]() {
+    QTimer::singleShot(0, this, [=]() {
         LazyUI::instance().labeledCombo(
                 tr("sliceDirections"), tr("Slicing Direction"),
                 {tr("YZ"), tr("XZ"), tr("XY")}, this,
@@ -139,6 +139,21 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             _currSliceId = _defaultSliceId;
             updateSliceIdScrollBar();
             updateCurrSlice();
+            update();
+        });
+        LazyUI::instance().labeledCombo("histRangeMethod", "Normalized per",
+                {"Histogram Volume", "Histogram Slice", "Histogram"},
+                FluidLayout::Item::Large, this, [=](const QString& text) {
+            if (tr("Histogram") == text) {
+                _currNormPer = NormPer_Histogram;
+            } else if (tr("Histogram Slice") == text) {
+                _currNormPer = NormPer_HistSlice;
+            } else if (tr("Histogram Volume") == text) {
+                _currNormPer = NormPer_HistVolume;
+            } else {
+                assert(false);
+            }
+            setRangesToHistPainters();
             update();
         });
     });
@@ -520,15 +535,45 @@ void HistVolumePhysicalOpenGLView::setHistsToHistPainters() {
 }
 
 void HistVolumePhysicalOpenGLView::setRangesToHistPainters() {
-    for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
+    if (NormPer_Histogram == _currNormPer) {
+        for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
+            float vMin = std::numeric_limits<float>::max();
+            float vMax = std::numeric_limits<float>::lowest();
+            auto collapsedHist = _currSlice->hist(iHist)->hist(_currDims);
+            for (auto v : collapsedHist->values()) {
+                vMin = std::min(vMin, float(v));
+                vMax = std::max(vMax, float(v));
+            }
+            _histPainters[iHist]->setRange(vMin, vMax);
+        }
+    } else if (NormPer_HistSlice == _currNormPer) {
         float vMin = std::numeric_limits<float>::max();
         float vMax = std::numeric_limits<float>::lowest();
-        auto collapsedHist = _currSlice->hist(iHist)->hist(_currDims);
-        for (auto v : collapsedHist->values()) {
-            vMin = std::min(vMin, float(v));
-            vMax = std::max(vMax, float(v));
+        for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
+            auto collapsedHist = _currSlice->hist(iHist)->hist(_currDims);
+            for (auto v : collapsedHist->values()) {
+                vMin = std::min(vMin, float(v));
+                vMax = std::max(vMax, float(v));
+            }
         }
-        _histPainters[iHist]->setRange(vMin, vMax);
+        for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
+            _histPainters[iHist]->setRange(vMin, vMax);
+        }
+    } else if (NormPer_HistVolume == _currNormPer) {
+        float vMin = std::numeric_limits<float>::max();
+        float vMax = std::numeric_limits<float>::lowest();
+        for (int iHist = 0; iHist < _histVolume->helper().N_HIST; ++iHist) {
+            auto collapsedHist = _histVolume->hist(iHist)->hist(_currDims);
+            for (auto v : collapsedHist->values()) {
+                vMin = std::min(vMin, float(v));
+                vMax = std::max(vMax, float(v));
+            }
+        }
+        for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
+            _histPainters[iHist]->setRange(vMin, vMax);
+        }
+    } else {
+        assert(false);
     }
 }
 

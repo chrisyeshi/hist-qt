@@ -150,7 +150,7 @@ class Painter {
 public:
     Painter() : Painter(nullptr) {}
     Painter(QPaintDevice* paintDevice)
-          : Painter(std::make_shared<PainterYYGLImpl>(), paintDevice) {}
+          : Painter(std::make_shared<PainterImpl>(), paintDevice) {}
     Painter(std::shared_ptr<PainterImpl> impl,
             QPaintDevice* paintDevice = nullptr)
           : _impl(impl) {

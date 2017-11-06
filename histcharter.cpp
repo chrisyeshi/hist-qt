@@ -222,14 +222,12 @@ std::string Hist1DFacadeCharter::setMouseHover(float x, float /*y*/)
 
 void Hist1DFacadeCharter::chart()
 {
+    typedef PainterYYGLImpl UsePainterImpl;
     const float vMaxRatio = 0.9f;
     const int nTicks = 6;
     // ticks under the histogram
     {
-//        Painter painter =
-//                _paintDevice ?
-//                    Painter(_paintDevice) : Painter(width(), height());
-        Painter painter(_paintDevice);
+        Painter painter(std::make_shared<UsePainterImpl>(), _paintDevice);
         painter.setPen(QPen(Qt::black, 0.25f));
         for (auto i = 0; i < nTicks - 1; ++i) {
             float y = height() - histBottom()
@@ -237,7 +235,6 @@ void Hist1DFacadeCharter::chart()
             painter.drawLine(
                     QLineF(histLeft(), y, histLeft() + histWidth(), y));
         }
-//        painter.paint();
     }
     // histogram
     glEnable(GL_BLEND);
@@ -249,9 +246,7 @@ void Hist1DFacadeCharter::chart()
     }
     glDisable(GL_BLEND);
     // axes
-//    Painter painter =
-//            _paintDevice ? Painter(_paintDevice) : Painter(width(), height());
-    Painter painter(_paintDevice);
+    Painter painter(std::make_shared<UsePainterImpl>(), _paintDevice);
     painter.setPen(QPen(Qt::black, 0.5f));
     auto hist = _histFacade->hist(_displayDim);
     painter.drawLine(
