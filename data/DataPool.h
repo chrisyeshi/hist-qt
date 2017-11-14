@@ -41,7 +41,7 @@ public:
 public:
     DataLoader() {}
     void initialize(std::string dir, GridConfig gridConfig,
-            float stepInterval, bool pdfInTracerDir,
+            TimeSteps timeSteps, bool pdfInTracerDir,
             std::vector<HistConfig> configs);
 
 public slots:
@@ -64,7 +64,7 @@ private:
     bool _isLoading = false;
     std::string _dir;
     GridConfig _gridConfig;
-    float _stepInterval;
+    TimeSteps _timeSteps;
     bool _pdfInTracerDir;
     std::vector<HistConfig> _histConfigs;
 };
@@ -128,7 +128,12 @@ public:
     std::shared_ptr<DataStep> step(int iStep);
     bool isOpen() { return m_isOpen; }
     bool setOpen( bool c ) { m_isOpen = c; return isOpen(); }
-    float interval() const { return m_interval; }
+    std::string timeStepStr(int iStep) const {
+        return m_timeSteps.asString(iStep);
+    }
+    double timeStepDouble(int iStep) const {
+        return m_timeSteps.asDouble(iStep);
+    }
     int numSteps() const { return m_data.size(); }
     std::vector<float> volMin() const {
         return m_gridConfig.physicalBoundingBox().lower();
@@ -158,11 +163,10 @@ private:
     DataLoader* m_dataLoader;
     std::vector<std::shared_ptr<DataStep> > m_data;
     std::string m_dir;
-    int m_nSteps;
-    float m_interval;
     bool m_isOpen;
     bool m_pdfInTracerDir;
     GridConfig m_gridConfig;
+    TimeSteps m_timeSteps;
     std::vector<HistConfig> m_histConfigs;
     std::vector<QueryRule> m_queryRules;
 };

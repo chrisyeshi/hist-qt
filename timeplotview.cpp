@@ -79,7 +79,9 @@ void TimePlotView::paintGL()
     for (int iStep = 0; iStep < nSteps; iStep += labelStep) {
         painter.drawText(left + stepWidth * iStep, h - bottomHeight,
                 labelWidth, bottomHeight, Qt::AlignTop | Qt::AlignLeft,
-                QString::number(iStep * _data->interval(), 'g', 5));
+                QString::number(_data->timeStepDouble(iStep), 'g', 5));
+//                QString::fromStdString(_data->timeStepStr(iStep)));
+//                QString::number(iStep * _data->interval(), 'g', 5));
     }
     // selected step
     painter.fillRect(QRectF(_selectedStep * stepWidth, top, stepWidth, h),

@@ -40,11 +40,11 @@ bool operator==(const QueryRule &a, const QueryRule &b)
 }
 
 void DataLoader::initialize(std::string dir, GridConfig gridConfig,
-        float stepInterval, bool pdfInTracerDir,
+        TimeSteps timeSteps, bool pdfInTracerDir,
         std::vector<HistConfig> configs) {
     _dir = dir;
     _gridConfig = gridConfig;
-    _stepInterval = stepInterval;
+    _timeSteps = timeSteps;
     _pdfInTracerDir = pdfInTracerDir;
     _histConfigs = configs;
 }
@@ -119,9 +119,7 @@ void DataLoader::waitForAsync()
 }
 
 std::string DataLoader::stepDir(int iStep) const {
-    float outstep = _stepInterval * (iStep + 1);
-    char stepStr[100];
-    sprintf(stepStr, "%.4E", outstep);
+    auto stepStr = _timeSteps.asString(iStep);
     if (_pdfInTracerDir)
         return _dir + "/" + data_out + "/" + tracer_pre + stepStr + "/";
     return _dir + "/" + pdf_pre + stepStr + "/";
@@ -329,21 +327,15 @@ bool DataPool::setDir(const std::string& dir)
     if (!dataConfigReader || !dataConfigReader->read())
         return false;
     m_gridConfig = dataConfigReader->gridConfig();
-    int nTimes = dataConfigReader->nTimes();
-    int nTimesPerField = dataConfigReader->nTimesPerField();
-    float freqTracer = dataConfigReader->freqTracer();
+    m_timeSteps = dataConfigReader->timeSteps();
     m_histConfigs = dataConfigReader->histConfigs();
-
-    int nTimesPerStep = nTimesPerField * freqTracer;
-    m_nSteps = nTimes / nTimesPerStep;
-    m_interval = 0.5e-8 * nTimesPerStep;
 
     m_dir = dir;
     m_data.clear();
-    m_data.resize(m_nSteps);
+    m_data.resize(m_timeSteps.nSteps());
 
     m_dataLoader->initialize(
-            m_dir, m_gridConfig, m_interval, m_pdfInTracerDir, m_histConfigs);
+            m_dir, m_gridConfig, m_timeSteps, m_pdfInTracerDir, m_histConfigs);
 
     m_isOpen = true;
     return m_isOpen;
@@ -351,7 +343,7 @@ bool DataPool::setDir(const std::string& dir)
 
 std::shared_ptr<DataStep> DataPool::step(int iStep)
 {
-    if (iStep >= m_nSteps)
+    if (iStep >= m_timeSteps.nSteps())
         return nullptr;
     if (!m_data[iStep]) {
         m_data[iStep] = std::make_shared<DataStep>(
@@ -426,12 +418,13 @@ void DataPool::loadHistVolume(DataLoader::HistVolumeId histVolumeId)
     for (int iStep = 0; iStep < stepId - bufferRadius; ++iStep) {
         m_data[iStep] = nullptr;
     }
-    for (int iStep = stepId + bufferRadius + 1; iStep < m_nSteps; ++iStep) {
+    for (int iStep = stepId + bufferRadius + 1; iStep < m_timeSteps.nSteps();
+            ++iStep) {
         m_data[iStep] = nullptr;
     }
     // preload nearby steps of the same volume name
     for (int iStep = std::max(stepId - bufferRadius, 0);
-            iStep <= std::min(stepId + bufferRadius, m_nSteps - 1);
+            iStep <= std::min(stepId + bufferRadius, m_timeSteps.nSteps() - 1);
             ++iStep) {
         if (!this->step(iStep)->dumbVolume(name))
             m_dataLoader->asyncLoad({ iStep, name });

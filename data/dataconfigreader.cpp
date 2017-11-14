@@ -1,7 +1,9 @@
 #include "dataconfigreader.h"
 #include <fstream>
+#include <sstream>
 #include <iostream>
 #include <cassert>
+#include <util.h>
 
 namespace {
 
@@ -28,7 +30,34 @@ std::vector<std::string> getTokensInLine(std::istream &in) {
     return tokens;
 }
 
+double toDouble(const std::string& str) {
+    std::istringstream os(str);
+    double d;
+    os >> d;
+    return d;
+}
+
 } // unnamed namespace
+
+/**
+ * @brief TimeSteps::TimeSteps
+ * @param nTimes
+ * @param nTimesPerField
+ */
+TimeSteps::TimeSteps(int nTimes, int nTimesPerField, float freqTracer) {
+    int nTimesPerStep = nTimesPerField * freqTracer;
+    auto nSteps = nTimes / nTimesPerStep;
+    auto interval = 0.5e-8 * nTimesPerStep;
+    _timeStepStrs.resize(nSteps);
+    for (auto iStep = 0; iStep < nSteps; ++iStep) {
+        auto timeStep = interval * (iStep + 1);
+        _timeStepStrs[iStep] = yy::sprintf("%.4E", timeStep);
+    }
+}
+
+double TimeSteps::asDouble(int iStep) const {
+    return toDouble(asString(iStep));
+}
 
 /**
  * @brief HistConfig::name

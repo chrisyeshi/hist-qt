@@ -7,10 +7,15 @@
 
 class TimeSteps {
 public:
+    TimeSteps() = default;
+    TimeSteps(std::vector<std::string> timeStepStrs)
+          : _timeStepStrs(timeStepStrs) {}
+    TimeSteps(int nTimes, int nTimesPerField, float freqTracer);
 
-// backward compatibility
 public:
     int nSteps() const { return _timeStepStrs.size(); }
+    std::string asString(int iStep) const { return _timeStepStrs[iStep]; }
+    double asDouble(int iStep) const;
 
 private:
     std::vector<std::string> _timeStepStrs;
@@ -87,8 +92,7 @@ public:
 
 public:
     virtual GridConfig gridConfig() const = 0;
-    virtual int nTimes() const = 0;
-    virtual int nTimesPerField() const = 0;
+    virtual TimeSteps timeSteps() const = 0;
     virtual float freqTracer() const = 0;
     virtual std::vector<HistConfig> histConfigs() const = 0;
 };
@@ -108,6 +112,9 @@ public:
     GridConfig gridConfig() const {
         return GridConfig(
                 _dimVoxels, _dimProcs, _dimHistsPerDomain, _volMin, _volMax);
+    }
+    TimeSteps timeSteps() const {
+        return TimeSteps(_nTimes, _nTimesPerField, _freqTracer);
     }
     std::vector<int> dimVoxels() const { return _dimVoxels; }
     std::vector<int> dimProcs() const { return _dimProcs; }
@@ -144,6 +151,9 @@ public:
         return GridConfig(
                 _dimVoxels, _dimProcs, _dimHistsPerDomain, _volMin, _volMax);
     }
+    TimeSteps timeSteps() const {
+        return TimeSteps(_nTimes, _nTimesPerField, _freqTracer);
+    }
     std::vector<int> dimVoxels() const { return _dimVoxels; }
     std::vector<int> dimProcs() const { return _dimProcs; }
     int nTimes() const { return _nTimes; }
@@ -176,14 +186,13 @@ public:
 
 public:
     GridConfig gridConfig() const { return _gridConfig; }
-    int nTimes() const { return _nTimes; }
-    int nTimesPerField() const { return _nTimesPerField; }
+    TimeSteps timeSteps() const { return _timeSteps; }
     float freqTracer() const { return _freqTracer; }
     std::vector<HistConfig> histConfigs() const { return _histConfigs; }
 
 private:
     GridConfig _gridConfig;
-    int _nTimes, _nTimesPerField;
+    TimeSteps _timeSteps;
     float _freqTracer;
     std::vector<HistConfig> _histConfigs;
 };
