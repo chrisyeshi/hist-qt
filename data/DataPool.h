@@ -30,6 +30,8 @@ bool operator==(const QueryRule& a, const QueryRule& b);
 
 ///////////////////////////////////////////////////////////////////////////////
 
+///////////////////////////////////////////////////////////////////////////////
+
 class DataLoader : public QObject {
     Q_OBJECT
 public:
@@ -38,7 +40,7 @@ public:
 
 public:
     DataLoader() {}
-    void initialize(std::string dir, std::vector<int> dimProcs,
+    void initialize(std::string dir, GridConfig gridConfig,
             float stepInterval, bool pdfInTracerDir,
             std::vector<HistConfig> configs);
 
@@ -61,7 +63,7 @@ private:
     HistVolumeIds _queue;
     bool _isLoading = false;
     std::string _dir;
-    std::vector<int> _dimProcs;
+    GridConfig _gridConfig;
     float _stepInterval;
     bool _pdfInTracerDir;
     std::vector<HistConfig> _histConfigs;
@@ -77,8 +79,7 @@ class DataStep : public QObject
     Q_OBJECT
 public:
     explicit DataStep(QObject* parent = 0) : QObject(parent) {}
-    DataStep(int stepId, std::vector<int> dimProcs,
-            std::vector<int> dimHistsPerDomain,
+    DataStep(int stepId, GridConfig gridConfig,
             std::vector<HistConfig> histConfigs, DataLoader* dataLoader,
             QObject* parent = 0);
 
@@ -103,7 +104,7 @@ private:
 private:
     std::map<std::string, std::shared_ptr<HistFacadeVolume>> m_data;
     int m_stepId;
-    std::vector<int> m_dimProcs, m_dimHistsPerDomain;
+    GridConfig m_gridConfig;
     std::vector<HistConfig> m_histConfigs;
     std::vector<QueryRule> m_queryRules;
     std::vector<bool> m_histMask;
@@ -129,11 +130,15 @@ public:
     bool setOpen( bool c ) { m_isOpen = c; return isOpen(); }
     float interval() const { return m_interval; }
     int numSteps() const { return m_data.size(); }
-    const std::vector<float>& volMin() const { return m_volMin; }
-    const std::vector<float>& volMax() const { return m_volMax; }
+    std::vector<float> volMin() const {
+        return m_gridConfig.physicalBoundingBox().lower();
+    }
+    std::vector<float> volMax() const {
+        return m_gridConfig.physicalBoundingBox().upper();
+    }
     Extent dimHists() const;
-    const std::vector<int>& dimHistsPerDomain() const {
-        return m_dimHistsPerDomain;
+    std::vector<int> dimHistsPerDomain() const {
+        return m_gridConfig.dimHistsPerDomain();
     }
     const std::vector<HistConfig>& histConfigs() const { return m_histConfigs; }
     const HistConfig& histConfig(const std::string& name) const;
@@ -155,12 +160,9 @@ private:
     std::string m_dir;
     int m_nSteps;
     float m_interval;
-    std::vector<int> m_dimVoxels;
-    std::vector<int> m_dimProcs;
     bool m_isOpen;
     bool m_pdfInTracerDir;
-    std::vector<int> m_dimHistsPerDomain;
-    std::vector<float> m_volMin, m_volMax;
+    GridConfig m_gridConfig;
     std::vector<HistConfig> m_histConfigs;
     std::vector<QueryRule> m_queryRules;
 };

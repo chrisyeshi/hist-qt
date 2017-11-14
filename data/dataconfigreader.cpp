@@ -4,13 +4,31 @@
 #include <cassert>
 
 namespace {
-    const std::string s3d_in = "/input/s3d.in";
-    const std::string tracer_in = "/input/tracer.in";
-    const std::string pdf_in = "/input/histogram.in";
-    const std::string data_out = "/data/";
-    const std::string tracer_pre = "tracer-";
-    const std::string pdf_config = "/pdf.config";
+
+const std::string s3d_in = "/input/s3d.in";
+const std::string tracer_in = "/input/tracer.in";
+const std::string pdf_in = "/input/histogram.in";
+const std::string data_out = "/data/";
+const std::string tracer_pre = "tracer-";
+const std::string pdf_config = "/pdf.config";
+
+std::vector<std::string> getTokensInLine(std::istream &in) {
+    std::string line;
+    std::getline(in, line);
+    std::vector<std::string> tokens;
+    while (!line.empty()) {
+        std::string::size_type pos = line.find(' ');
+        std::string token = line.substr(0, pos);
+        if (pos == line.npos)
+            pos = line.size() - 1;
+        line = line.substr(pos + 1);
+        if (!token.empty())
+            tokens.push_back(token);
+    }
+    return tokens;
 }
+
+} // unnamed namespace
 
 /**
  * @brief HistConfig::name
@@ -236,19 +254,14 @@ bool PdfDataConfigReader::read() {
     return true;
 }
 
-std::vector<std::string> PdfDataConfigReader::getTokensInLine(
-        std::istream &in) {
-    std::string line;
-    std::getline(in, line);
-    std::vector<std::string> tokens;
-    while (!line.empty()) {
-        std::string::size_type pos = line.find(' ');
-        std::string token = line.substr(0, pos);
-        if (pos == line.npos)
-            pos = line.size() - 1;
-        line = line.substr(pos + 1);
-        if (!token.empty())
-            tokens.push_back(token);
-    }
-    return tokens;
+/**
+ * @brief MultiBlockConfigReader::MultiBlockConfigReader
+ * @param dir
+ */
+MultiBlockConfigReader::MultiBlockConfigReader(const std::string &dir) {
+
+}
+
+bool MultiBlockConfigReader::read() {
+
 }

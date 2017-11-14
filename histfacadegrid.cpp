@@ -37,6 +37,13 @@ HistFacadeDomain::HistFacadeDomain(
     }
 }
 
+/**
+ * @brief HistFacadeVolume::HistFacadeVolume
+ * @param dir
+ * @param name
+ * @param dims
+ * @param vars
+ */
 HistFacadeVolume::HistFacadeVolume(
         const std::string &dir, const std::string &name,
         const std::vector<int> &dims, const std::vector<std::string> &vars)
@@ -212,7 +219,8 @@ std::shared_ptr<HistFacadeRect> HistFacadeVolume::yzSlice(int x) const
                 helper().nh_y, helper().nh_z, hists);
 }
 
-std::vector<int> HistFacadeVolume::dhtoids(const std::vector<int> &dIds, const std::vector<int> &hIds) const
+std::vector<int> HistFacadeVolume::dhtoids(
+        const std::vector<int> &dIds, const std::vector<int> &hIds) const
 {
     assert(dIds.size() == 3);
     assert(dIds.size() == hIds.size());
@@ -244,7 +252,8 @@ void HistFacadeVolume::dhtoids(int dId, int hId, int *x, int *y, int *z) const
     *z = dIds[2] * nLocalHists[2] + hIds[2];
 }
 
-int HistFacadeVolume::dhtoflat(const std::vector<int> &dIds, const std::vector<int> &hIds) const
+int HistFacadeVolume::dhtoflat(
+        const std::vector<int> &dIds, const std::vector<int> &hIds) const
 {
     return this->helper().dimHists().idstoflat(this->dhtoids(dIds, hIds));
 }

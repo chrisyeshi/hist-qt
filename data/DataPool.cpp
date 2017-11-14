@@ -39,11 +39,11 @@ bool operator==(const QueryRule &a, const QueryRule &b)
     return true;
 }
 
-void DataLoader::initialize(std::string dir, std::vector<int> dimProcs,
+void DataLoader::initialize(std::string dir, GridConfig gridConfig,
         float stepInterval, bool pdfInTracerDir,
         std::vector<HistConfig> configs) {
     _dir = dir;
-    _dimProcs = dimProcs;
+    _gridConfig = gridConfig;
     _stepInterval = stepInterval;
     _pdfInTracerDir = pdfInTracerDir;
     _histConfigs = configs;
@@ -62,8 +62,9 @@ std::shared_ptr<HistFacadeVolume> DataLoader::load(
     int index = itr - _histConfigs.begin() + 1;
     char idcstr[5];
     sprintf(idcstr, "%03d", index);
-    auto histVol = std::make_shared<HistFacadeVolume>(
-            stepDir(stepId), std::string(idcstr), _dimProcs, itr->vars);
+    auto histVol =
+            std::make_shared<HistFacadeVolume>(stepDir(stepId),
+                std::string(idcstr), _gridConfig.dimProcs(), itr->vars);
     return histVol;
 }
 
@@ -133,11 +134,10 @@ std::string DataLoader::stepDir(int iStep) const {
  * @param dimHistsPerDomain
  * @param histConfigs
  */
-DataStep::DataStep(int stepId, std::vector<int> dimProcs,
-        std::vector<int> dimHistsPerDomain, std::vector<HistConfig> histConfigs,
+DataStep::DataStep(
+        int stepId, GridConfig gridConfig, std::vector<HistConfig> histConfigs,
         DataLoader *dataLoader, QObject *parent)
-  : QObject(parent), m_stepId(stepId), m_dimProcs(dimProcs)
-  , m_dimHistsPerDomain(dimHistsPerDomain)
+  : QObject(parent), m_stepId(stepId), m_gridConfig(gridConfig)
   , m_histConfigs(histConfigs), m_histMask(nHist(), true)
   , m_dataLoader(dataLoader)
 {
@@ -145,11 +145,7 @@ DataStep::DataStep(int stepId, std::vector<int> dimProcs,
 }
 
 int DataStep::nHist() const {
-    int prod = 1;
-    for (unsigned int iDim = 0; iDim < m_dimProcs.size(); ++iDim) {
-        prod *= m_dimProcs[iDim] * m_dimHistsPerDomain[iDim];
-    }
-    return prod;
+    return Extent(m_gridConfig.dimHists()).nElement();
 }
 
 const HistConfig &DataStep::histConfig(const std::string &name) const {
@@ -302,9 +298,7 @@ void DataStep::applyQueryRules() {
 
 DataPool::DataPool()
   : m_dataLoader(new DataLoader())
-  , m_isOpen(false)
-  , m_dimHistsPerDomain(3)
-  , m_volMin(3, 1.f), m_volMax(3, 1.f) {
+  , m_isOpen(false) {
     qRegisterMetaType<DataLoader::HistVolumeId>("HistVolumeId");
     qRegisterMetaType<std::shared_ptr<HistFacadeVolume>>(
             "std::shared_ptr<HistFacadeVolume>");
@@ -334,14 +328,10 @@ bool DataPool::setDir(const std::string& dir)
     }
     if (!dataConfigReader || !dataConfigReader->read())
         return false;
-    m_dimVoxels = dataConfigReader->dimVoxels();
-    m_dimProcs = dataConfigReader->dimProcs();
+    m_gridConfig = dataConfigReader->gridConfig();
     int nTimes = dataConfigReader->nTimes();
     int nTimesPerField = dataConfigReader->nTimesPerField();
-    m_volMin = dataConfigReader->volMin();
-    m_volMax = dataConfigReader->volMax();
     float freqTracer = dataConfigReader->freqTracer();
-    m_dimHistsPerDomain = dataConfigReader->dimHistsPerDomain();
     m_histConfigs = dataConfigReader->histConfigs();
 
     int nTimesPerStep = nTimesPerField * freqTracer;
@@ -353,7 +343,7 @@ bool DataPool::setDir(const std::string& dir)
     m_data.resize(m_nSteps);
 
     m_dataLoader->initialize(
-            m_dir, m_dimProcs, m_interval, m_pdfInTracerDir, m_histConfigs);
+            m_dir, m_gridConfig, m_interval, m_pdfInTracerDir, m_histConfigs);
 
     m_isOpen = true;
     return m_isOpen;
@@ -364,8 +354,8 @@ std::shared_ptr<DataStep> DataPool::step(int iStep)
     if (iStep >= m_nSteps)
         return nullptr;
     if (!m_data[iStep]) {
-        m_data[iStep] = std::make_shared<DataStep>(iStep, m_dimProcs,
-                m_dimHistsPerDomain, m_histConfigs, m_dataLoader);
+        m_data[iStep] = std::make_shared<DataStep>(
+                iStep, m_gridConfig, m_histConfigs, m_dataLoader);
         connect(m_data[iStep].get(), &DataStep::signalLoadHistVolume,
                 this, &DataPool::loadHistVolume);
         m_data[iStep]->setQueryRules(m_queryRules);
@@ -375,10 +365,10 @@ std::shared_ptr<DataStep> DataPool::step(int iStep)
 
 Extent DataPool::dimHists() const
 {
-    Extent extent(m_dimProcs[0] * m_dimHistsPerDomain[0],
-            m_dimProcs[1] * m_dimHistsPerDomain[1],
-            m_dimProcs[2] * m_dimHistsPerDomain[2]);
-    return extent;
+    return m_gridConfig.dimHists();
+//    Extent extent(m_dimProcs[0] * m_dimHistsPerDomain[0],
+//            m_dimProcs[1] * m_dimHistsPerDomain[1],
+//            m_dimProcs[2] * m_dimHistsPerDomain[2]);
 }
 
 const HistConfig &DataPool::histConfig(const std::string &name) const
@@ -393,7 +383,9 @@ const HistConfig &DataPool::histConfig(const std::string &name) const
 
 TracerConfig DataPool::tracerConfig(int timestep) const {
     TracerConfig config(
-            stepDir(timestep), m_dimProcs, m_dimHistsPerDomain, m_dimVoxels);
+            stepDir(timestep), m_gridConfig.dimProcs(),
+            m_gridConfig.dimHistsPerDomain(),
+            m_gridConfig.dimVoxels());
     return config;
 }
 

@@ -3,6 +3,62 @@
 
 #include <string>
 #include <vector>
+#include "multiblocktopology.h"
+
+class TimeSteps {
+public:
+
+// backward compatibility
+public:
+    int nSteps() const { return _timeStepStrs.size(); }
+
+private:
+    std::vector<std::string> _timeStepStrs;
+};
+
+/**
+ * @brief The GridConfig struct
+ */
+class GridConfig {
+public:
+    enum GridType {GridType_UniformGrid, GridType_MultiBlock};
+    GridConfig() = default;
+    GridConfig(const std::vector<int>& dimVoxels,
+            const std::vector<int>& dimProcs,
+            const std::vector<int>& dimHistsPerDomain,
+            const std::vector<float>& volMin,
+            const std::vector<float>& volMax)
+          : _gridType(GridType_UniformGrid),
+            _uniformGrid(yy::ivec3(dimVoxels), yy::ivec3(dimProcs),
+                yy::ivec3(dimHistsPerDomain),
+                BoundingBox<float>(yy::vec3(volMin), yy::vec3(volMax))) {}
+
+public:
+    GridType gridType() const { return _gridType; }
+    UniformGridTopology uniformGrid() const { return _uniformGrid; }
+    MultiBlockTopology multiBlocks() const { return _multiBlocks; }
+
+public:
+    BoundingBox<float> physicalBoundingBox() const {
+        return _uniformGrid.physicalBoundingBox();
+    }
+
+// backward compatibility
+public:
+    yy::ivec3 dimHists() const {
+        return _uniformGrid.dimHistsPerDomain() * _uniformGrid.dimProcs();
+    }
+    yy::ivec3 dimProcs() const { return _uniformGrid.dimProcs(); }
+    yy::ivec3 dimHistsPerDomain() const {
+        return _uniformGrid.dimHistsPerDomain();
+    }
+    yy::ivec3 dimVoxels() const { return _uniformGrid.dimVoxels(); }
+
+private:
+    GridType _gridType;
+    UniformGridTopology _uniformGrid;
+    MultiBlockTopology _multiBlocks;
+};
 
 /**
  * @brief The HistConfig struct
@@ -30,14 +86,10 @@ public:
     virtual bool read() = 0;
 
 public:
-    virtual std::vector<int> dimVoxels() const = 0;
-    virtual std::vector<int> dimProcs() const = 0;
+    virtual GridConfig gridConfig() const = 0;
     virtual int nTimes() const = 0;
     virtual int nTimesPerField() const = 0;
-    virtual std::vector<float> volMin() const = 0;
-    virtual std::vector<float> volMax() const = 0;
     virtual float freqTracer() const = 0;
-    virtual std::vector<int> dimHistsPerDomain() const = 0;
     virtual std::vector<HistConfig> histConfigs() const = 0;
 };
 
@@ -53,6 +105,10 @@ public:
     bool read();
 
 public:
+    GridConfig gridConfig() const {
+        return GridConfig(
+                _dimVoxels, _dimProcs, _dimHistsPerDomain, _volMin, _volMax);
+    }
     std::vector<int> dimVoxels() const { return _dimVoxels; }
     std::vector<int> dimProcs() const { return _dimProcs; }
     int nTimes() const { return _nTimes; }
@@ -72,6 +128,9 @@ private:
     std::vector<HistConfig> _histConfigs;
 };
 
+/**
+ * @brief The PdfDataConfigReader class
+ */
 class PdfDataConfigReader : public DataConfigReader {
 public:
     PdfDataConfigReader() = delete;
@@ -81,6 +140,10 @@ public:
     bool read();
 
 public:
+    GridConfig gridConfig() const {
+        return GridConfig(
+                _dimVoxels, _dimProcs, _dimHistsPerDomain, _volMin, _volMax);
+    }
     std::vector<int> dimVoxels() const { return _dimVoxels; }
     std::vector<int> dimProcs() const { return _dimProcs; }
     int nTimes() const { return _nTimes; }
@@ -92,13 +155,35 @@ public:
     std::vector<HistConfig> histConfigs() const { return _histConfigs; }
 
 private:
-    std::vector<std::string> getTokensInLine(std::istream& in);
-
-private:
     std::string _dir;
     std::vector<int> _dimVoxels, _dimProcs, _dimHistsPerDomain;
     int _nTimes, _nTimesPerField;
     std::vector<float> _volMin, _volMax;
+    float _freqTracer;
+    std::vector<HistConfig> _histConfigs;
+};
+
+/**
+ * @brief The MultiBlockConfigReader class
+ */
+class MultiBlockConfigReader : public DataConfigReader {
+public:
+    MultiBlockConfigReader() = delete;
+    MultiBlockConfigReader(const std::string& dir);
+
+public:
+    bool read();
+
+public:
+    GridConfig gridConfig() const { return _gridConfig; }
+    int nTimes() const { return _nTimes; }
+    int nTimesPerField() const { return _nTimesPerField; }
+    float freqTracer() const { return _freqTracer; }
+    std::vector<HistConfig> histConfigs() const { return _histConfigs; }
+
+private:
+    GridConfig _gridConfig;
+    int _nTimes, _nTimesPerField;
     float _freqTracer;
     std::vector<HistConfig> _histConfigs;
 };

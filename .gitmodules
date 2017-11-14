@@ -1,3 +1,6 @@
 [submodule "volren"]
 	path = volren
 	url = git@github.com:chrisyeshi/VolRen.git
+[submodule "yy"]
+	path = yy
+	url = git@github.com:chrisyeshi/yy.git

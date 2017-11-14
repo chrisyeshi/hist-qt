@@ -126,6 +126,7 @@ MainWindow::MainWindow(const std::string &layout, QWidget *parent)
     QTimer::singleShot(0, this, [this]() {
         auto home = QProcessEnvironment::systemEnvironment().value("HOME");
         this->open(home + tr("/work/histqt/data_pdf"));
+//        this->open(home + tr("/work/cavityhists/data_pdf"));
     });
 }
 
