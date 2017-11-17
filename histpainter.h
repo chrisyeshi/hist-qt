@@ -32,8 +32,20 @@ public:
     virtual void initialize() = 0;
     virtual void paint() = 0;
     virtual void setRect(float x, float y, float w, float h) = 0;
-    virtual void setRange(float min, float max) = 0;
+    virtual void setFreqRange(float min, float max) = 0;
     virtual void setColorMap(ColorMapOption option) = 0;
+};
+
+/**
+ * @brief The HistNullPainter class
+ */
+class HistNullPainter : public IHistPainter {
+public:
+    virtual void initialize() override {}
+    virtual void paint() override {}
+    virtual void setRect(float x, float y, float w, float h) override {}
+    virtual void setFreqRange(float min, float max) override {}
+    virtual void setColorMap(ColorMapOption option) override {}
 };
 
 /**
@@ -44,7 +56,7 @@ public:
     virtual void initialize() override;
     virtual void paint() override;
     virtual void setRect(float x, float y, float w, float h) override;
-    virtual void setRange(float min, float max) override;
+    virtual void setFreqRange(float min, float max) override;
     virtual void setColorMap(ColorMapOption option) override;
 
 public:
@@ -54,7 +66,10 @@ public:
 private:
     static std::shared_ptr<yy::gl::program> sharedBackgroundShaderProgram();
     static std::shared_ptr<yy::gl::program> sharedBarsShaderProgram();
-    static std::shared_ptr<yy::gl::program> sharedBordersShaderProgram();
+    static std::shared_ptr<yy::gl::program>
+            sharedLineStripBordersShaderProgram();
+    static std::shared_ptr<yy::gl::program>
+            sharedTriangleStripBordersShaderProgram();
 
 private:
     yy::gl::render_pass _backgroundRenderPass;
@@ -76,7 +91,7 @@ public:
     virtual void initialize() override;
     virtual void paint() override;
     virtual void setRect(float x, float y, float w, float h) override;
-    virtual void setRange(float min, float max) override;
+    virtual void setFreqRange(float min, float max) override;
     virtual void setColorMap(ColorMapOption option) override;
 
 public:
@@ -103,7 +118,7 @@ public:
     virtual void initialize() override;
     virtual void paint() override;
     virtual void setRect(float x, float y, float w, float h) override;
-    virtual void setRange(float min, float max) override;
+    virtual void setFreqRange(float min, float max) override;
     virtual void setColorMap(ColorMapOption option) override;
 
 private:

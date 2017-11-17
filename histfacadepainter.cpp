@@ -5,7 +5,7 @@
 void HistFacadePainter::paint()
 {
     _painter->setRect(_left, _bottom, _width, _height);
-    _painter->setRange(_min, _max);
+    _painter->setFreqRange(_min, _max);
     _painter->setColorMap(
             _histFacade->selected() ?
                 IHistPainter::YELLOW_BLUE :
@@ -21,7 +21,7 @@ void HistFacadePainter::setRect(float x, float y, float w, float h)
     _height = h;
 }
 
-void HistFacadePainter::setRange(float min, float max)
+void HistFacadePainter::setFreqRange(float min, float max)
 {
     _min = min;
     _max = max;
@@ -29,10 +29,11 @@ void HistFacadePainter::setRange(float min, float max)
 
 void HistFacadePainter::setHist(std::shared_ptr<const HistFacade> histFacade,
         std::vector<int> displayDims) {
-    assert(histFacade->nDim() >= int(displayDims.size()));
     _histFacade = histFacade;
     _displayDims = displayDims;
-    if (2 == displayDims.size()) {
+    if (std::dynamic_pointer_cast<const HistNullFacade>(histFacade)) {
+        _painter = std::make_shared<HistNullPainter>();
+    } else if (2 == displayDims.size()) {
         auto painter = std::make_shared<Hist2DTexturePainter>();
         painter->initialize();
         painter->setTexture(_histFacade->texture(_displayDims));

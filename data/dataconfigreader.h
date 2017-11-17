@@ -37,6 +37,8 @@ public:
             _uniformGrid(yy::ivec3(dimVoxels), yy::ivec3(dimProcs),
                 yy::ivec3(dimHistsPerDomain),
                 BoundingBox<float>(yy::vec3(volMin), yy::vec3(volMax))) {}
+    GridConfig(std::vector<BlockSpec> blockSpecs)
+          : _gridType(GridType_MultiBlock), _multiBlocks(blockSpecs) {}
 
 public:
     GridType gridType() const { return _gridType; }
@@ -93,7 +95,6 @@ public:
 public:
     virtual GridConfig gridConfig() const = 0;
     virtual TimeSteps timeSteps() const = 0;
-    virtual float freqTracer() const = 0;
     virtual std::vector<HistConfig> histConfigs() const = 0;
 };
 
@@ -179,7 +180,7 @@ private:
 class MultiBlockConfigReader : public DataConfigReader {
 public:
     MultiBlockConfigReader() = delete;
-    MultiBlockConfigReader(const std::string& dir);
+    MultiBlockConfigReader(const std::string& dir) : _dir(dir) {}
 
 public:
     bool read();
@@ -187,13 +188,12 @@ public:
 public:
     GridConfig gridConfig() const { return _gridConfig; }
     TimeSteps timeSteps() const { return _timeSteps; }
-    float freqTracer() const { return _freqTracer; }
     std::vector<HistConfig> histConfigs() const { return _histConfigs; }
 
 private:
+    std::string _dir;
     GridConfig _gridConfig;
     TimeSteps _timeSteps;
-    float _freqTracer;
     std::vector<HistConfig> _histConfigs;
 };
 

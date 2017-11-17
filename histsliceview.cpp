@@ -162,7 +162,7 @@ void HistSliceView::updateHistPainters()
                 vMin = std::min(vMin, float(v));
                 vMax = std::max(vMax, float(v));
             }
-            painter->setRange(vMin, vMax);
+            painter->setFreqRange(vMin, vMax);
             // put into array
             auto iPainter = x + _histRect->nHistX() * y;
             _histPainters[iPainter] = painter;

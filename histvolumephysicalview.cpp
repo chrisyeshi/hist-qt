@@ -43,7 +43,7 @@ QMap<QString, std::vector<int>> getVarsToDims(const HistConfig& config) {
     for (int j = i + 1; j < int(config.vars.size()); ++j) {
         QString str =
                 QString::fromStdString(config.vars[i] + "-" + config.vars[j]);
-        varsToDims.insert(str, {i});
+        varsToDims.insert(str, {i, j});
     }
     return varsToDims;
 }
@@ -81,7 +81,8 @@ HistVolumePhysicalView::HistVolumePhysicalView(QWidget *parent)
                 selectedHistsChanged(std::vector<std::shared_ptr<const Hist>>)),
             this,
             SIGNAL(
-                selectedHistsChanged(std::vector<std::shared_ptr<const Hist>>)));
+                selectedHistsChanged(
+                    std::vector<std::shared_ptr<const Hist>>)));
 }
 
 void HistVolumePhysicalView::update() {
@@ -127,7 +128,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
     QTimer::singleShot(0, this, [=]() {
         LazyUI::instance().labeledCombo(
                 tr("sliceDirections"), tr("Slicing Direction"),
-                {tr("YZ"), tr("XZ"), tr("XY")}, this,
+                {tr("XY"), tr("XZ"), tr("YZ")}, this,
                 [this](const QString& text) {
             if (tr("YZ") == text) {
                 _currOrien = YZ;
@@ -141,19 +142,35 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             updateCurrSlice();
             update();
         });
-        LazyUI::instance().labeledCombo("histRangeMethod", "Normalized per",
-                {"Histogram Volume", "Histogram Slice", "Histogram"},
+        LazyUI::instance().labeledCombo(
+                "freqRangeMethod", "Frequency Range Per",
+                {"Histogram", "Histogram Volume", "Histogram Slice"},
                 FluidLayout::Item::Large, this, [=](const QString& text) {
             if (tr("Histogram") == text) {
-                _currNormPer = NormPer_Histogram;
+                _currFreqNormPer = NormPer_Histogram;
             } else if (tr("Histogram Slice") == text) {
-                _currNormPer = NormPer_HistSlice;
+                _currFreqNormPer = NormPer_HistSlice;
             } else if (tr("Histogram Volume") == text) {
-                _currNormPer = NormPer_HistVolume;
+                _currFreqNormPer = NormPer_HistVolume;
             } else {
                 assert(false);
             }
-            setRangesToHistPainters();
+            setFreqRangesToHistPainters();
+            update();
+        });
+        LazyUI::instance().labeledCombo("histRangeMethod", "Value Range Per",
+                {"Histogram", "Histogram Volume", "Histogram Slice"},
+                FluidLayout::Item::Large, this, [=](const QString& text) {
+            if (tr("Histogram") == text) {
+                _currHistNormPer = NormPer_Histogram;
+            } else if (tr("Histogram Slice") == text) {
+                _currHistNormPer = NormPer_HistSlice;
+            } else if (tr("Histogram Volume") == text) {
+                _currHistNormPer = NormPer_HistVolume;
+            } else {
+                assert(false);
+            }
+            setHistRangesToHistPainters();
             update();
         });
     });
@@ -193,38 +210,6 @@ void HistVolumePhysicalOpenGLView::setHistVolume(
     emitSelectedHistsChanged();
     delayForInit([this]() {
         updateCurrSlice();
-
-//        int nVar = _histVolume->vars().size();
-//        _avgVolumes.resize(nVar);
-//        for (int iVar = 0; iVar < nVar; ++iVar) {
-//            auto dimHists = _histVolume->dimHists();
-//            auto nHist = dimHists[0] * dimHists[1] * dimHists[2];
-//            std::unique_ptr<unsigned char[]> uniqueAvgBuffer(
-//                    new unsigned char[nHist * sizeof(float)]);
-//            float* avgBuffer = reinterpret_cast<float*>(uniqueAvgBuffer.get());
-//            for (int z = 0; z < dimHists[2]; ++z)
-//            for (int y = 0; y < dimHists[1]; ++y)
-//            for (int x = 0; x < dimHists[0]; ++x) {
-//                int iHist = dimHists.idstoflat(x, y, z);
-//                avgBuffer[iHist] =
-//                        calcAverage(
-//                            std::static_pointer_cast<const Hist1D>(
-//                                _histVolume->hist(iHist)->hist(iVar)));
-//            }
-//            std::shared_ptr<yy::Volume> volume =
-//                    std::make_shared<yy::Volume>(
-//                        uniqueAvgBuffer, yy::Volume::DT_Float,
-//                        dimHists[0], dimHists[1], dimHists[2]);
-//            _avgVolumes[iVar] = std::make_shared<yy::VolumeGL>(volume);
-//        }
-//        auto vol = _avgVolumes[_currVarId];
-//        _volren->setVolume(vol);
-//        _volren->setScalarRange(
-//                vol->getStats().range.first, vol->getStats().range.second);
-//        QVector3D bmin(0.f, 0.f, 0.f);
-//        QVector3D bmax(vol->w() * vol->sx(), vol->h() * vol->sy(),
-//                vol->d() * vol->sz());
-//        _camera->reset(bmin, bmax);
     });
 }
 
@@ -512,7 +497,7 @@ void HistVolumePhysicalOpenGLView::updateCurrSlice() {
         _histPainters.resize(_currSlice->nHist());
         createHistPainters();
         setHistsToHistPainters();
-        setRangesToHistPainters();
+        setFreqRangesToHistPainters();
         updateHistPainterRects();
     });
 }
@@ -534,8 +519,8 @@ void HistVolumePhysicalOpenGLView::setHistsToHistPainters() {
     }
 }
 
-void HistVolumePhysicalOpenGLView::setRangesToHistPainters() {
-    if (NormPer_Histogram == _currNormPer) {
+void HistVolumePhysicalOpenGLView::setFreqRangesToHistPainters() {
+    if (NormPer_Histogram == _currFreqNormPer) {
         for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
             float vMin = std::numeric_limits<float>::max();
             float vMax = std::numeric_limits<float>::lowest();
@@ -544,9 +529,9 @@ void HistVolumePhysicalOpenGLView::setRangesToHistPainters() {
                 vMin = std::min(vMin, float(v));
                 vMax = std::max(vMax, float(v));
             }
-            _histPainters[iHist]->setRange(vMin, vMax);
+            _histPainters[iHist]->setFreqRange(vMin, vMax);
         }
-    } else if (NormPer_HistSlice == _currNormPer) {
+    } else if (NormPer_HistSlice == _currFreqNormPer) {
         float vMin = std::numeric_limits<float>::max();
         float vMax = std::numeric_limits<float>::lowest();
         for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
@@ -557,9 +542,9 @@ void HistVolumePhysicalOpenGLView::setRangesToHistPainters() {
             }
         }
         for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
-            _histPainters[iHist]->setRange(vMin, vMax);
+            _histPainters[iHist]->setFreqRange(vMin, vMax);
         }
-    } else if (NormPer_HistVolume == _currNormPer) {
+    } else if (NormPer_HistVolume == _currFreqNormPer) {
         float vMin = std::numeric_limits<float>::max();
         float vMax = std::numeric_limits<float>::lowest();
         for (int iHist = 0; iHist < _histVolume->helper().N_HIST; ++iHist) {
@@ -570,10 +555,21 @@ void HistVolumePhysicalOpenGLView::setRangesToHistPainters() {
             }
         }
         for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
-            _histPainters[iHist]->setRange(vMin, vMax);
+            _histPainters[iHist]->setFreqRange(vMin, vMax);
         }
     } else {
         assert(false);
+    }
+}
+
+void HistVolumePhysicalOpenGLView::setHistRangesToHistPainters() {
+    if (NormPer_Histogram == _currHistNormPer) {
+//        for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
+//            auto ranges = yy::fp::map(_currDims, [=](int iDim) {
+//                return _currSlice->hist(iHist)->range(iDim);
+//            });
+//            _histPainters[iHist]->setRanges(ranges);
+//        }
     }
 }
 
@@ -635,6 +631,10 @@ bool HistVolumePhysicalOpenGLView::isHistSliceIdsValid(
         return false;
     }
     if (histSliceIds[1] < 0 || histSliceIds[1] >= _currSlice->nHistY()) {
+        return false;
+    }
+    if (std::dynamic_pointer_cast<const HistNullFacade>(
+            _currSlice->hist(histSliceIds))) {
         return false;
     }
     return true;

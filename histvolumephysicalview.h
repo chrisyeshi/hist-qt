@@ -48,7 +48,7 @@ private:
 class HistVolumePhysicalOpenGLView : public OpenGLWidget {
     Q_OBJECT
 public:
-    enum Orien : int {XY = 2, XZ = 1, YZ = 0};
+    enum Orien : int {YZ = 0, XZ = 1, XY = 2};
     enum NormalizedPer : int {
         NormPer_Histogram, NormPer_HistSlice, NormPer_HistVolume
     };
@@ -86,7 +86,8 @@ private:
     void updateCurrSlice();
     void createHistPainters();
     void setHistsToHistPainters();
-    void setRangesToHistPainters();
+    void setFreqRangesToHistPainters();
+    void setHistRangesToHistPainters();
     void updateHistPainterRects();
     void updateSliceIdScrollBar();
     int getSliceCountInDirection(Extent dimHists, Orien orien) const;
@@ -102,14 +103,14 @@ private:
 private:
     const float _clickDelta = 5.f;
     const float _defaultZoom = 1.f;
-//    const float _border = 0.1f;
     const float _borderPixel = 10.0f;
     const float _histSpacing = 1.f;
     const QColor _spacingColor = QColor(255, 100, 100);
     const QVector2D _defaultTranslate = QVector2D(0.5f, 0.5f);
     const std::vector<int> _defaultDims = {0};
-    static const Orien _defaultOrien = YZ;
-    static const NormalizedPer _defaultNormPer = NormPer_HistVolume;
+    static const Orien _defaultOrien = XY;
+    static const NormalizedPer _defaultFreqNormPer = NormPer_Histogram;
+    static const NormalizedPer _defaultHistNormPer = NormPer_HistVolume;
     static const int _defaultSliceId = 0;
 
 private:
@@ -124,7 +125,8 @@ private:
     std::vector<std::shared_ptr<HistFacadePainter>> _histPainters;
     std::array<int, 2> _hoveredHistSliceIds = {{-1, -1}};
     std::vector<std::array<int, 3>> _selectedHistIds;
-    NormalizedPer _currNormPer = _defaultNormPer;
+    NormalizedPer _currFreqNormPer = _defaultFreqNormPer;
+    NormalizedPer _currHistNormPer = _defaultHistNormPer;
 
     //    std::vector<std::shared_ptr<yy::VolumeGL>> _avgVolumes;
     //    std::unique_ptr<yy::volren::VolRen> _volren;

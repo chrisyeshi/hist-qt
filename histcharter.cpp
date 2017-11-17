@@ -4,6 +4,12 @@
 #include <histpainter.h>
 #include <painter.h>
 
+namespace {
+
+typedef PainterYYGLImpl UsePainterImpl;
+
+} // unnamed namespace
+
 /**
  * @brief IHistCharter::create
  * @param histFacade
@@ -43,7 +49,7 @@ Hist2DFacadeCharter::Hist2DFacadeCharter(std::shared_ptr<const HistFacade> histF
     _histPainter->initialize();
     _histPainter->setTexture(_histFacade->texture(_displayDims));
     _histPainter->setColorMap(IHistPainter::YELLOW_BLUE);
-    _histPainter->setRange(0.f, 1.f);
+    _histPainter->setFreqRange(0.f, 1.f);
 }
 
 void Hist2DFacadeCharter::setSize(int width, int height, int devicePixelRatio) {
@@ -54,7 +60,7 @@ void Hist2DFacadeCharter::setSize(int width, int height, int devicePixelRatio) {
 
 void Hist2DFacadeCharter::setRange(float vMin, float vMax)
 {
-    _histPainter->setRange(vMin, vMax);
+    _histPainter->setFreqRange(vMin, vMax);
 }
 
 std::string Hist2DFacadeCharter::setMouseHover(float x, float y)
@@ -86,9 +92,7 @@ void Hist2DFacadeCharter::chart() {
         _histPainter->paint();
     }
     // axes
-    Painter painter(_paintDevice);
-//    Painter painter =
-//            _paintDevice ? Painter(_paintDevice) : Painter(width(), height());
+    Painter painter(std::make_shared<UsePainterImpl>(), _paintDevice);
     painter.setPen(QPen(Qt::black, 0.25f));
     auto hist2d = hist();
     float dx = histWidth() / hist2d->dim()[0];
@@ -113,8 +117,10 @@ void Hist2DFacadeCharter::chart() {
         painter.restore();
     }
     // ticks
-    painter.setFont(QFont("mono", 8.f * devicePixelRatioF()));
-    const float labelPixels = 28.f * devicePixelRatioF();
+    auto font = QFont("mono", 8.f * devicePixelRatioF());
+    auto fontMetrics = QFontMetricsF(font);
+    painter.setFont(font);
+    const float labelPixels = fontMetrics.height() * 3.f * devicePixelRatioF();
     int xFactor =
             std::max(
                 1, int(hist2d->dim()[0] / histWidth() * labelPixels));
@@ -129,7 +135,7 @@ void Hist2DFacadeCharter::chart() {
         double number = float(ix) / hist2d->dim()[0] * (max - min) + min;
         painter.drawText(
                 -50 * devicePixelRatio(), 0 * devicePixelRatio(),
-                50 * devicePixelRatio(), 10 * devicePixelRatio(),
+                50 * devicePixelRatio(), fontMetrics.height(),
                 Qt::AlignTop | Qt::AlignRight, QString::number(number, 'g', 3));
         painter.restore();
     }
@@ -147,7 +153,7 @@ void Hist2DFacadeCharter::chart() {
         double number = float(iy) / hist2d->dim()[1] * (max - min) + min;
         painter.drawText(
                 -50 * devicePixelRatio(), -10 * devicePixelRatio(),
-                50 * devicePixelRatio(), 10 * devicePixelRatio(),
+                50 * devicePixelRatio(), fontMetrics.height(),
                 Qt::AlignBottom | Qt::AlignRight,
                 QString::number(number, 'g', 3));
         painter.restore();
@@ -186,7 +192,7 @@ Hist1DFacadeCharter::Hist1DFacadeCharter(
     _histPainter->setVBO(_histFacade->vbo(_displayDim));
     _histPainter->setColorMap(IHistPainter::YELLOW_BLUE);
     _histPainter->setBackgroundColor({ 0.f, 0.f, 0.f, 0.f });
-    _histPainter->setRange(0.f, 1.f);
+    _histPainter->setFreqRange(0.f, 1.f);
 }
 
 void Hist1DFacadeCharter::setSize(int width, int height, int devicePixelRatio)
@@ -200,7 +206,7 @@ void Hist1DFacadeCharter::setRange(float vMin, float vMax)
 {
     _vMin = vMin;
     _vMax = vMax;
-    _histPainter->setRange(vMin, vMax);
+    _histPainter->setFreqRange(vMin, vMax);
 }
 
 std::string Hist1DFacadeCharter::setMouseHover(float x, float /*y*/)
@@ -222,7 +228,6 @@ std::string Hist1DFacadeCharter::setMouseHover(float x, float /*y*/)
 
 void Hist1DFacadeCharter::chart()
 {
-    typedef PainterYYGLImpl UsePainterImpl;
     const float vMaxRatio = 0.9f;
     const int nTicks = 6;
     // ticks under the histogram

@@ -81,10 +81,11 @@ public:
         return true;
     }
     virtual bool end(QPainter* painter) {
+        auto image = _image->mirrored();
         _texture->texImage2D(
                 yy::gl::texture::TEXTURE_2D, yy::gl::texture::INTERNAL_RGBA8,
                 _image->width(), _image->height(), yy::gl::texture::FORMAT_RGBA,
-                yy::gl::texture::UNSIGNED_BYTE, _image->mirrored().bits());
+                yy::gl::texture::UNSIGNED_BYTE, image.bits());
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         _renderPass.drawArrays();

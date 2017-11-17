@@ -235,6 +235,9 @@ private:
     void internalSetUniform(GLint location, GLfloat value) {
         uniform1f(location, value);
     }
+    void internalSetUniform(GLint location, GLdouble value) {
+        uniform1f(location, value);
+    }
     void internalSetUniform(GLint location, const glm::vec2& value) {
         uniform2f(location, value.x, value.y);
     }

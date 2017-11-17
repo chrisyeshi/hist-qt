@@ -95,7 +95,7 @@ std::vector<double> HistDomainReaderManyFiles::readValues()
     return values;
 }
 
-void HistMetaReader::readFrom(std::istream& fin) {
+bool HistMetaReader::readFrom(std::istream& fin) {
     fin.read(reinterpret_cast<char*>(&ndim), sizeof(int));
     fin.read(reinterpret_cast<char*>(&ngridx), sizeof(int));
     fin.read(reinterpret_cast<char*>(&ngridy), sizeof(int));
@@ -103,9 +103,13 @@ void HistMetaReader::readFrom(std::istream& fin) {
     fin.read(reinterpret_cast<char*>(&nhistx), sizeof(int));
     fin.read(reinterpret_cast<char*>(&nhisty), sizeof(int));
     fin.read(reinterpret_cast<char*>(&nhistz), sizeof(int));
+    if (!fin) {
+        return false;
+    }
     logbases.resize(ndim);
     fin.read(reinterpret_cast<char*>(logbases.data()),
             sizeof(double) * ndim);
+    return true;
 }
 
 void HistReaderPacked::readFrom(std::istream& fin, int ndim,
@@ -208,16 +212,14 @@ std::vector<std::shared_ptr<HistDomain>> HistYColumnReader::read() const
  * @brief HistFacadeYColumnReader::read
  * @return
  */
-std::vector<std::shared_ptr<HistFacadeDomain>> HistFacadeYColumnReader::read() const
-{
+std::vector<std::shared_ptr<HistFacadeDomain>>
+        HistFacadeYColumnReader::read() const {
     std::vector<std::shared_ptr<HistFacadeDomain>> histDomains;
     auto filename = m_dir + "/pdfs-ycolumn-" + m_name + "." + m_iYColumnStr;
+    HistMetaReader meta;
     std::ifstream fin(filename, std::ios::binary);
     assert(fin);
-    while (fin) {
-        // domain meta
-        HistMetaReader meta;
-        meta.readFrom(fin);
+    while (meta.readFrom(fin)) {
         HistHelper histHelper;
         histHelper.n_vx = meta.ngridx;
         histHelper.n_vy = meta.ngridy;

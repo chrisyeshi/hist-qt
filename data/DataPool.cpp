@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <unordered_set>
+#include <util.h>
 #include "dataconfigreader.h"
 
 namespace {
@@ -60,11 +61,17 @@ std::shared_ptr<HistFacadeVolume> DataLoader::load(
     if (_histConfigs.end() == itr)
         return nullptr;
     int index = itr - _histConfigs.begin() + 1;
-    char idcstr[5];
-    sprintf(idcstr, "%03d", index);
-    auto histVol =
-            std::make_shared<HistFacadeVolume>(stepDir(stepId),
-                std::string(idcstr), _gridConfig.dimProcs(), itr->vars);
+    std::string idcstr = yy::sprintf("%03d", index);
+    auto histVol = ([&]() {
+        if (GridConfig::GridType_UniformGrid == _gridConfig.gridType()) {
+            return std::make_shared<HistFacadeVolume>(stepDir(stepId), idcstr,
+                    std::vector<int>(_gridConfig.dimProcs()), itr->vars);
+        } else if (GridConfig::GridType_MultiBlock == _gridConfig.gridType()) {
+            return std::make_shared<HistFacadeVolume>(stepDir(stepId), idcstr,
+                    _gridConfig.multiBlocks(), itr->vars);
+        }
+        assert(false);
+    })();
     return histVol;
 }
 
@@ -316,8 +323,12 @@ DataPool::~DataPool() {
 bool DataPool::setDir(const std::string& dir)
 {
     std::shared_ptr<DataConfigReader> dataConfigReader = nullptr;
+    std::ifstream mbpdf((dir + "/multi_block.config").c_str());
     std::ifstream fpdf((dir + "/pdf.config").c_str());
-    if (fpdf) {
+    if (mbpdf) {
+        dataConfigReader = std::make_shared<MultiBlockConfigReader>(dir);
+        m_pdfInTracerDir = false;
+    } else if (fpdf) {
         dataConfigReader = std::make_shared<PdfDataConfigReader>(dir);
         m_pdfInTracerDir = false;
     } else {

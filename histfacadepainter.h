@@ -3,6 +3,7 @@
 
 #include <histpainter.h>
 #include <memory>
+#include <vec.h>
 
 class HistFacade;
 
@@ -14,7 +15,7 @@ public:
     virtual void initialize() override {}
     virtual void paint() override;
     virtual void setRect(float x, float y, float w, float h) override;
-    virtual void setRange(float min, float max) override;
+    virtual void setFreqRange(float min, float max) override;
     virtual void setColorMap(ColorMapOption) override {}
     void setHist(std::shared_ptr<const HistFacade> histFacade,
             std::vector<int> displayDims);
@@ -25,6 +26,7 @@ private:
     std::vector<int> _displayDims;
     float _left, _bottom, _width, _height;
     float _min, _max;
+    std::vector<yy::vec2> _ranges;
 };
 
 #endif // HISTFACADEPAINTER_H

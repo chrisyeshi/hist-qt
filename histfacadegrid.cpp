@@ -2,13 +2,117 @@
 #include <fstream>
 #include <data/histreader.h>
 #include <QElapsedTimer>
+#include <util.h>
 
 namespace {
+
 bool isFileExist(const std::string &path)
 {
     std::ifstream f(path.c_str());
     return f.good();
 }
+
+std::shared_ptr<HistFacadeDomain> getNullHistDomain(
+        const yy::ivec3& nVoxels, const yy::ivec3& nHists) {
+    HistHelper defaultHelper;
+    defaultHelper.n_vx = nVoxels.x();
+    defaultHelper.n_vy = nVoxels.y();
+    defaultHelper.n_vz = nVoxels.z();
+    defaultHelper.nh_x = nHists.x();
+    defaultHelper.nh_y = nHists.y();
+    defaultHelper.nh_z = nHists.z();
+    defaultHelper.N_HIST =
+            defaultHelper.nh_x * defaultHelper.nh_y * defaultHelper.nh_z;
+    auto defaultHistDomain =
+            std::make_shared<HistFacadeDomain>(
+                defaultHelper,
+                std::vector<std::shared_ptr<HistFacade>>(
+                    defaultHelper.N_HIST, std::make_shared<HistNullFacade>()));
+    return defaultHistDomain;
+}
+
+yy::ivec3 getMultiBlockDomainCounts(const MultiBlockTopology& topo) {
+    if (4 == topo.blockCount()) {
+        int x = topo.blockSpec(0).nDomains()[0]
+                + topo.blockSpec(1).nDomains()[0]
+                + topo.blockSpec(2).nDomains()[0];
+        int y = topo.blockSpec(3).nDomains()[1]
+                + topo.blockSpec(0).nDomains()[1];
+        int z = topo.blockSpec(0).nDomains()[2];
+        return yy::ivec3(x, y, z);
+    }
+    assert(false);
+    return yy::ivec3(-1, -1, -1);
+}
+
+yy::ivec3 getMultiBlockDomainIdOffsets(
+        const MultiBlockTopology& topo, int iBlock) {
+    if (4 == topo.blockCount()) {
+        if (0 == iBlock) {
+            return yy::ivec3(0, topo.blockSpec(3).nDomains()[1], 0);
+        } else if (1 == iBlock) {
+            return yy::ivec3(topo.blockSpec(0).nDomains()[0],
+                    topo.blockSpec(3).nDomains()[1], 0);
+        } else if (2 == iBlock) {
+            return yy::ivec3(
+                    topo.blockSpec(0).nDomains()[0]
+                        + topo.blockSpec(1).nDomains()[0],
+                    topo.blockSpec(3).nDomains()[1], 0);
+        } else if (3 == iBlock) {
+            return yy::ivec3(topo.blockSpec(0).nDomains()[0], 0, 0);
+        }
+    }
+    assert(false);
+    return yy::ivec3(-1, -1, -1);
+}
+
+yy::ivec3 getMultiBlockDomainVoxelCounts(
+        const MultiBlockTopology& topo, const yy::ivec3& domainIds) {
+    if (4 == topo.blockCount()) {
+        int xDomain1 = topo.blockSpec(0).nDomains()[0];
+        int xGridPt1 = topo.blockSpec(0).nGridPts()[0];
+        int xDomain2 = topo.blockSpec(1).nDomains()[0];
+        int xGridPt2 = topo.blockSpec(1).nGridPts()[0];
+        int xDomain3 = topo.blockSpec(2).nDomains()[0];
+        int xGridPt3 = topo.blockSpec(2).nGridPts()[0];
+        int yDomain1 = topo.blockSpec(3).nDomains()[1];
+        int yGridPt1 = topo.blockSpec(3).nGridPts()[1];
+        int yDomain2 = topo.blockSpec(0).nDomains()[1];
+        int yGridPt2 = topo.blockSpec(0).nGridPts()[1];
+        int zDomain = topo.blockSpec(0).nDomains()[2];
+        int zGridPt = topo.blockSpec(0).nGridPts()[2];
+        int x, y, z;
+        // x
+        if (domainIds.x() < xDomain1) {
+            x = xGridPt1 / xDomain1;
+        } else if (domainIds.x() < xDomain1 + xDomain2) {
+            x = xGridPt2 / xDomain2;
+        } else if (domainIds.x() < xDomain1 + xDomain2 + xDomain3) {
+            x = xGridPt3 / xDomain3;
+        } else {
+            assert(false);
+        }
+        // y
+        if (domainIds.y() < yDomain1) {
+            y = yGridPt1 / yDomain1;
+        } else if (domainIds.y() < yDomain1 + yDomain2) {
+            y = yGridPt2 / yDomain2;
+        } else {
+            assert(false);
+        }
+        // z
+        z = zGridPt / zDomain;
+        return yy::ivec3(x, y, z);
+    }
+    assert(false);
+    return yy::ivec3(-1, -1, -1);
+}
+
+yy::ivec3 getMultiBlockDomainHistCounts(
+        const MultiBlockTopology& topo, const yy::ivec3& domainIds) {
+    return yy::ivec3(1, 1, 1);
+}
+
 } // namespace
 
 /**
@@ -46,12 +150,9 @@ HistFacadeDomain::HistFacadeDomain(
  */
 HistFacadeVolume::HistFacadeVolume(
         const std::string &dir, const std::string &name,
-        const std::vector<int> &dims, const std::vector<std::string> &vars)
+        std::vector<int> dims, const std::vector<std::string> &vars)
   : _dimDomains(dims), _dir(dir), _name(name), _vars(vars), _helperCached(false)
 {
-    QElapsedTimer timer;
-    timer.start();
-
     _domains.resize(nDomains());
     if (isFileExist(dir + "/pdfs-ycolumn-001.00000")) {
         int nYColumns = dims[0] * dims[2];
@@ -79,6 +180,36 @@ HistFacadeVolume::HistFacadeVolume(
             _domains[iDomain] =
                     std::make_shared<HistFacadeDomain>(
                         dir, name, iDomain, vars);
+        }
+    }
+}
+
+HistFacadeVolume::HistFacadeVolume(std::string dir, std::string name,
+        const MultiBlockTopology& topo, std::vector<std::string> vars)
+      : _dir(dir), _name(name), _vars(vars), _helperCached(false) {
+    _dimDomains = getMultiBlockDomainCounts(topo);
+    _domains.resize(nDomains());
+    for (auto z = 0; z < _dimDomains[2]; ++z)
+    for (auto y = 0; y < _dimDomains[1]; ++y)
+    for (auto x = 0; x < _dimDomains[0]; ++x) {
+        _domains[_dimDomains.idstoflat(x, y, z)] =
+                getNullHistDomain(
+                    getMultiBlockDomainVoxelCounts(topo, yy::ivec3(x, y, z)),
+                    getMultiBlockDomainHistCounts(topo, yy::ivec3(x, y, z)));
+    }
+    for (auto iBlock = 0; iBlock < topo.blockCount(); ++iBlock) {
+        auto iBlockStr = yy::sprintf("%05d", iBlock);
+        auto histDomains =
+                HistFacadeYColumnReader(dir, name, iBlockStr, vars).read();
+        yy::ivec3 domainIdOffsets = getMultiBlockDomainIdOffsets(topo, iBlock);
+        Extent blockDomainExtent = topo.blockSpec(iBlock).nDomains();
+        for (auto iBlockDomain = 0; iBlockDomain < histDomains.size();
+                ++iBlockDomain) {
+            yy::ivec3 blockDomainIds =
+                    blockDomainExtent.flattoids(iBlockDomain);
+            yy::ivec3 domainIds = domainIdOffsets + blockDomainIds;
+            int domainFlatId = _dimDomains.idstoflat(domainIds);
+            _domains[domainFlatId] = std::move(histDomains[iBlockDomain]);
         }
     }
 }
@@ -174,13 +305,8 @@ std::shared_ptr<const HistFacadeDomain> HistFacadeVolume::domain(
     return domain(_dimDomains.idstoflat(ids));
 }
 
-int HistFacadeVolume::nDomains() const
-{
-    int prod = 1;
-    for (auto nDomain : _dimDomains) {
-        prod *= nDomain;
-    }
-    return prod;
+int HistFacadeVolume::nDomains() const {
+    return _dimDomains.nElement();
 }
 
 std::shared_ptr<HistFacadeRect> HistFacadeVolume::xySlice(int z) const

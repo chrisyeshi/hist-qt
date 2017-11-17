@@ -44,11 +44,12 @@ void Hist1DVBOPainter::initialize()
             "rect", glm::vec4(0.f, 0.f, 1.f, 1.f), "vMin", 0.f, "vMax", 1.f,
             "color", _yellowBlueBarColor);
     // borders render pass
-    _bordersRenderPass.setProgram(sharedBordersShaderProgram());
+    _bordersRenderPass.setProgram(sharedTriangleStripBordersShaderProgram());
     _bordersRenderPass.setDrawMode(yy::gl::render_pass::POINTS);
     _bordersRenderPass.setFirstVertexIndex(0);
     _bordersRenderPass.setUniforms(
-            "rect", glm::vec4(0.f, 0.f, 1.f, 1.f), "vMin", 0.f, "vMax", 1.f);
+            "rect", glm::vec4(0.f, 0.f, 1.f, 1.f), "vMin", 0.f, "vMax", 1.f,
+            "thickness", 0.005f);
 }
 
 void Hist1DVBOPainter::paint()
@@ -65,7 +66,7 @@ void Hist1DVBOPainter::setRect(float x, float y, float w, float h)
     _bordersRenderPass.setUniform("rect", glm::vec4(x, y, w, h));
 }
 
-void Hist1DVBOPainter::setRange(float min, float max)
+void Hist1DVBOPainter::setFreqRange(float min, float max)
 {
     _barsRenderPass.setUniforms("vMin", min, "vMax", max);
     _bordersRenderPass.setUniforms("vMin", min, "vMax", max);
@@ -177,8 +178,8 @@ std::shared_ptr<yy::gl::program> Hist1DVBOPainter::sharedBarsShaderProgram()
     return program;
 }
 
-std::shared_ptr<yy::gl::program> Hist1DVBOPainter::sharedBordersShaderProgram()
-{
+std::shared_ptr<yy::gl::program>
+        Hist1DVBOPainter::sharedLineStripBordersShaderProgram() {
     static auto program = std::make_shared<yy::gl::program>(
             yy::gl::shader::VERTEX_SHADER,
             R"GLSL(
@@ -198,6 +199,7 @@ std::shared_ptr<yy::gl::program> Hist1DVBOPainter::sharedBordersShaderProgram()
                 uniform vec4 rect;
                 uniform float vMin, vMax;
                 uniform float nBins;
+                uniform float thickness;
                 layout(points) in;
                 layout(line_strip, max_vertices = 4) out;
                 in float vg_freq[];
@@ -216,6 +218,61 @@ std::shared_ptr<yy::gl::program> Hist1DVBOPainter::sharedBordersShaderProgram()
                     EmitVertex();
                     gl_Position = vec4(x + w, y, 0.0, 1.0);
                     EmitVertex();
+                    EndPrimitive();
+                }
+            )GLSL",
+            yy::gl::shader::FRAGMENT_SHADER,
+            R"GLSL(
+                #version 330
+                out vec4 f_color;
+                void main() {
+                    f_color = vec4(0.2, 0.2, 0.2, 1.0);
+                }
+            )GLSL");
+    return program;
+}
+
+std::shared_ptr<yy::gl::program>
+        Hist1DVBOPainter::sharedTriangleStripBordersShaderProgram() {
+    static auto program = std::make_shared<yy::gl::program>(
+            yy::gl::shader::VERTEX_SHADER,
+            R"GLSL(
+                #version 330
+                in float v_freq;
+                out float vg_freq;
+                out int vg_vertexID;
+                void main() {
+                    gl_Position = vec4(v_freq, 0.0, 0.0, 1.0);
+                    vg_freq = v_freq;
+                    vg_vertexID = gl_VertexID;
+                }
+            )GLSL",
+            yy::gl::shader::GEOMETRY_SHADER,
+            R"GLSL(
+                #version 330
+                uniform vec4 rect;
+                uniform float vMin, vMax;
+                uniform float nBins;
+                uniform float thickness;
+                layout(points) in;
+                layout(triangle_strip, max_vertices = 8) out;
+                in float vg_freq[];
+                in int vg_vertexID[];
+                void main() {
+                    float normValue = (vg_freq[0] - vMin) / (vMax - vMin);
+                    float t = 0.5 * thickness * rect.z;
+                    float w = rect.z * 2.0 / nBins;
+                    float h = max(t, rect.w * 0.9 * normValue * 2.0);
+                    float x = rect.x * 2.0 - 1.0 + vg_vertexID[0] * w;
+                    float y = rect.y * 2.0 - 1.0;
+                    gl_Position = vec4(x-t, y, 0.0, 1.0); EmitVertex();
+                    gl_Position = vec4(x+t, y, 0.0, 1.0); EmitVertex();
+                    gl_Position = vec4(x-t, y+h+t, 0.0, 1.0); EmitVertex();
+                    gl_Position = vec4(x+t, y+h-t, 0.0, 1.0); EmitVertex();
+                    gl_Position = vec4(x+w+t, y+h+t, 0.0, 1.0); EmitVertex();
+                    gl_Position = vec4(x+w-t, y+h-t, 0.0, 1.0); EmitVertex();
+                    gl_Position = vec4(x+w+t, y, 0.0, 1.0); EmitVertex();
+                    gl_Position = vec4(x+w-t, y, 0.0, 1.0); EmitVertex();
                     EndPrimitive();
                 }
             )GLSL",
@@ -261,7 +318,7 @@ void Hist2DTexturePainter::setRect(float x, float y, float w, float h)
     _renderPass.setUniform("rect", glm::vec4(x, y, w, h));
 }
 
-void Hist2DTexturePainter::setRange(float min, float max)
+void Hist2DTexturePainter::setFreqRange(float min, float max)
 {
     _renderPass.setUniforms("vMin", min, "vMax", max);
 }
@@ -393,9 +450,9 @@ void Hist2DPainter::setRect(float x, float y, float w, float h)
     _painter.setRect(x, y, w, h);
 }
 
-void Hist2DPainter::setRange(float min, float max)
+void Hist2DPainter::setFreqRange(float min, float max)
 {
-    _painter.setRange(min, max);
+    _painter.setFreqRange(min, max);
 }
 
 void Hist2DPainter::setColorMap(IHistPainter::ColorMapOption option)

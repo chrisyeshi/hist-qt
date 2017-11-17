@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <array>
 #include <cstring>
 #include <cassert>
 
@@ -30,6 +31,19 @@ public:
         return prod;
     }
     int nDim() const { return dimension.size(); }
+
+    template <std::size_t Size>
+    int idstoflat(const std::array<int, Size>& ids) const {
+        assert(dimension.size() == Size);
+        int sum = 0;
+        for (unsigned int iSum = 0; iSum < dimension.size(); ++iSum) {
+            int prod = ids[iSum];
+            for (unsigned int iProd = 0; iProd < iSum; ++iProd)
+                prod *= dimension[iProd];
+            sum += prod;
+        }
+        return sum;
+    }
 
     int idstoflat(const std::vector<int>& ids) const {
         int sum = 0;

@@ -6,6 +6,7 @@
 #include <map>
 #include <tuple>
 #include <numeric>
+#include <yy/functional.h>
 #include "histbinwidthcalculator.h"
 
 namespace {
@@ -34,8 +35,8 @@ public:
             res.upper() = std::min(range.upper(), res.upper());
         }
         // std::cout << res << std::endl;
-        double epsilon = std::numeric_limits<double>::epsilon();
-        assert(res.lower() <= res.upper() + 10.0 * epsilon);
+//        double epsilon = std::numeric_limits<double>::epsilon();
+//        assert(res.lower() <= res.upper() + 10.0 * epsilon);
         return res;
     }
 
@@ -134,7 +135,8 @@ std::vector<Range> histsToRanges(
 
 auto calcEndBinId = [](Range binRange, Range range, double singleBinRange,
         int nBins) {
-    double delta = 10.0 * std::numeric_limits<double>::epsilon();
+//    double delta = 10.0 * std::numeric_limits<double>::epsilon();
+    double delta = 0.5 * singleBinRange;
     assert(binRange.upper() <= range.upper() + delta);
     if (range.upper() - delta <= binRange.upper()
             && binRange.upper() < range.upper() + delta) {
@@ -373,8 +375,8 @@ std::shared_ptr<Hist> HistMerger::merge(
                             [](const std::tuple<Range, Range>& tuple) {
                     double range = Range::intersectRanges(
                             { std::get<0>(tuple), std::get<1>(tuple) }).range();
-                    double epsilon = std::numeric_limits<double>::epsilon();
-                    assert(range > -10.0 * epsilon);
+//                    double epsilon = std::numeric_limits<double>::epsilon();
+//                    assert(range > -10.0 * epsilon);
                     return std::max(0.0, range);
                 }, zip(binRanges, histBinRanges));
                 double portionProduct = multiplyEach(portions);

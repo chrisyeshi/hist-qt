@@ -12,10 +12,10 @@ class HistFacadeDomain;
 
 class HistMetaReader {
 public:
-    void readFrom(std::istream& fin);
+    bool readFrom(std::istream& fin);
 
 public:
-    int ndim, ngridx, ngridy, ngridz, nhistx, nhisty, nhistz;
+    int ndim = -1, ngridx, ngridy, ngridz, nhistx, nhisty, nhistz;
     std::vector<double> logbases;
 };
 

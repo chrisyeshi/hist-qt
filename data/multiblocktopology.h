@@ -30,6 +30,7 @@ private:
  */
 class BlockSpec {
 public:
+    BlockSpec() = default;
     BlockSpec(Extent nDomains, Extent nGridPts, yy::ivec3 lowerCorner)
           : _nDomains(nDomains), _nGridPts(nGridPts),
             _lowerCorner(lowerCorner) {
@@ -40,7 +41,11 @@ public:
     BlockSpec(Extent nDomains, Extent nGridPts, yy::ivec3 lowerCorner,
             BoundingBox<float> physicalBoundingBox)
           : _nDomains(nDomains), _nGridPts(nGridPts), _lowerCorner(lowerCorner),
-            _physicalBoundingBox(physicalBoundingBox) {}
+            _physicalBoundingBox(physicalBoundingBox) {
+        assert(nGridPts[0] % nDomains[0] == 0);
+        assert(nGridPts[1] % nDomains[1] == 0);
+        assert(nGridPts[2] % nDomains[2] == 0);
+    }
 
 public:
     Extent nDomains() const { return _nDomains; }
@@ -65,8 +70,8 @@ private:
 class MultiBlockTopology {
 public:
     MultiBlockTopology() = default;
-    MultiBlockTopology(std::initializer_list<BlockSpec> blockSpecs)
-          : _blockSpecs(blockSpecs) {}
+    template <typename T>
+    MultiBlockTopology(T blockSpecs) : _blockSpecs(blockSpecs) {}
 
 public:
     int blockId(int rank) const {

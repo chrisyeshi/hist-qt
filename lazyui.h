@@ -123,8 +123,8 @@ private:
     }
     int getMinimumWidth(Item::Size size) const {
         static QMap<Item::Size, int> sizeToWidth{
-            {Item::Large, 150},
-            {Item::Medium, 100},
+            {Item::Large, 300},
+            {Item::Medium, 150},
             {Item::Small, 50}
         };
         auto width = sizeToWidth.value(size, -1);

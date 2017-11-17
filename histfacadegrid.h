@@ -2,6 +2,7 @@
 #define HISTFACADEGRID_H
 
 #include <data/histgrid.h>
+#include <data/dataconfigreader.h>
 #include <histfacade.h>
 
 typedef IConstHGrid<HistFacade> IConstHistFacadeGrid;
@@ -77,10 +78,15 @@ public:
     using HistFacadeGrid::hist;
 };
 
+/**
+ * @brief The HistFacadeVolume class
+ */
 class HistFacadeVolume : public IHistFacadeGrid {
 public:
     HistFacadeVolume(const std::string& dir, const std::string& name,
-            const std::vector<int>& dims, const std::vector<std::string>& vars);
+            std::vector<int> dims, const std::vector<std::string>& vars);
+    HistFacadeVolume(std::string dir, std::string name,
+            const MultiBlockTopology &topo, std::vector<std::string> vars);
 
 public:
     virtual HistHelper helper() const override;
