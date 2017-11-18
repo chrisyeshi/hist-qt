@@ -99,10 +99,10 @@ public:
             return prod;
         }();
     }
-    double dimMin(int iDim) const {
+    virtual double dimMin(int iDim) const {
         assert(iDim < m_dim.nDim()); return m_mins[iDim];
     }
-    double dimMax(int iDim) const {
+    virtual double dimMax(int iDim) const {
         assert(iDim < m_dim.nDim()); return m_maxs[iDim];
     }
     double logBase(int iDim) const {
@@ -138,6 +138,12 @@ public:
     virtual const std::vector<double>& values() const override {
         static std::vector<double> v;
         return v;
+    }
+    virtual double dimMin(int) const override {
+        return std::numeric_limits<double>::max();
+    }
+    virtual double dimMax(int) const override {
+        return std::numeric_limits<double>::lowest();
     }
 };
 

@@ -14,11 +14,21 @@ public:
 public:
     virtual void initialize() override {}
     virtual void paint() override;
-    virtual void setRect(float x, float y, float w, float h) override;
+    virtual void setNormalizedViewport(
+            float x, float y, float w, float h) override;
+    virtual void setNormalizedRect(float x, float y, float w, float h) override;
     virtual void setFreqRange(float min, float max) override;
     virtual void setColorMap(ColorMapOption) override {}
+
+public:
     void setHist(std::shared_ptr<const HistFacade> histFacade,
             std::vector<int> displayDims);
+    void setRanges(std::vector<std::array<double, 2>> ranges);
+
+private:
+    std::array<float, 4> normalizedRect() const;
+    void setPainterNormalizedRect(
+            std::shared_ptr<IHistPainter> painter, std::array<float, 4> rect);
 
 private:
     std::shared_ptr<const HistFacade> _histFacade;
@@ -26,7 +36,7 @@ private:
     std::vector<int> _displayDims;
     float _left, _bottom, _width, _height;
     float _min, _max;
-    std::vector<yy::vec2> _ranges;
+    std::vector<std::array<double, 2>> _ranges;
 };
 
 #endif // HISTFACADEPAINTER_H

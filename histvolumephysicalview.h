@@ -50,7 +50,7 @@ class HistVolumePhysicalOpenGLView : public OpenGLWidget {
 public:
     enum Orien : int {YZ = 0, XZ = 1, XY = 2};
     enum NormalizedPer : int {
-        NormPer_Histogram, NormPer_HistSlice, NormPer_HistVolume
+        NormPer_Histogram, NormPer_HistSlice, NormPer_HistVolume, NormPer_Custom
     };
 
 public:
@@ -86,6 +86,8 @@ private:
     void updateCurrSlice();
     void createHistPainters();
     void setHistsToHistPainters();
+    std::array<float, 2> calcFreqRange() const;
+    void setFreqRangesToHistPainters(const std::array<float, 2>& range);
     void setFreqRangesToHistPainters();
     void setHistRangesToHistPainters();
     void updateHistPainterRects();
@@ -110,7 +112,7 @@ private:
     const std::vector<int> _defaultDims = {0};
     static const Orien _defaultOrien = XY;
     static const NormalizedPer _defaultFreqNormPer = NormPer_Histogram;
-    static const NormalizedPer _defaultHistNormPer = NormPer_HistVolume;
+    static const NormalizedPer _defaultHistNormPer = NormPer_Histogram;
     static const int _defaultSliceId = 0;
 
 private:
@@ -126,7 +128,9 @@ private:
     std::array<int, 2> _hoveredHistSliceIds = {{-1, -1}};
     std::vector<std::array<int, 3>> _selectedHistIds;
     NormalizedPer _currFreqNormPer = _defaultFreqNormPer;
+    std::array<float, 2> _currFreqRange;
     NormalizedPer _currHistNormPer = _defaultHistNormPer;
+    std::vector<std::array<double, 2>> _currHistRanges;
 
     //    std::vector<std::shared_ptr<yy::VolumeGL>> _avgVolumes;
     //    std::unique_ptr<yy::volren::VolRen> _volren;

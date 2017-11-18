@@ -67,6 +67,11 @@ public:
     virtual std::shared_ptr<yy::gl::vector<float>> vbo(
             const std::vector<std::string>& vars) const;
 
+public:
+    virtual std::array<double, 2> dimRange(int iDim) const {
+        return {hist()->dimMin(iDim), hist()->dimMax(iDim)};
+    }
+
 protected:
     std::vector<int> varsToDims(const std::vector<std::string>& vars) const;
     std::vector<std::string> dimsToVars(const std::vector<int>& dims) const;

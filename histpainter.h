@@ -31,9 +31,16 @@ public:
 public:
     virtual void initialize() = 0;
     virtual void paint() = 0;
-    virtual void setRect(float x, float y, float w, float h) = 0;
+    virtual void setNormalizedViewport(float x, float y, float w, float h) = 0;
+    virtual void setNormalizedRect(float x, float y, float w, float h) = 0;
     virtual void setFreqRange(float min, float max) = 0;
     virtual void setColorMap(ColorMapOption option) = 0;
+
+public:
+    void setNormalizedViewportAndRect(float x, float y, float w, float h) {
+        setNormalizedViewport(x, y, w, h);
+        setNormalizedRect(x, y, w, h);
+    }
 };
 
 /**
@@ -43,7 +50,10 @@ class HistNullPainter : public IHistPainter {
 public:
     virtual void initialize() override {}
     virtual void paint() override {}
-    virtual void setRect(float x, float y, float w, float h) override {}
+    virtual void setNormalizedViewport(
+            float x, float y, float w, float h) override {}
+    virtual void setNormalizedRect(
+            float x, float y, float w, float h) override {}
     virtual void setFreqRange(float min, float max) override {}
     virtual void setColorMap(ColorMapOption option) override {}
 };
@@ -55,7 +65,9 @@ class Hist1DVBOPainter : public IHistPainter {
 public:
     virtual void initialize() override;
     virtual void paint() override;
-    virtual void setRect(float x, float y, float w, float h) override;
+    virtual void setNormalizedViewport(
+            float x, float y, float w, float h) override;
+    virtual void setNormalizedRect(float x, float y, float w, float h) override;
     virtual void setFreqRange(float min, float max) override;
     virtual void setColorMap(ColorMapOption option) override;
 
@@ -90,7 +102,9 @@ class Hist2DTexturePainter : public IHistPainter {
 public:
     virtual void initialize() override;
     virtual void paint() override;
-    virtual void setRect(float x, float y, float w, float h) override;
+    virtual void setNormalizedViewport(
+            float x, float y, float w, float h) override;
+    virtual void setNormalizedRect(float x, float y, float w, float h) override;
     virtual void setFreqRange(float min, float max) override;
     virtual void setColorMap(ColorMapOption option) override;
 
@@ -117,7 +131,9 @@ public:
 public:
     virtual void initialize() override;
     virtual void paint() override;
-    virtual void setRect(float x, float y, float w, float h) override;
+    virtual void setNormalizedViewport(
+            float x, float y, float w, float h) override;
+    virtual void setNormalizedRect(float x, float y, float w, float h) override;
     virtual void setFreqRange(float min, float max) override;
     virtual void setColorMap(ColorMapOption option) override;
 

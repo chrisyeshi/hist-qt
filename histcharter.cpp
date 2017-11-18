@@ -87,7 +87,7 @@ std::string Hist2DFacadeCharter::setMouseHover(float x, float y)
 void Hist2DFacadeCharter::chart() {
     // histogram
     if (_histPainter) {
-        _histPainter->setRect(histLeft() / width(), histBottom() / height(),
+        _histPainter->setNormalizedViewportAndRect(histLeft() / width(), histBottom() / height(),
                 histWidth() / width(), histHeight() / height());
         _histPainter->paint();
     }
@@ -245,7 +245,7 @@ void Hist1DFacadeCharter::chart()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     if (_histPainter) {
-        _histPainter->setRect(histLeft() / width(), histBottom() / height(),
+        _histPainter->setNormalizedViewportAndRect(histLeft() / width(), histBottom() / height(),
                 histWidth() / width(), histHeight() / height());
         _histPainter->paint();
     }

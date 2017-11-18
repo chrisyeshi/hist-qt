@@ -45,6 +45,7 @@ class IHGrid : public IConstHGrid<T> {
 public:
     virtual ~IHGrid() {}
     virtual HistHelper helper() const = 0;
+    int nHist() const { return helper().N_HIST; }
     virtual Extent dimHists() const override { return helper().dimHists(); }
     virtual std::shared_ptr<T> hist(int flatId) = 0;
     virtual std::shared_ptr<T> hist(const std::vector<int>& ids) {

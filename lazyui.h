@@ -7,6 +7,7 @@
 #include <QtMath>
 #include <QWidget>
 #include <QComboBox>
+#include <QLineEdit>
 #include <QBoxLayout>
 #include <QScrollBar>
 #include <QPushButton>
@@ -281,6 +282,14 @@ public:
         disconnect(button, nullptr, context, nullptr);
         connect(button, &QPushButton::clicked, context, func);
     }
+
+    void labeledCombo(const QString& key, const QString& option) {
+        auto combo =
+                static_cast<LabeledWidget<QComboBox>*>(_widgets[key])->widget();
+        combo->blockSignals(true);
+        combo->setCurrentText(option);
+        combo->blockSignals(false);
+    }
     void labeledCombo(QString key, const QString& label,
             const QStringList& items, QObject* context,
             std::function<void(const QString&)> func) {
@@ -304,6 +313,7 @@ public:
         disconnect(combo, nullptr, context, nullptr);
         connect(combo, &QComboBox::currentTextChanged, context, func);
     }
+
     void labeledScrollBar(QString key, const QString& label, int minimum,
             int maximum, int value, QObject* context,
             std::function<void(int)> func) {
@@ -329,6 +339,30 @@ public:
         scrollBar->blockSignals(false);
         disconnect(scrollBar, nullptr, context, nullptr);
         connect(scrollBar, &QScrollBar::valueChanged, context, func);
+    }
+
+    void labeledLineEdit(QString key, const QString& text) {
+        auto labeledLineEdit =
+                static_cast<LabeledWidget<QLineEdit>*>(_widgets[key]);
+        QLineEdit* lineEdit = labeledLineEdit->widget();
+        lineEdit->blockSignals(true);
+        lineEdit->setText(text);
+        lineEdit->blockSignals(false);
+    }
+    void labeledLineEdit(QString key, const QString& label, const QString& text,
+            FluidLayout::Item::Size size, QObject* context,
+            std::function<void(const QString& text)> func) {
+        if (!_widgets.contains(key)) {
+            auto labeledLineEdit = new LabeledWidget<QLineEdit>(label);
+            _panel->addWidget(labeledLineEdit, size);
+            _widgets[key] = labeledLineEdit;
+        }
+        labeledLineEdit(key, text);
+        auto labeledLineEdit =
+                static_cast<LabeledWidget<QLineEdit>*>(_widgets[key]);
+        QLineEdit* lineEdit = labeledLineEdit->widget();
+        disconnect(lineEdit, nullptr, context, nullptr);
+        connect(lineEdit, &QLineEdit::textEdited, context, func);
     }
 
 private:
