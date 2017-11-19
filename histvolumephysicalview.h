@@ -89,6 +89,9 @@ private:
     std::array<float, 2> calcFreqRange() const;
     void setFreqRangesToHistPainters(const std::array<float, 2>& range);
     void setFreqRangesToHistPainters();
+    std::vector<std::array<double, 2>> calcHistRanges() const;
+    void setHistRangesToHistPainters(
+            const std::vector<std::array<double, 2>>& ranges);
     void setHistRangesToHistPainters();
     void updateHistPainterRects();
     void updateSliceIdScrollBar();
@@ -130,7 +133,8 @@ private:
     NormalizedPer _currFreqNormPer = _defaultFreqNormPer;
     std::array<float, 2> _currFreqRange;
     NormalizedPer _currHistNormPer = _defaultHistNormPer;
-    std::vector<std::array<double, 2>> _currHistRanges;
+    std::vector<std::array<double, 2>> _currHistRanges
+            = {{NAN, NAN}, {NAN, NAN}};
 
     //    std::vector<std::shared_ptr<yy::VolumeGL>> _avgVolumes;
     //    std::unique_ptr<yy::volren::VolRen> _volren;

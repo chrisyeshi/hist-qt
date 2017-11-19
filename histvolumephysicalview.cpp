@@ -191,7 +191,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             update();
         });
         LazyUI::instance().labeledLineEdit("freqRangeMin", "Frequency Minimum",
-                "NAN", FluidLayout::Item::Medium, this,
+                "nan", FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
             _currFreqNormPer = NormPer_Custom;
             LazyUI::instance().labeledCombo("freqRangeMethod", "Custom");
@@ -200,7 +200,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             update();
         });
         LazyUI::instance().labeledLineEdit("freqRangeMax", "Frequency Maximum",
-                "NAN", FluidLayout::Item::Medium, this,
+                "nan", FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
             _currFreqNormPer = NormPer_Custom;
             LazyUI::instance().labeledCombo("freqRangeMethod", "Custom");
@@ -208,8 +208,9 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             setFreqRangesToHistPainters(_currFreqRange);
             update();
         });
-        LazyUI::instance().labeledCombo("histRangeMethod", "Value Range Per",
-                {"Histogram", "Histogram Volume", "Histogram Slice"},
+        LazyUI::instance().labeledCombo(
+                "histRangeMethod", "Histogram Range Per",
+                {"Histogram", "Histogram Volume", "Histogram Slice", "Custom"},
                 FluidLayout::Item::Large, this, [=](const QString& text) {
             if (tr("Histogram") == text) {
                 _currHistNormPer = NormPer_Histogram;
@@ -217,10 +218,61 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
                 _currHistNormPer = NormPer_HistSlice;
             } else if (tr("Histogram Volume") == text) {
                 _currHistNormPer = NormPer_HistVolume;
+            } else if (tr("Custom") == text) {
+                _currHistNormPer = NormPer_Custom;
             } else {
                 assert(false);
             }
-            setHistRangesToHistPainters();
+            _currHistRanges = calcHistRanges();
+            setHistRangesToHistPainters(_currHistRanges);
+            LazyUI::instance().labeledLineEdit(
+                    "histRange1Min", QString::number(_currHistRanges[0][0]));
+            LazyUI::instance().labeledLineEdit(
+                    "histRange1Max", QString::number(_currHistRanges[0][1]));
+            LazyUI::instance().labeledLineEdit(
+                    "histRange2Min", QString::number(_currHistRanges[1][0]));
+            LazyUI::instance().labeledLineEdit(
+                    "histRange2Max", QString::number(_currHistRanges[1][1]));
+            update();
+        });
+        LazyUI::instance().labeledLineEdit(
+                "histRange1Min", "Histogram X Minimum",
+                tr("nan"), FluidLayout::Item::Medium, this,
+                [=](const QString& text) {
+            _currHistNormPer = NormPer_Custom;
+            LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
+            _currHistRanges[0][0] = text.toDouble();
+            setHistRangesToHistPainters(_currHistRanges);
+            update();
+        });
+        LazyUI::instance().labeledLineEdit(
+                "histRange1Max", "Histogram X Maximum",
+                tr("nan"), FluidLayout::Item::Medium, this,
+                [=](const QString& text) {
+            _currHistNormPer = NormPer_Custom;
+            LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
+            _currHistRanges[0][1] = text.toDouble();
+            setHistRangesToHistPainters(_currHistRanges);
+            update();
+        });
+        LazyUI::instance().labeledLineEdit(
+                "histRange2Min", "Histogram Y Minimum",
+                tr("nan"), FluidLayout::Item::Medium, this,
+                [=](const QString& text) {
+            _currHistNormPer = NormPer_Custom;
+            LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
+            _currHistRanges[1][0] = text.toDouble();
+            setHistRangesToHistPainters(_currHistRanges);
+            update();
+        });
+        LazyUI::instance().labeledLineEdit(
+                "histRange2Max", "Histogram Y Maximum",
+                tr("nan"), FluidLayout::Item::Medium, this,
+                [=](const QString& text) {
+            _currHistNormPer = NormPer_Custom;
+            LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
+            _currHistRanges[1][1] = text.toDouble();
+            setHistRangesToHistPainters(_currHistRanges);
             update();
         });
     });
@@ -403,6 +455,7 @@ void HistVolumePhysicalOpenGLView::mouseMoveEvent(QMouseEvent *event) {
 void HistVolumePhysicalOpenGLView::wheelEvent(QWheelEvent *event) {
     auto numDegrees = float(event->angleDelta().y()) / 8.f;
     _currZoom = _currZoom * (100.f + numDegrees) / 100.f;
+    /// TODO: change the translate based on the current mouse position
     boundSliceTransform();
     updateHistPainterRects();
 //    _camera->zoom(numDegrees);
@@ -600,15 +653,12 @@ void HistVolumePhysicalOpenGLView::setFreqRangesToHistPainters() {
     setFreqRangesToHistPainters(calcFreqRange());
 }
 
-void HistVolumePhysicalOpenGLView::setHistRangesToHistPainters() {
+std::vector<std::array<double, 2>>
+        HistVolumePhysicalOpenGLView::calcHistRanges() const {
     if (NormPer_Histogram == _currHistNormPer) {
-        for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
-            auto ranges = yy::fp::map(_currDims, [=](int iDim) {
-                return _currSlice->hist(iHist)->dimRange(iDim);
-            });
-            _histPainters[iHist]->setRanges(ranges);
-        }
-    } else if (NormPer_HistSlice == _currHistNormPer) {
+        return {{NAN, NAN}, {NAN, NAN}};
+    }
+    if (NormPer_HistSlice == _currHistNormPer) {
         std::vector<std::array<double, 2>> minmaxs(_currDims.size());
         for (auto& range : minmaxs) {
             range[0] = std::numeric_limits<double>::max();
@@ -620,10 +670,9 @@ void HistVolumePhysicalOpenGLView::setHistRangesToHistPainters() {
             minmaxs[iDim][0] = std::min(range[0], minmaxs[iDim][0]);
             minmaxs[iDim][1] = std::max(range[1], minmaxs[iDim][1]);
         }
-        for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
-            _histPainters[iHist]->setRanges(minmaxs);
-        }
-    } else if (NormPer_HistVolume == _currHistNormPer) {
+        return minmaxs;
+    }
+    if (NormPer_HistVolume == _currHistNormPer) {
         std::vector<std::array<double, 2>> minmaxs(_currDims.size());
         for (auto& range : minmaxs) {
             range[0] = std::numeric_limits<double>::max();
@@ -635,10 +684,30 @@ void HistVolumePhysicalOpenGLView::setHistRangesToHistPainters() {
             minmaxs[iDim][0] = std::min(range[0], minmaxs[iDim][0]);
             minmaxs[iDim][1] = std::max(range[1], minmaxs[iDim][1]);
         }
-        for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
-            _histPainters[iHist]->setRanges(minmaxs);
-        }
+        return minmaxs;
     }
+    if (NormPer_Custom == _currHistNormPer) {
+        return _currHistRanges;
+    }
+    assert(false);
+    return {{NAN, NAN}, {NAN, NAN}};
+}
+
+void HistVolumePhysicalOpenGLView::setHistRangesToHistPainters(
+        const std::vector<std::array<double, 2> > &ranges) {
+    for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
+        auto minmaxs =
+                std::isnan(ranges[0][0]) ?
+                    yy::fp::map(_currDims, [=](int iDim) {
+                        return _currSlice->hist(iHist)->dimRange(iDim);
+                    }) :
+                    ranges;
+        _histPainters[iHist]->setRanges(minmaxs);
+    }
+}
+
+void HistVolumePhysicalOpenGLView::setHistRangesToHistPainters() {
+    setHistRangesToHistPainters(calcHistRanges());
 }
 
 void HistVolumePhysicalOpenGLView::updateHistPainterRects() {
