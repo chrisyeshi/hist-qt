@@ -66,6 +66,7 @@ public:
 protected:
     void resizeGL(int w, int h);
     void paintGL();
+    bool event(QEvent* event);
     void mousePressEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
     void mouseClickEvent(QMouseEvent *event);
@@ -80,8 +81,11 @@ private:
     int swf() const { return width(); }
     int shf() const { return height(); }
     QRectF calcDefaultSliceRect() const;
+    QRectF calcSliceRect(float zoom, QVector2D translate) const;
     QRectF calcSliceRect() const;
     QRectF calcHistRect(std::array<int, 2> histSliceIds);
+    float calcMaxZoom(const QRectF& defaultSliceRect) const;
+    float calcMaxZoom() const;
     void boundSliceTransform();
     void updateCurrSlice();
     void createHistPainters();

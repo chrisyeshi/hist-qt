@@ -11,6 +11,10 @@
 
 namespace {
 
+float clamp(float val, float min, float max) {
+    return std::min(max, std::max(min, val));
+}
+
 float calcAverage(std::shared_ptr<const Hist1D> hist) {
     double sum = 0.f;
     for (int iBin = 0; iBin < hist->nBins(); ++iBin) {
@@ -88,6 +92,8 @@ std::array<float, 2> calcFreqRange(const std::shared_ptr<const Hist>& hist) {
     return {vMin, vMax};
 }
 
+/// TODO: implement calcDeltaVecPixel()
+
 } // unnamed namespace
 
 /**
@@ -150,6 +156,9 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
 {
     qRegisterMetaType<std::vector<std::shared_ptr<const Hist>>>();
     setMouseTracking(true);
+    setAttribute(Qt::WA_AcceptTouchEvents);
+    grabGesture(Qt::PanGesture);
+    grabGesture(Qt::PinchGesture);
     QTimer::singleShot(0, this, [=]() {
         LazyUI::instance().labeledCombo(
                 tr("sliceDirections"), tr("Slicing Direction"),
@@ -354,7 +363,25 @@ void HistVolumePhysicalOpenGLView::paintGL() {
 //    _volren->render();
 //    glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject());
 //    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-//    _volren->output()->draw();
+    //    _volren->output()->draw();
+}
+
+bool HistVolumePhysicalOpenGLView::event(QEvent *event) {
+    if (QEvent::Gesture == event->type()) {
+        auto gestureEvent = static_cast<QGestureEvent*>(event);
+        if (QGesture* pinch = gestureEvent->gesture(Qt::PinchGesture)) {
+//            zoomEvent(scale, posPixel);
+            return true;
+        }
+    }
+    if (QEvent::TouchUpdate == event->type()) {
+        auto touchEvent = static_cast<QTouchEvent*>(event);
+        if (2 == touchEvent->touchPoints().size()) {
+//            translateEvent(calcDeltaVecPixel(touchEvent->touchPoints()));
+            return true;
+        }
+    }
+    return OpenGLWidget::event(event);
 }
 
 void HistVolumePhysicalOpenGLView::mousePressEvent(QMouseEvent *event) {
@@ -454,8 +481,29 @@ void HistVolumePhysicalOpenGLView::mouseMoveEvent(QMouseEvent *event) {
 
 void HistVolumePhysicalOpenGLView::wheelEvent(QWheelEvent *event) {
     auto numDegrees = float(event->angleDelta().y()) / 8.f;
-    _currZoom = _currZoom * (100.f + numDegrees) / 100.f;
-    /// TODO: change the translate based on the current mouse position
+    QVector2D cursorPos(event->posF().x(), height() - event->posF().y());
+    QVector2D widgetCenter(0.5f * width(), 0.5f * height());
+    float oldZoom = _currZoom;
+    auto oldTranslate = _currTranslate;
+    float newZoom =
+            clamp(oldZoom * (100.f + numDegrees) / 100.f,
+                _defaultZoom, calcMaxZoom());
+    // the cursor normalized position should stay the same after zooming
+    QRectF oldSliceRect = calcSliceRect(oldZoom, oldTranslate);
+    QVector2D oldSliceBotLeft(
+            oldSliceRect.left(), height() - oldSliceRect.bottom());
+    QVector2D oldCursorNormPos =
+            (cursorPos - oldSliceBotLeft)
+            / QVector2D(oldSliceRect.width(), oldSliceRect.height());
+    QRectF zoomedSliceRect = calcSliceRect(newZoom, oldTranslate);
+    QVector2D zoomedSliceSize(
+            zoomedSliceRect.width(), zoomedSliceRect.height());
+    QVector2D newSliceBotLeft = cursorPos - oldCursorNormPos * zoomedSliceSize;
+    QVector2D newTranslate = (widgetCenter - newSliceBotLeft) / zoomedSliceSize;
+    // update zoom and translate
+    _currZoom = newZoom;
+    _currTranslate = QVector2D(newTranslate.x(), newTranslate.y());
+    // bound the zoom so that it's not too big or too small
     boundSliceTransform();
     updateHistPainterRects();
 //    _camera->zoom(numDegrees);
@@ -509,7 +557,8 @@ QRectF HistVolumePhysicalOpenGLView::calcDefaultSliceRect() const {
     return QRectF(topLeft, bottomRight);
 }
 
-QRectF HistVolumePhysicalOpenGLView::calcSliceRect() const {
+QRectF HistVolumePhysicalOpenGLView::calcSliceRect(
+        float zoom, QVector2D trans) const {
     int w = sw();
     int h = sh();
     QRectF defaultSliceRect = calcDefaultSliceRect();
@@ -522,7 +571,7 @@ QRectF HistVolumePhysicalOpenGLView::calcSliceRect() const {
     QVector2D defaultSliceSizeVec(
             defaultSliceSize.width(), defaultSliceSize.height());
     QVector2D translate =
-            (QVector2D(0.5f, 0.5f) - _currTranslate) * defaultSliceSizeVec;
+            (QVector2D(0.5f, 0.5f) - trans) * defaultSliceSizeVec;
 
     QPointF sliceLowerLeft = defaultSliceLowerLeft;
     sliceLowerLeft = translate.toPointF() + sliceLowerLeft;
@@ -530,13 +579,17 @@ QRectF HistVolumePhysicalOpenGLView::calcSliceRect() const {
     sliceUpperRight = translate.toPointF() + sliceUpperRight;
 
     QPointF center(0.5f * w, 0.5f * h);
-    sliceLowerLeft = _currZoom * (sliceLowerLeft - center) + center;
-    sliceUpperRight = _currZoom * (sliceUpperRight - center) + center;
+    sliceLowerLeft = zoom * (sliceLowerLeft - center) + center;
+    sliceUpperRight = zoom * (sliceUpperRight - center) + center;
 
     QPointF topLeft(sliceLowerLeft.x(), h - sliceUpperRight.y());
     QPointF bottomRight(sliceUpperRight.x(), h - sliceLowerLeft.y());
 
     return QRectF(topLeft, bottomRight);
+}
+
+QRectF HistVolumePhysicalOpenGLView::calcSliceRect() const {
+    return calcSliceRect(_currZoom, _currTranslate);
 }
 
 QRectF HistVolumePhysicalOpenGLView::calcHistRect(
@@ -556,16 +609,24 @@ QRectF HistVolumePhysicalOpenGLView::calcHistRect(
     return QRectF(histLeft, histTop, histWidth, histHeight);
 }
 
+float HistVolumePhysicalOpenGLView::calcMaxZoom(
+        const QRectF& defaultSliceRect) const {
+    float defaultHistWidth = defaultSliceRect.width() / _currSlice->nHistX();
+    float defaultHistHeight = defaultSliceRect.height() / _currSlice->nHistY();
+    return std::min((sw() - 2.f * _borderPixel) / defaultHistWidth,
+            (sh() - 2.f * _borderPixel) / defaultHistHeight);
+}
+
+float HistVolumePhysicalOpenGLView::calcMaxZoom() const {
+    return calcMaxZoom(calcDefaultSliceRect());
+}
+
 void HistVolumePhysicalOpenGLView::boundSliceTransform() {
     int w = sw();
     int h = sh();
     QRectF defaultSliceRect = calcDefaultSliceRect();
 
-    float defaultHistWidth = defaultSliceRect.width() / _currSlice->nHistX();
-    float defaultHistHeight = defaultSliceRect.height() / _currSlice->nHistY();
-    float maxZoom = std::min((w - 2.f * _borderPixel) / defaultHistWidth,
-                             (h - 2.f * _borderPixel) / defaultHistHeight);
-    _currZoom = std::min(maxZoom, std::max(_defaultZoom, _currZoom));
+    _currZoom = clamp(_currZoom, _defaultZoom, calcMaxZoom(defaultSliceRect));
 
     QSizeF sliceSize = defaultSliceRect.size() * _currZoom;
     float left = (0.5f * w - _borderPixel) / sliceSize.width();
