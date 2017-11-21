@@ -108,6 +108,8 @@ private:
     std::vector<std::array<int, 2>> filterByCurrSlice(
             const std::vector<std::array<int, 3>>& histIds);
     std::array<int, 3> sliceIdsToHistIds(std::array<int, 2> histSliceIds);
+    void translateEvent(const QVector2D& delta);
+    void zoomEvent(float scale, const QVector2D& pos);
 
 private:
     const float _clickDelta = 5.f;

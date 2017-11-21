@@ -92,7 +92,15 @@ std::array<float, 2> calcFreqRange(const std::shared_ptr<const Hist>& hist) {
     return {vMin, vMax};
 }
 
-/// TODO: implement calcDeltaVecPixel()
+QVector2D calcDeltaVecPixel(const QList<QTouchEvent::TouchPoint>& touchPoints) {
+    QVector2D prev(0.f, 0.f), curr(0.f, 0.f);
+    int nPts = touchPoints.size();
+    for (auto pt : touchPoints) {
+        prev += QVector2D(pt.lastPos());
+        curr += QVector2D(pt.pos());
+    }
+    return curr / nPts - prev / nPts;
+}
 
 } // unnamed namespace
 
@@ -369,15 +377,11 @@ void HistVolumePhysicalOpenGLView::paintGL() {
 bool HistVolumePhysicalOpenGLView::event(QEvent *event) {
     if (QEvent::Gesture == event->type()) {
         auto gestureEvent = static_cast<QGestureEvent*>(event);
-        if (QGesture* pinch = gestureEvent->gesture(Qt::PinchGesture)) {
-//            zoomEvent(scale, posPixel);
-            return true;
-        }
-    }
-    if (QEvent::TouchUpdate == event->type()) {
-        auto touchEvent = static_cast<QTouchEvent*>(event);
-        if (2 == touchEvent->touchPoints().size()) {
-//            translateEvent(calcDeltaVecPixel(touchEvent->touchPoints()));
+        if (QGesture* gesture = gestureEvent->gesture(Qt::PinchGesture)) {
+            gestureEvent->accept();
+            QPinchGesture* pinch = static_cast<QPinchGesture*>(gesture);
+            zoomEvent(pinch->scaleFactor(), QVector2D(pinch->centerPoint()));
+            update();
             return true;
         }
     }
@@ -459,13 +463,7 @@ void HistVolumePhysicalOpenGLView::mouseMoveEvent(QMouseEvent *event) {
 //    mouseDir.setY(-mouseDir.y());
     if (event->buttons() & Qt::LeftButton) {
         //        _camera->orbit(mouseDir);
-        QRectF sliceRect = calcSliceRect();
-        QVector2D translate(
-                mouseDirPixel.x() / sliceRect.width(),
-                mouseDirPixel.y() / sliceRect.height());
-        _currTranslate -= translate;
-        boundSliceTransform();
-        updateHistPainterRects();
+        translateEvent(QVector2D(mouseCurr - _mousePrev));
     }
 //    if (event->buttons() & Qt::RightButton)
 //        _camera->track(mouseDir);
@@ -480,33 +478,13 @@ void HistVolumePhysicalOpenGLView::mouseMoveEvent(QMouseEvent *event) {
 }
 
 void HistVolumePhysicalOpenGLView::wheelEvent(QWheelEvent *event) {
+    if (Qt::MouseEventNotSynthesized != event->source()) {
+        translateEvent(QVector2D(event->pixelDelta()));
+        update();
+        return;
+    }
     auto numDegrees = float(event->angleDelta().y()) / 8.f;
-    QVector2D cursorPos(event->posF().x(), height() - event->posF().y());
-    QVector2D widgetCenter(0.5f * width(), 0.5f * height());
-    float oldZoom = _currZoom;
-    auto oldTranslate = _currTranslate;
-    float newZoom =
-            clamp(oldZoom * (100.f + numDegrees) / 100.f,
-                _defaultZoom, calcMaxZoom());
-    // the cursor normalized position should stay the same after zooming
-    QRectF oldSliceRect = calcSliceRect(oldZoom, oldTranslate);
-    QVector2D oldSliceBotLeft(
-            oldSliceRect.left(), height() - oldSliceRect.bottom());
-    QVector2D oldCursorNormPos =
-            (cursorPos - oldSliceBotLeft)
-            / QVector2D(oldSliceRect.width(), oldSliceRect.height());
-    QRectF zoomedSliceRect = calcSliceRect(newZoom, oldTranslate);
-    QVector2D zoomedSliceSize(
-            zoomedSliceRect.width(), zoomedSliceRect.height());
-    QVector2D newSliceBotLeft = cursorPos - oldCursorNormPos * zoomedSliceSize;
-    QVector2D newTranslate = (widgetCenter - newSliceBotLeft) / zoomedSliceSize;
-    // update zoom and translate
-    _currZoom = newZoom;
-    _currTranslate = QVector2D(newTranslate.x(), newTranslate.y());
-    // bound the zoom so that it's not too big or too small
-    boundSliceTransform();
-    updateHistPainterRects();
-//    _camera->zoom(numDegrees);
+    zoomEvent((100.f + numDegrees) / 100.f, QVector2D(event->posF()));
     update();
 }
 
@@ -873,6 +851,43 @@ std::array<int, 3> HistVolumePhysicalOpenGLView::sliceIdsToHistIds(
     }
     assert(false);
     return {{-1, -1, -1}};
+}
+
+void HistVolumePhysicalOpenGLView::translateEvent(const QVector2D &delta) {
+    QRectF sliceRect = calcSliceRect();
+    QVector2D translate(
+            delta.x() / sliceRect.width(),
+            -delta.y() / sliceRect.height());
+    _currTranslate -= translate;
+    boundSliceTransform();
+    updateHistPainterRects();
+}
+
+void HistVolumePhysicalOpenGLView::zoomEvent(
+        float scale, const QVector2D &pos) {
+    QVector2D cursorPos(pos.x(), height() - pos.y());
+    QVector2D widgetCenter(0.5f * width(), 0.5f * height());
+    float oldZoom = _currZoom;
+    auto oldTranslate = _currTranslate;
+    float newZoom = clamp(oldZoom * scale, _defaultZoom, calcMaxZoom());
+    // the cursor normalized position should stay the same after zooming
+    QRectF oldSliceRect = calcSliceRect(oldZoom, oldTranslate);
+    QVector2D oldSliceBotLeft(
+            oldSliceRect.left(), height() - oldSliceRect.bottom());
+    QVector2D oldCursorNormPos =
+            (cursorPos - oldSliceBotLeft)
+            / QVector2D(oldSliceRect.width(), oldSliceRect.height());
+    QRectF zoomedSliceRect = calcSliceRect(newZoom, oldTranslate);
+    QVector2D zoomedSliceSize(
+            zoomedSliceRect.width(), zoomedSliceRect.height());
+    QVector2D newSliceBotLeft = cursorPos - oldCursorNormPos * zoomedSliceSize;
+    QVector2D newTranslate = (widgetCenter - newSliceBotLeft) / zoomedSliceSize;
+    // update zoom and translate
+    _currZoom = newZoom;
+    _currTranslate = QVector2D(newTranslate.x(), newTranslate.y());
+    // bound the zoom so that it's not too big or too small
+    boundSliceTransform();
+    updateHistPainterRects();
 }
 
 std::vector<std::array<int, 2>> HistVolumePhysicalOpenGLView::filterByCurrSlice(
