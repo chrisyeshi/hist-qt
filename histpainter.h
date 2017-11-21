@@ -76,7 +76,6 @@ public:
     void setBackgroundColor(glm::vec4 color);
 
 private:
-    static std::shared_ptr<yy::gl::program> sharedBackgroundShaderProgram();
     static std::shared_ptr<yy::gl::program> sharedBarsShaderProgram();
     static std::shared_ptr<yy::gl::program>
             sharedLineStripBordersShaderProgram();
@@ -89,7 +88,6 @@ private:
     yy::gl::render_pass _bordersRenderPass;
 
 private:
-    static const glm::vec4 _yellowBlueBackgroundColor;
     static const glm::vec4 _yellowBlueBarColor;
     static const glm::vec4 _grayScaleBackgroundColor;
     static const glm::vec4 _grayScaleBarColor;
@@ -117,7 +115,8 @@ private:
     static std::shared_ptr<yy::gl::texture> sharedYellowBlueColorMapTexture();
 
 private:
-    yy::gl::render_pass _renderPass;
+    yy::gl::render_pass _backgroundRenderPass;
+    yy::gl::render_pass _heatmapRenderPass;
 };
 
 /**

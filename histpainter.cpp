@@ -5,9 +5,37 @@
 #include <QOpenGLBuffer>
 #include <data/Histogram.h>
 
-const glm::vec4 Hist1DVBOPainter::_yellowBlueBackgroundColor = {
-    1.f, 1.f, 1.f, 1.f
-};
+namespace {
+
+std::shared_ptr<yy::gl::program> sharedBackgroundShaderProgram() {
+    static auto program = std::make_shared<yy::gl::program>(
+            yy::gl::shader::VERTEX_SHADER,
+            R"GLSL(
+                #version 330
+                uniform vec4 viewport;
+                in vec4 v_position;
+                void main() {
+                    vec2 np = v_position.xy * vec2(0.5) + vec2(0.5);
+                    vec2 pos = np * viewport.zw + viewport.xy;
+                    gl_Position = vec4(pos * vec2(2.0) - vec2(1.0), 0.0, 1.0);
+                }
+            )GLSL",
+            yy::gl::shader::FRAGMENT_SHADER,
+            R"GLSL(
+                #version 330
+                uniform vec4 color;
+                out vec4 f_color;
+                void main() {
+                    f_color = color;
+                }
+            )GLSL");
+    return program;
+}
+
+const glm::vec4 _yellowBlueBackgroundColor = {1.f, 1.f, 1.f, 1.f};
+
+} // unnamed namespace
+
 const glm::vec4 Hist1DVBOPainter::_yellowBlueBarColor = {
     51/255.f, 110/255.f, 123/255.f, 1.f
 };
@@ -104,32 +132,6 @@ void Hist1DVBOPainter::setVBO(std::shared_ptr<yy::gl::vector<float>> histVBO)
 void Hist1DVBOPainter::setBackgroundColor(glm::vec4 color)
 {
     _backgroundRenderPass.setUniform("color", color);
-}
-
-std::shared_ptr<yy::gl::program> Hist1DVBOPainter::
-        sharedBackgroundShaderProgram() {
-    static auto program = std::make_shared<yy::gl::program>(
-            yy::gl::shader::VERTEX_SHADER,
-            R"GLSL(
-                #version 330
-                uniform vec4 viewport;
-                in vec4 v_position;
-                void main() {
-                    vec2 np = v_position.xy * vec2(0.5) + vec2(0.5);
-                    vec2 pos = np * viewport.zw + viewport.xy;
-                    gl_Position = vec4(pos * vec2(2.0) - vec2(1.0), 0.0, 1.0);
-                }
-            )GLSL",
-            yy::gl::shader::FRAGMENT_SHADER,
-            R"GLSL(
-                #version 330
-                uniform vec4 color;
-                out vec4 f_color;
-                void main() {
-                    f_color = color;
-                }
-            )GLSL");
-    return program;
 }
 
 std::shared_ptr<yy::gl::program> Hist1DVBOPainter::sharedBarsShaderProgram()
@@ -342,55 +344,75 @@ std::shared_ptr<yy::gl::program>
  */
 void Hist2DTexturePainter::initialize()
 {
-    _renderPass.setProgram(sharedShaderProgram());
-    _renderPass.setVBO<glm::vec2>("v_position", {
+    // background render pass
+    _backgroundRenderPass.setProgram(sharedBackgroundShaderProgram());
+    _backgroundRenderPass.setVBO<glm::vec2>("v_position", {
         { -1.0, -1.0 },
         {  1.0, -1.0 },
         { -1.0,  1.0 },
         {  1.0,  1.0 }
     });
-    _renderPass.setDrawMode(yy::gl::render_pass::TRIANGLE_STRIP);
-    _renderPass.setFirstVertexIndex(0);
-    _renderPass.setVertexCount(4);
-    _renderPass.setUniforms(
-            "rect", glm::vec4(0.f, 0.f, 1.f, 1.f), "vMin", 0.f, "vMax", 1.f);
+    _backgroundRenderPass.setDrawMode(yy::gl::render_pass::TRIANGLE_STRIP);
+    _backgroundRenderPass.setFirstVertexIndex(0);
+    _backgroundRenderPass.setVertexCount(4);
+    _backgroundRenderPass.setUniforms("rect", glm::vec4(0.f, 0.f, 1.f, 1.f),
+            "color", _yellowBlueBackgroundColor);
+    // heatmap render pass
+    _heatmapRenderPass.setProgram(sharedShaderProgram());
+    _heatmapRenderPass.setVBO<glm::vec2>("v_position", {
+        { -1.0, -1.0 },
+        {  1.0, -1.0 },
+        { -1.0,  1.0 },
+        {  1.0,  1.0 }
+    });
+    _heatmapRenderPass.setDrawMode(yy::gl::render_pass::TRIANGLE_STRIP);
+    _heatmapRenderPass.setFirstVertexIndex(0);
+    _heatmapRenderPass.setVertexCount(4);
+    _heatmapRenderPass.setUniforms(
+            "rect", glm::vec4(0.f, 0.f, 1.f, 1.f), "viewport",
+            glm::vec4(0.f, 0.f, 1.f, 1.f), "vMin", 0.f, "vMax", 1.f);
 }
 
 void Hist2DTexturePainter::setTexture(
         std::shared_ptr<yy::gl::texture> histTexture)
 {
-    _renderPass.setTexture(histTexture, "tex", 0, yy::gl::texture::TEXTURE_2D);
+    _heatmapRenderPass.setTexture(
+            histTexture, "tex", 0, yy::gl::texture::TEXTURE_2D);
 }
 
 void Hist2DTexturePainter::setNormalizedViewport(
         float x, float y, float w, float h) {
-    /// TODO
+    _backgroundRenderPass.setUniform("viewport", glm::vec4(x, y, w, h));
+    _heatmapRenderPass.setUniform("viewport", glm::vec4(x, y, w, h));
 }
 
 void Hist2DTexturePainter::setNormalizedRect(
         float x, float y, float w, float h) {
-    _renderPass.setUniform("rect", glm::vec4(x, y, w, h));
+    _heatmapRenderPass.setUniform("rect", glm::vec4(x, y, w, h));
 }
 
 void Hist2DTexturePainter::setFreqRange(float min, float max)
 {
-    _renderPass.setUniforms("vMin", min, "vMax", max);
+    _heatmapRenderPass.setUniforms("vMin", min, "vMax", max);
 }
 
 void Hist2DTexturePainter::setColorMap(IHistPainter::ColorMapOption option)
 {
     if (IHistPainter::YELLOW_BLUE == option) {
-        _renderPass.setTexture(sharedYellowBlueColorMapTexture(), "colormap", 1,
+        _heatmapRenderPass.setTexture(
+                sharedYellowBlueColorMapTexture(), "colormap", 1,
                 yy::gl::texture::TEXTURE_1D);
     } else if (IHistPainter::GRAY_SCALE == option) {
-        _renderPass.setTexture(sharedGrayScaleColorMapTexture(), "colormap", 1,
+        _heatmapRenderPass.setTexture(
+                sharedGrayScaleColorMapTexture(), "colormap", 1,
                 yy::gl::texture::TEXTURE_1D);
     }
 }
 
 void Hist2DTexturePainter::paint()
 {
-    _renderPass.drawArrays();
+    _backgroundRenderPass.drawArrays();
+    _heatmapRenderPass.drawArrays();
 }
 
 std::shared_ptr<yy::gl::program> Hist2DTexturePainter::sharedShaderProgram()
@@ -402,10 +424,12 @@ std::shared_ptr<yy::gl::program> Hist2DTexturePainter::sharedShaderProgram()
                 uniform vec4 rect;
                 in vec4 v_position;
                 out vec2 vf_texCoord;
+                out vec2 vf_position;
                 void main() {
                     vec2 np = v_position.xy * vec2(0.5) + vec2(0.5);
                     vec2 pos = np * rect.zw + rect.xy;
-                    gl_Position = vec4(pos * vec2(2.0) - vec2(1.0), 0.0, 1.0);
+                    vf_position = pos * vec2(2.0) - vec2(1.0);
+                    gl_Position = vec4(vf_position, 0.0, 1.0);
                     vf_texCoord = v_position.xy * 0.5 + 0.5;
                 }
             )GLSL",
@@ -414,11 +438,17 @@ std::shared_ptr<yy::gl::program> Hist2DTexturePainter::sharedShaderProgram()
                 #version 330
                 uniform sampler2D tex;
                 uniform sampler1D colormap;
+                uniform vec4 viewport;
                 uniform float vMin;
                 uniform float vMax;
                 in vec2 vf_texCoord;
+                in vec2 vf_position;
                 out vec4 f_color;
                 void main() {
+                    vec4 vp = vec4(viewport.xy * 2.0 - 1.0, viewport.zw * 2.0);
+                    if (vf_position.x < vp.x || vf_position.x > vp.x + vp.z ||
+                            vf_position.y < vp.y || vf_position.y > vp.y + vp.w)
+                        discard;
                     float val = texture(tex, vf_texCoord).r;
                     float freq = log(val - vMin + 1) / log(vMax - vMin + 1);
                     f_color = texture(colormap, freq);
@@ -500,11 +530,11 @@ void Hist2DPainter::paint()
 }
 
 void Hist2DPainter::setNormalizedViewport(float x, float y, float w, float h) {
-    /// TODO
+    _painter.setNormalizedViewport(x, y, w, h);
 }
 
 void Hist2DPainter::setNormalizedRect(float x, float y, float w, float h) {
-    _painter.setNormalizedViewportAndRect(x, y, w, h);
+    _painter.setNormalizedRect(x, y, w, h);
 }
 
 void Hist2DPainter::setFreqRange(float min, float max)
