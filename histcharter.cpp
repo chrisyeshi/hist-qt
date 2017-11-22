@@ -40,7 +40,8 @@ std::shared_ptr<IHistCharter> IHistCharter::create(
  * @param histFacade
  * @param displayDims
  */
-Hist2DFacadeCharter::Hist2DFacadeCharter(std::shared_ptr<const HistFacade> histFacade,
+Hist2DFacadeCharter::Hist2DFacadeCharter(
+        std::shared_ptr<const HistFacade> histFacade,
         std::array<int, 2> displayDims, QPaintDevice *paintDevice)
   : _histFacade(histFacade)
   , _displayDims(displayDims)
@@ -49,7 +50,7 @@ Hist2DFacadeCharter::Hist2DFacadeCharter(std::shared_ptr<const HistFacade> histF
     _histPainter->initialize();
     _histPainter->setTexture(_histFacade->texture(_displayDims));
     _histPainter->setColorMap(IHistPainter::YELLOW_BLUE);
-    _histPainter->setFreqRange(0.f, 1.f);
+    _histPainter->setFreqRange(_freqRange[0], _freqRange[1]);
 }
 
 void Hist2DFacadeCharter::setSize(int width, int height, int devicePixelRatio) {
@@ -60,6 +61,8 @@ void Hist2DFacadeCharter::setSize(int width, int height, int devicePixelRatio) {
 
 void Hist2DFacadeCharter::setRange(float vMin, float vMax)
 {
+    _freqRange[0] = vMin;
+    _freqRange[1] = vMax;
     _histPainter->setFreqRange(vMin, vMax);
 }
 
@@ -87,7 +90,8 @@ std::string Hist2DFacadeCharter::setMouseHover(float x, float y)
 void Hist2DFacadeCharter::chart() {
     // histogram
     if (_histPainter) {
-        _histPainter->setNormalizedViewportAndRect(histLeft() / width(), histBottom() / height(),
+        _histPainter->setNormalizedViewportAndRect(
+                histLeft() / width(), histBottom() / height(),
                 histWidth() / width(), histHeight() / height());
         _histPainter->paint();
     }
@@ -159,8 +163,9 @@ void Hist2DFacadeCharter::chart() {
         painter.restore();
     }
     // labels
-    painter.drawText(histLeft(), height() - labelBottom(),
-            histWidth(), labelBottom(), Qt::AlignTop | Qt::AlignHCenter,
+    painter.drawText(
+            histLeft(), height() - labelBottom() - fontMetrics.height(),
+            histWidth(), fontMetrics.height(), Qt::AlignTop | Qt::AlignHCenter,
             QString::fromStdString(hist2d->var(0)));
     painter.save();
     painter.translate(0, height());
@@ -169,7 +174,37 @@ void Hist2DFacadeCharter::chart() {
             Qt::AlignBottom | Qt::AlignHCenter,
             QString::fromStdString(hist2d->var(1)));
     painter.restore();
-//    painter.paint();
+    // colormap
+    QLinearGradient colormap(colormapLeft(), colormapTop(),
+            colormapLeft() + colormapWidth(), colormapTop());
+    std::vector<glm::vec3> yellowBlue = ColormapPresets::yellowBlue();
+    for (auto iColor = 0; iColor < yellowBlue.size(); ++iColor) {
+        auto colorVector = yellowBlue[iColor];
+        QColor color(
+                colorVector.x * 255, colorVector.y * 255, colorVector.z * 255);
+        colormap.setColorAt(iColor / float(yellowBlue.size() - 1), color);
+    }
+    painter.fillRect(colormapLeft(), colormapTop(), colormapWidth(),
+            colormapHeight(), colormap);
+    painter.drawRect(colormapLeft(), colormapTop(), colormapWidth(),
+            colormapHeight());
+    // colormap labels
+    painter.drawText(
+            colormapLeft(),
+            height() - colormapBottom() + colormapBottomPadding(),
+            colormapWidth(), fontMetrics.height(),
+            Qt::AlignTop | Qt::AlignHCenter, QString("frequency"));
+    painter.drawText(
+            colormapLeft(),
+            height() - colormapBottom() + colormapBottomPadding(),
+            colormapWidth(), fontMetrics.height(), Qt::AlignTop | Qt::AlignLeft,
+            QString::number(_freqRange[0], 'g', 3));
+    painter.drawText(
+            colormapLeft(),
+            height() - colormapBottom() + colormapBottomPadding(),
+            colormapWidth(), fontMetrics.height(),
+            Qt::AlignTop | Qt::AlignRight,
+            QString::number(_freqRange[1], 'g', 3));
 }
 
 std::shared_ptr<const Hist> Hist2DFacadeCharter::hist() const {
@@ -245,7 +280,8 @@ void Hist1DFacadeCharter::chart()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     if (_histPainter) {
-        _histPainter->setNormalizedViewportAndRect(histLeft() / width(), histBottom() / height(),
+        _histPainter->setNormalizedViewportAndRect(
+                histLeft() / width(), histBottom() / height(),
                 histWidth() / width(), histHeight() / height());
         _histPainter->paint();
     }
@@ -310,8 +346,9 @@ void Hist1DFacadeCharter::chart()
                 QColor(231, 76, 60, 100));
     }
     // labels
-    painter.drawText(histLeft(), height() - labelBottom(),
-            histWidth(), labelBottom(), Qt::AlignTop | Qt::AlignHCenter,
+    painter.drawText(
+            histLeft(), height() - labelBottom() - fontMetrics.height(),
+            histWidth(), fontMetrics.height(), Qt::AlignTop | Qt::AlignHCenter,
             QString::fromStdString(hist->var(0)));
     painter.save();
     painter.translate(0, height());

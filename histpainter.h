@@ -14,6 +14,19 @@ class QOpenGLVertexArrayObject;
 class QOpenGLBuffer;
 class Hist2D;
 
+class ColormapPresets {
+public:
+    static std::vector<glm::vec3> yellowBlue() {
+        return {
+            { 255/255.0, 255/255.0, 204/255.0 },
+            { 161/255.0, 218/255.0, 180/255.0 },
+            { 65/255.0,  182/255.0, 196/255.0 },
+            { 44/255.0,  127/255.0, 184/255.0 },
+            { 37/255.0,  52/255.0,  148/255.0 }
+        };
+    }
+};
+
 /**
  * @brief The IHistPainter class
  */

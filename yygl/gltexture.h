@@ -203,6 +203,11 @@ public:
     void texImage1D(TARGET target, INTERNAL_FORMAT internalFormat,
             FORMAT format, std::initializer_list<T> initData) {
         std::vector<T> data(initData);
+        texImage1D(target, internalFormat, format, data);
+    }
+    template <typename T>
+    void texImage1D(TARGET target, INTERNAL_FORMAT internalFormat,
+            FORMAT format, const std::vector<T>& data) {
         texImage1D(target, internalFormat, data.size(), format,
                 DATA_TYPE(type_map<T>::dataType()), data.data());
     }

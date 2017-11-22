@@ -35,16 +35,22 @@ protected:
     virtual int height() const = 0;
 
 protected:
-    float labelBottom() const { return 12.f * devicePixelRatioF(); }
-    float labelLeft() const { return 12.f * devicePixelRatioF(); }
-    float histLeft() const { return 40.f * devicePixelRatioF() + labelLeft(); }
-    float histBottom() const {
-        return 40.f * devicePixelRatioF() + labelBottom();
+    virtual float labelBottom() const { return 12.f * devicePixelRatioF(); }
+    virtual float labelLeft() const { return 16.f * devicePixelRatioF(); }
+    virtual float histLeft() const {
+        return 44.f * devicePixelRatioF() + labelLeft();
     }
-    float histTop() const { return 10.f * devicePixelRatioF(); }
-    float histRight() const { return 10.f * devicePixelRatioF(); }
-    float histWidth() const { return width() - histLeft() - histRight(); }
-    float histHeight() const { return height() - histBottom() - histTop(); }
+    virtual float histBottom() const {
+        return 48.f * devicePixelRatioF() + labelBottom();
+    }
+    virtual float histTop() const { return 10.f * devicePixelRatioF(); }
+    virtual float histRight() const { return 10.f * devicePixelRatioF(); }
+    virtual float histWidth() const {
+        return width() - histLeft() - histRight();
+    }
+    virtual float histHeight() const {
+        return height() - histBottom() - histTop();
+    }
 };
 
 class HistNullCharter : public IHistCharter {
@@ -84,6 +90,20 @@ protected:
     virtual int width() const override { return _width * _devicePixelRatio; }
     virtual int height() const override { return _height * _devicePixelRatio; }
 
+protected:
+    float labelBottom() const override { return 50.f; }
+    float colormapLeft() const { return 10.f; }
+    float colormapRight() const { return 10.f; }
+    float colormapBottom() const { return 16.f; }
+    float colormapTop() const { return height() - labelBottom() + 12.f; }
+    float colormapHeight() const {
+        return height() - colormapTop() - colormapBottom();
+    }
+    float colormapWidth() const {
+        return width() - colormapLeft() - colormapRight();
+    }
+    float colormapBottomPadding() const { return 2.f; }
+
 private:
     std::shared_ptr<const Hist> hist() const;
 
@@ -94,6 +114,7 @@ private:
     QPaintDevice* _paintDevice = nullptr;
     std::shared_ptr<Hist2DTexturePainter> _histPainter;
     std::array<int, 2> _hoveredBin = {{ -1, -1 }};
+    std::array<float, 2> _freqRange = {{ 0.f, 1.f }};
 };
 
 /**
