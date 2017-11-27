@@ -205,7 +205,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
         LazyUI::instance().labeledCombo(
                 "freqRangeMethod", "Per",
                 {"Histogram", "Histogram Volume", "Histogram Slice", "Custom"},
-                FluidLayout::Item::Medium, this, [=](const QString& text) {
+                FluidLayout::Item::Large, this, [=](const QString& text) {
             if (tr("Histogram") == text) {
                 _currFreqNormPer = NormPer_Histogram;
             } else if (tr("Histogram Slice") == text) {
@@ -250,7 +250,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
         LazyUI::instance().labeledCombo(
                 "histRangeMethod", "Per",
                 {"Histogram", "Histogram Volume", "Histogram Slice", "Custom"},
-                FluidLayout::Item::Medium, this, [=](const QString& text) {
+                FluidLayout::Item::Large, this, [=](const QString& text) {
             if (tr("Histogram") == text) {
                 _currHistNormPer = NormPer_Histogram;
             } else if (tr("Histogram Slice") == text) {
@@ -690,7 +690,6 @@ void HistVolumePhysicalOpenGLView::updateCurrSlice() {
         assert(false);
     }
     delayForInit([this]() {
-        _histPainters.resize(_currSlice->nHist());
         createHistPainters();
         setHistsToHistPainters();
         setFreqRangesToHistPainters();
@@ -700,6 +699,15 @@ void HistVolumePhysicalOpenGLView::updateCurrSlice() {
 }
 
 void HistVolumePhysicalOpenGLView::createHistPainters() {
+//    // remember not to use _histPainters.size();
+//    int oldSize = _histPainters.size();
+//    int newSize = _currSlice->nHist();
+//    if (newSize > oldSize) {
+//        _histPainters.resize(newSize);
+//        for (int iHist = oldSize; iHist < newSize; ++iHist) {
+//            _histPainters[iHist] = std::make_shared<HistFacadePainter>();
+//        }
+//    }
     _histPainters.resize(_currSlice->nHist());
     for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
         _histPainters[iHist] = std::make_shared<HistFacadePainter>();

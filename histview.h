@@ -24,11 +24,14 @@ public:
 
 protected:
     virtual void paintGL() override;
+    virtual void mousePressEvent(QMouseEvent* event) override;
+    virtual void mouseReleaseEvent(QMouseEvent* event) override;
     virtual void mouseMoveEvent(QMouseEvent* event) override;
     virtual void leaveEvent(QEvent*) override;
 
 private:
     std::shared_ptr<IHistCharter> _histCharter;
+    QPointF _mousePress;
 };
 
 #endif // HISTVIEW_H

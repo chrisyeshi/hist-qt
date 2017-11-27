@@ -123,9 +123,9 @@ private:
     }
     int getMinimumWidth(Item::Size size) const {
         static QMap<Item::Size, int> sizeToWidth{
-            {Item::Large, 300},
-            {Item::Medium, 150},
-            {Item::Small, 50}
+            {Item::Large, 30 * QFontMetrics(QFont()).averageCharWidth()},
+            {Item::Medium, 15 * QFontMetrics(QFont()).averageCharWidth()},
+            {Item::Small, 10 * QFontMetrics(QFont()).averageCharWidth()}
         };
         auto width = sizeToWidth.value(size, -1);
         assert(width >= 0);

@@ -46,8 +46,15 @@ void HistView::paintGL()
     _histCharter->chart();
 }
 
-void HistView::mouseMoveEvent(QMouseEvent *event)
-{
+void HistView::mousePressEvent(QMouseEvent *event) {
+    _mousePress = event->localPos();
+}
+
+void HistView::mouseReleaseEvent(QMouseEvent *event) {
+
+}
+
+void HistView::mouseMoveEvent(QMouseEvent *event) {
     std::string label =
             _histCharter->setMouseHover(
                 event->localPos().x(), event->localPos().y());
