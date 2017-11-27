@@ -35,7 +35,7 @@ Hist* Hist::fromDenseValues(int ndim, const std::vector<int>& nbins,
         const std::vector<double>& mins, const std::vector<double>& maxs,
         const std::vector<double>& logBases,
         const std::vector<std::string>& vars,
-        const std::vector<double>& values) {
+        const std::vector<float> &values) {
     if (3 == ndim) {
         return new Hist3DFull(nbins[0], nbins[1], nbins[2], mins, maxs,
                 logBases, vars, values);
@@ -58,46 +58,46 @@ Hist *Hist::fromBuffer(bool isSparse, int ndim, const std::vector<int> &nbins,
         const std::vector<std::string> &vars, const std::vector<int> &buffer) {
     if (isSparse && ndim == 3) {
         std::vector<int> binIds;
-        std::vector<double> values;
+        std::vector<float> values;
         for (unsigned int i = 0; i < buffer.size(); i += 2) {
             binIds.push_back(buffer[i]);
-            values.push_back(double(buffer[i + 1]));
+            values.push_back(float(buffer[i + 1]));
         }
         return new Hist3DSparse(nbins[0], nbins[1], nbins[2], mins, maxs,
                 logBases, vars, binIds, values);
     }
     if (isSparse && ndim == 2) {
         std::vector<int> binIds;
-        std::vector<double> values;
+        std::vector<float> values;
         for (unsigned int i = 0; i < buffer.size(); i += 2) {
             binIds.push_back(buffer[i]);
-            values.push_back(double(buffer[i + 1]));
+            values.push_back(float(buffer[i + 1]));
         }
         return new Hist2D(nbins[0], nbins[1], mins, maxs, logBases, vars,
                 binIds, values);
     }
     if (isSparse && ndim == 1) {
         std::vector<int> binIds;
-        std::vector<double> values;
+        std::vector<float> values;
         for (unsigned int i = 0; i < buffer.size(); i += 2) {
             binIds.push_back(buffer[i]);
-            values.push_back(double(buffer[i + 1]));
+            values.push_back(float(buffer[i + 1]));
         }
         return new Hist1D(nbins[0], mins[0], maxs[0], logBases[0], vars[0],
                 binIds, values);
     }
     // dense representation
     assert(!isSparse);
-    std::vector<double> values(buffer.size());
+    std::vector<float> values(buffer.size());
     for (unsigned int i = 0; i < buffer.size(); ++i) {
-        values[i] = double(buffer[i]);
+        values[i] = float(buffer[i]);
     }
     return fromDenseValues(ndim, nbins, mins, maxs, logBases, vars, values);
 }
 
 HistBin Hist::binSum() const
 {
-    double value = 0.0;
+    float value = 0.0;
     float percent = 0.f;
     for (int iBin = 0; iBin < nBins(); ++iBin) {
         value += binFreq(iBin);
@@ -172,19 +172,19 @@ bool Hist::checkRange(
 // Hist1D
 
 Hist1D::Hist1D(int dim, double min, double max, double logBase,
-        const std::string &var, const std::vector<double> &values)
+        const std::string &var, const std::vector<float> &values)
   : Hist(1, {min}, {max}, {logBase}, {var})
   , m_values(values)
   , m_sum(0.0) {
     assert(dim == int(values.size()));
     m_dim[0] = dim;
-    for (double value : values)
+    for (float value : values)
         m_sum += value;
 }
 
 Hist1D::Hist1D(int dim, double min, double max, double logBase,
         const std::string& var, const std::vector<int> &binIds,
-        const std::vector<double> &values)
+        const std::vector<float> &values)
   : Hist(1, {min}, {max}, {logBase}, {var})
   , m_values(dim, 0.0)
   , m_sum(0.0)
@@ -205,7 +205,7 @@ Hist1D::Hist1D(int dim, double min, double max, double logBase,
 Hist2D::Hist2D(int dimx, int dimy,
         const std::vector<double> &mins, const std::vector<double> &maxs,
         const std::vector<double> &logBases, const std::vector<std::string> &vars,
-        const std::vector<double> &values)
+        const std::vector<float> &values)
   : Hist(2, mins, maxs, logBases, vars)
   , m_values(values)
   , m_sum(0.0)
@@ -213,14 +213,14 @@ Hist2D::Hist2D(int dimx, int dimy,
     assert(dimx * dimy == int(values.size()));
     m_dim[0] = dimx;
     m_dim[1] = dimy;
-    for (double value : values)
+    for (float value : values)
         m_sum += value;
 }
 
 Hist2D::Hist2D(int dimx, int dimy,
         const std::vector<double> &mins, const std::vector<double> &maxs,
         const std::vector<double> &logBases, const std::vector<std::string> &vars,
-        const std::vector<int> &binIds, const std::vector<double> &values)
+        const std::vector<int> &binIds, const std::vector<float> &values)
   : Hist(2, mins, maxs, logBases, vars)
   , m_values(dimx * dimy, 0.0)
   , m_sum(0.0)
@@ -250,7 +250,7 @@ Hist1D Hist2D::to1D(int dimidx) const
     double min = m_mins[dimidx], max = m_maxs[dimidx];
     double logBase = m_logBases[dimidx];
     std::string var = m_vars[dimidx];
-    std::vector<double> values(dimx);
+    std::vector<float> values(dimx);
     std::vector<int> binId2(2);
     for (int x = 0; x < dimx; ++x) {
         binId2[dimidx] = x;
@@ -295,7 +295,7 @@ bool Hist3D::checkRange( std::vector< std::pair< int32_t, int32_t > > binRanges,
 std::shared_ptr<Hist3D> Hist3D::create(int dimx, int dimy, int dimz,
         const std::vector<double> &mins, const std::vector<double> &maxs,
         const std::vector<double> &logBases, const std::vector<int> &binIds,
-        const std::vector<double> &values, const std::vector<std::string> &vars)
+        const std::vector<float> &values, const std::vector<std::string> &vars)
 {
     return std::make_shared<Hist3DSparse>(
             dimx, dimy, dimz, mins, maxs, logBases, vars, binIds, values);
@@ -312,7 +312,7 @@ Hist2D Hist3D::to2D(int dimidx, int dimidy) const
     std::vector<double> logBases = { m_logBases[dimidx], m_logBases[dimidy] };
     std::vector<std::string> vars = { m_vars[dimidx], m_vars[dimidy] };
 
-    std::vector<double> values(dimx * dimy, 0.0);
+    std::vector<float> values(dimx * dimy, 0.0);
     std::vector<int> binId3(3);
     for (int y = 0; y < dimy; ++y)
     for (int x = 0; x < dimx; ++x)
@@ -339,19 +339,19 @@ std::shared_ptr<Hist2D> Hist3D::to2DPtr(int dimidx, int dimidy) const
 Hist3DFull::Hist3DFull(int dimx, int dimy, int dimz,
         const std::vector<double> &mins, const std::vector<double> &maxs,
         const std::vector<double> &logBases, const std::vector<std::string>& vars,
-        const std::vector<double>& values)
+        const std::vector<float> &values)
   : Hist3D(dimx, dimy, dimz, mins, maxs, logBases, vars)
   , m_values(values)
   , m_sum(0.0)
 {
-    for (double value : values)
+    for (float value : values)
         m_sum += value;
 }
 
 std::shared_ptr<Hist> Hist3DFull::toSparse()
 {
     std::vector<int> binIds;
-    std::vector<double> values;
+    std::vector<float> values;
     for (unsigned int binId = 0; binId < m_values.size(); ++binId)
     {
         if (m_values[binId] > 0.0001)
@@ -376,13 +376,13 @@ std::shared_ptr<Hist> Hist3DFull::toSparse()
 Hist3DSparse::Hist3DSparse(int dimx, int dimy, int dimz,
         const std::vector<double> &mins, const std::vector<double> &maxs,
         const std::vector<double> &logBases, const std::vector<std::string> &vars,
-        const std::vector<int>& binIds, const std::vector<double>& values)
+        const std::vector<int>& binIds, const std::vector<float> &values)
   : Hist3D(dimx, dimy, dimz, mins, maxs, logBases, vars)
   , m_binIds(binIds)
   , m_values(values)
   , m_sum(0.0)
 {
-    for (double value : m_values)
+    for (float value : m_values)
         m_sum += value;
 }
 
@@ -406,7 +406,7 @@ bool Hist3DSparse::checkRange( std::vector< std::pair< int32_t, int32_t > > binR
 
 std::shared_ptr<Hist> Hist3DSparse::toFull()
 {
-    std::vector<double> values(m_dim[0] * m_dim[1] * m_dim[2]);
+    std::vector<float> values(m_dim[0] * m_dim[1] * m_dim[2]);
 
     /// TODO: obviously there is a faster way to do this
     for (unsigned int binId = 0; binId < values.size(); ++binId)
@@ -435,7 +435,7 @@ std::shared_ptr<Hist> Hist3DSparse::toFull()
 //    return HistBin(m_values[arrayIndex], m_values[arrayIndex] / m_sum);
 //}
 
-double Hist3DSparse::binFreq(const int flatId) const {
+float Hist3DSparse::binFreq(const int flatId) const {
     auto itr = std::find(m_binIds.begin(), m_binIds.end(), flatId);
     if (m_binIds.end() == itr) {
         return 0.0;

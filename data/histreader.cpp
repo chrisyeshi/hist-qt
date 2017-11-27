@@ -30,7 +30,7 @@ void HistDomainReaderManyFiles::read(
         std::vector<int> localBinIds(
                     binIds.begin() + offsets[iHist],
                     binIds.begin() + offsets[iHist + 1]);
-        std::vector<double> localValues(
+        std::vector<float> localValues(
                     values.begin() + offsets[iHist],
                     values.begin() + offsets[iHist + 1]);
         /// TODO: combine nbins[0], nbins[1], nbins[3]?

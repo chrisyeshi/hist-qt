@@ -178,7 +178,7 @@ int HistMerger::calcBinCount(
     /// TODO: extract these into HistBinWidthCalculator?
     if (int(_binCounts.size()) <= iDim
             || "sturges" == _binCounts[iDim]._methodName) {
-        double totalValue = 0.0;
+        float totalValue = 0.0;
         for (auto hist : hists) {
             totalValue += hist->binSum().value();
         }
@@ -281,7 +281,7 @@ std::shared_ptr<Hist> HistMerger::merge(
         return std::get<0>(rangeNBin).range() / double(std::get<1>(rangeNBin));
     }, zip(ranges, nBins));
     // put old values into new bins
-    std::vector<double> values(nBin, 0.0);
+    std::vector<float> values(nBin, 0.0);
     for (auto hist : hists) {
         std::vector<Range> histRanges = map<int, Range>([hist](int iDim) {
             return Range(hist->dimMin(iDim), hist->dimMax(iDim));
@@ -323,7 +323,7 @@ std::shared_ptr<Hist> HistMerger::merge(
                 return Range(lower + binDimId * singleBinDimRange,
                         lower + (binDimId + 1) * singleBinDimRange);
             }, zip(histRanges, histBinIds, singleHistBinRanges));
-            double value = hist->binFreq(histBinIds);
+            float value = hist->binFreq(histBinIds);
 
             // std::cout << "histBinIds[0]" << histBinRanges[0] << std::endl;
             // std::cout << "histBinIds[1]" << histBinRanges[1] << std::endl;

@@ -25,16 +25,15 @@ bool operator==(const Interval<float>& a, const Interval<float>& b);
 class HistBin
 {
 public:
-    HistBin(double value, float percent) : m_value(value), m_percent(percent) {}
+    HistBin(float value, float percent) : m_value(value), m_percent(percent) {}
     ~HistBin() {}
 
 public:
-    double value() const { return m_value; }
+    float value() const { return m_value; }
     float percent() const { return m_percent; }
 
 private:
-    /// TODO: change this to int
-    double m_value;
+    float m_value;
     float m_percent;
 };
 
@@ -49,7 +48,7 @@ public:
             const std::vector<double>& mins, const std::vector<double>& maxs,
             const std::vector<double>& logBases,
             const std::vector<std::string>& vars,
-            const std::vector<double>& values);
+            const std::vector<float>& values);
     static Hist* fromBuffer(bool isSparse, int ndim,
             const std::vector<int>& nbins,
             const std::vector<double>& mins, const std::vector<double>& maxs,
@@ -79,12 +78,12 @@ public:
 //    }
 
 
-    virtual double binFreq(const int flatId) const = 0;
-    virtual double binFreq(const std::vector<int>& ids) const {
+    virtual float binFreq(const int flatId) const = 0;
+    virtual float binFreq(const std::vector<int>& ids) const {
         return binFreq(m_dim.idstoflat(ids));
     }
     template <typename... Targs>
-    double binFreq(int currId, Targs... ids) const {
+    float binFreq(int currId, Targs... ids) const {
         return binFreq(m_dim.idstoflat(currId, ids...));
     }
     virtual float binPercent(const int flatId) const = 0;
@@ -97,10 +96,10 @@ public:
     }
 
 
-    virtual const std::vector<double>& values() const {
+    virtual const std::vector<float>& values() const {
         std::cout << "Are you sure the histogram is in dense representation?"
                   << std::endl;
-        static std::vector<double> hehe;
+        static std::vector<float> hehe;
         return hehe;
     }
     virtual HistBin binSum() const;
@@ -158,14 +157,14 @@ public:
 //    }
 //    using Hist::bin;
 
-    virtual double binFreq(const int flatId) const override { return -1.0; }
+    virtual float binFreq(const int flatId) const override { return -1.0; }
     using Hist::binFreq;
     virtual float binPercent(const int flatId) const override { return -1.f; }
     using Hist::binPercent;
 
 
-    virtual const std::vector<double>& values() const override {
-        static std::vector<double> v;
+    virtual const std::vector<float>& values() const override {
+        static std::vector<float> v;
         return v;
     }
     virtual double dimMin(int) const override {
@@ -183,10 +182,10 @@ class Hist1D : public Hist
 {
 public:
     Hist1D(int dim, double min, double max, double logBase,
-            const std::string& var, const std::vector<double>& values);
+            const std::string& var, const std::vector<float>& values);
     Hist1D(int dim, double min, double max, double logBase,
             const std::string& var, const std::vector<int>& binIds,
-            const std::vector<double>& values);
+            const std::vector<float>& values);
 
 public:
     virtual std::shared_ptr<Hist> toSparse() { return shared_from_this(); }
@@ -197,7 +196,7 @@ public:
 //    }
 //    using Hist::bin;
 
-    virtual double binFreq(const int flatId) const override {
+    virtual float binFreq(const int flatId) const override {
         return m_values[flatId];
     }
     using Hist::binFreq;
@@ -206,11 +205,11 @@ public:
     }
     using Hist::binPercent;
 
-    virtual const std::vector<double>& values() const { return m_values; }
+    virtual const std::vector<float>& values() const { return m_values; }
 
 private:
-    std::vector<double> m_values;
-    double m_sum;
+    std::vector<float> m_values;
+    float m_sum;
 };
 
 
@@ -224,12 +223,12 @@ public:
             const std::vector<double>& mins, const std::vector<double>& maxs,
             const std::vector<double>& logBases,
             const std::vector<std::string>& vars,
-            const std::vector<double>& values);
+            const std::vector<float>& values);
     Hist2D(int dimx, int dimy,
             const std::vector<double>& mins, const std::vector<double>& maxs,
             const std::vector<double>& logBases,
             const std::vector<std::string>& vars,
-            const std::vector<int>& binIds, const std::vector<double>& values);
+            const std::vector<int>& binIds, const std::vector<float>& values);
     Hist2D(Hist2D&& hist);
     virtual ~Hist2D() {}
 
@@ -244,7 +243,7 @@ public:
 //    }
 //    using Hist::bin;
 
-    virtual double binFreq(const int flatId) const override {
+    virtual float binFreq(const int flatId) const override {
         return m_values[flatId];
     }
     using Hist::binFreq;
@@ -253,13 +252,13 @@ public:
     }
     using Hist::binPercent;
 
-    virtual const std::vector<double>& values() const { return m_values; }
+    virtual const std::vector<float>& values() const { return m_values; }
     virtual bool checkRange(std::vector<std::pair<int32_t, int32_t>> binRanges,
             float threshold) const;
 
 private:
-    std::vector<double> m_values;
-    double m_sum;
+    std::vector<float> m_values;
+    float m_sum;
 };
 
 
@@ -281,7 +280,7 @@ public:
     static std::shared_ptr<Hist3D> create(int dimx, int dimy, int dimz,
             const std::vector<double>& mins, const std::vector<double>& maxs,
             const std::vector<double>& logBases, const std::vector<int>& binIds,
-            const std::vector<double>& values,
+            const std::vector<float>& values,
             const std::vector<std::string>& vars);
     virtual ~Hist3D() {}
 
@@ -304,7 +303,7 @@ public:
             const std::vector<double>& mins, const std::vector<double>& maxs,
             const std::vector<double>& logBases,
             const std::vector<std::string>& vars,
-            const std::vector<double>& values);
+            const std::vector<float>& values);
     virtual ~Hist3DFull() {}
 
 public:
@@ -314,7 +313,7 @@ public:
 //    virtual HistBin bin(const int flatId) const;
 //    using Hist3D::bin;
 
-    virtual double binFreq(const int flatId) const override {
+    virtual float binFreq(const int flatId) const override {
         return m_values[flatId];
     }
     using Hist3D::binFreq;
@@ -323,11 +322,11 @@ public:
     }
     using Hist3D::binPercent;
 
-    virtual const std::vector<double>& values() const { return m_values; }
+    virtual const std::vector<float>& values() const { return m_values; }
 
 private:
-    std::vector<double> m_values;
-    int m_sum;
+    std::vector<float> m_values;
+    float m_sum;
 };
 
 
@@ -341,7 +340,7 @@ public:
             const std::vector<double>& mins, const std::vector<double>& maxs,
             const std::vector<double>& logBases,
             const std::vector<std::string>& vars,
-            const std::vector<int>& binIds, const std::vector<double>& values);
+            const std::vector<int>& binIds, const std::vector<float>& values);
     virtual ~Hist3DSparse() {}
 
 public:
@@ -353,7 +352,7 @@ public:
 //    virtual HistBin bin(const int flatId) const;
 //    using Hist3D::bin;
 
-    virtual double binFreq(const int flatId) const override;
+    virtual float binFreq(const int flatId) const override;
     using Hist3D::binFreq;
     virtual float binPercent(const int flatId) const override {
         return binFreq(flatId) / m_sum;
@@ -362,8 +361,8 @@ public:
 
 private:
     std::vector<int> m_binIds;
-    std::vector<double> m_values;
-    double m_sum;
+    std::vector<float> m_values;
+    float m_sum;
 };
 
 
