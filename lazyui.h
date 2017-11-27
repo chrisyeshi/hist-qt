@@ -52,7 +52,7 @@ public:
                 iCell = nCells;
             }
         }
-        return (iLine + 1) * 35 + iLine * spacing() + 2 * margin();
+        return (iLine + 1) * lineHeight + iLine * spacing() + 2 * margin() + 10;
     }
     virtual QSize sizeHint() const override {
         return minimumSize();
@@ -91,7 +91,6 @@ private:
             QLayoutItem* item = itemHolder.layoutItem;
             int nCells =
                     getNumberOfCells(effectiveRect.size(), itemHolder.size);
-//            qDebug() << iLine << iCell << nCells;
             if (iCell + nCells <= nCellsPerLine) {
                 item->setGeometry(getRect(effectiveRect, iLine, iCell, nCells));
                 iCell += nCells;
@@ -155,8 +154,6 @@ private:
     }
     QRect getRect(const QRect& effectiveRect, int iLine, int iCell,
             int nCells) const {
-        /// TODO: use dynamic height.
-        const int lineHeight = 35;
         float lineWidthWithoutSpacing =
                 effectiveRect.width() - (nCellsPerLine - 1) * spacing();
         float singleCellWidth = lineWidthWithoutSpacing / nCellsPerLine;
@@ -172,6 +169,7 @@ private:
     }
 
 private:
+    const int lineHeight = 50;
     const int nCellsPerLine = 12;
     const int minimumCellCount = 1;
     QList<Item> _items;
@@ -185,13 +183,23 @@ class LabeledWidget : public QWidget {
 public:
     LabeledWidget(QString text = tr(""), QWidget* parent = nullptr)
           : QWidget(parent) {
+        auto setWidgetWindowTextColor =
+                [](QWidget* widget, const QColor& color) {
+            auto palette = widget->palette();
+            palette.setColor(QPalette::WindowText, color);
+            palette.setColor(QPalette::ButtonText, color);
+            palette.setColor(QPalette::Text, color);
+            widget->setPalette(palette);
+        };
         QVBoxLayout* layout = new QVBoxLayout(this);
         layout->setMargin(0);
-        layout->setSpacing(0);
-        QLabel* label = new QLabel(text ,this);
+        layout->setSpacing(5);
+        QLabel* label = new QLabel(text, this);
+        setWidgetWindowTextColor(label, QColor(40, 40, 40));
         label->setAlignment(Qt::AlignBottom | Qt::AlignLeft);
         layout->addWidget(label);
         _widget = new T(this);
+        setWidgetWindowTextColor(_widget, QColor(80, 80, 80));
         layout->addWidget(_widget);
     }
 
@@ -209,21 +217,17 @@ class LazyPanel : public QWidget {
     Q_OBJECT
 public:
     LazyPanel(QWidget* parent = nullptr) : QWidget(parent) {
-//        _layout = new QVBoxLayout(this);
         _layout = new FluidLayout(this);
         _layout->setMargin(0);
         _layout->setSpacing(5);
-//        _layout->addStretch(1);
     }
 
 public:
     void addWidget(QWidget* widget, FluidLayout::Item::Size size) {
-//        _layout->insertWidget(_layout->count() - 1, widget);
         _layout->addWidget(widget, size);
     }
 
 private:
-//    QVBoxLayout* _layout = nullptr;
     FluidLayout* _layout = nullptr;
 };
 
@@ -299,6 +303,12 @@ public:
     void labeledCombo(QString key, const QString& label,
             const QStringList& items, FluidLayout::Item::Size size,
             QObject* context, std::function<void(const QString&)> func) {
+        labeledCombo(key, label, items, items.at(0), size, context, func);
+    }
+    void labeledCombo(QString key, const QString& label,
+            const QStringList& items, const QString& select,
+            FluidLayout::Item::Size size, QObject* context,
+            std::function<void(const QString&)> func) {
         if (!_widgets.contains(key)) {
             auto labeledCombo = new LabeledWidget<QComboBox>(label);
             _panel->addWidget(labeledCombo, size);
@@ -309,6 +319,7 @@ public:
         combo->blockSignals(true);
         combo->clear();
         combo->addItems(items);
+        combo->setCurrentText(select);
         combo->blockSignals(false);
         disconnect(combo, nullptr, context, nullptr);
         connect(combo, &QComboBox::currentTextChanged, context, func);
@@ -363,6 +374,18 @@ public:
         QLineEdit* lineEdit = labeledLineEdit->widget();
         disconnect(lineEdit, nullptr, context, nullptr);
         connect(lineEdit, &QLineEdit::textEdited, context, func);
+    }
+
+    void sectionHeader(QString key, const QString& text) {
+        if (!_widgets.contains(key)) {
+            auto header = new LabeledWidget<QFrame>(text);
+            QFrame* divider = header->widget();
+            divider->setFrameShape(QFrame::HLine);
+            divider->setLineWidth(2);
+            divider->setFrameShadow(QFrame::Plain);
+            _panel->addWidget(header, FluidLayout::Item::FullLine);
+            _widgets[key] = header;
+        }
     }
 
 private:

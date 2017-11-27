@@ -202,7 +202,7 @@ int HistMerger::calcBinCount(
             double binRange = histRange / hist1d->dim()[0];
             for (int iBin = 0; iBin < hist1d->dim()[0]; ++iBin) {
                 double key = iBin * binRange + 0.5 * binRange;
-                double value = hist1d->bin(iBin).value();
+                double value = hist1d->binFreq(iBin);
                 if (0 == accumulated.count(key))
                     accumulated[key] = 0.0;
                 accumulated[key] += value;
@@ -323,7 +323,7 @@ std::shared_ptr<Hist> HistMerger::merge(
                 return Range(lower + binDimId * singleBinDimRange,
                         lower + (binDimId + 1) * singleBinDimRange);
             }, zip(histRanges, histBinIds, singleHistBinRanges));
-            double value = hist->bin(histBinIds).value();
+            double value = hist->binFreq(histBinIds);
 
             // std::cout << "histBinIds[0]" << histBinRanges[0] << std::endl;
             // std::cout << "histBinIds[1]" << histBinRanges[1] << std::endl;

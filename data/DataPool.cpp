@@ -81,12 +81,12 @@ void DataLoader::processQueue()
     while (!_queue.empty()) {
         _queueMutex.lock();
         auto histVolumeId = _queue[0];
+        _queue.erase(_queue.begin());
+        _queueMutex.unlock();
 //        std::cout << histVolumeId.first << " : " << histVolumeId.second
 //                << std::endl;
         auto histVolume = load(histVolumeId);
         emit histVolumeLoaded(histVolumeId, histVolume);
-        _queue.erase(_queue.begin());
-        _queueMutex.unlock();
     }
     _isLoading = false;
 }
@@ -412,8 +412,7 @@ void DataPool::histVolumeLoaded(DataLoader::HistVolumeId histVolumeId,
     this->step(stepId)->setVolume(name, histVolume);
 }
 
-void DataPool::loadHistVolume(DataLoader::HistVolumeId histVolumeId)
-{
+void DataPool::loadHistVolume(DataLoader::HistVolumeId histVolumeId) {
     int stepId = histVolumeId.first;
     std::string name = histVolumeId.second;
 
@@ -424,27 +423,30 @@ void DataPool::loadHistVolume(DataLoader::HistVolumeId histVolumeId)
     assert(histVol);
     this->step(stepId)->setVolume(name, histVol);
 
-    int bufferRadius = 5;
-    // remove steps that are too far away from the selected step
-    for (int iStep = 0; iStep < stepId - bufferRadius; ++iStep) {
-        m_data[iStep] = nullptr;
-    }
-    for (int iStep = stepId + bufferRadius + 1; iStep < m_timeSteps.nSteps();
-            ++iStep) {
-        m_data[iStep] = nullptr;
-    }
-    // preload nearby steps of the same volume name
-    for (int iStep = std::max(stepId - bufferRadius, 0);
-            iStep <= std::min(stepId + bufferRadius, m_timeSteps.nSteps() - 1);
-            ++iStep) {
-        if (!this->step(iStep)->dumbVolume(name))
-            m_dataLoader->asyncLoad({ iStep, name });
-    }
-    // preload different volumes in the same step
-    for (auto histConfig : m_histConfigs) {
-        if (!this->step(stepId)->dumbVolume(histConfig.name()))
-            m_dataLoader->asyncLoad({ stepId, histConfig.name() });
-    }
+    QTimer::singleShot(0, this, [=]() {
+        int bufferRadius = 5;
+        // remove steps that are too far away from the selected step
+        for (int iStep = 0; iStep < stepId - bufferRadius; ++iStep) {
+            m_data[iStep] = nullptr;
+        }
+        for (int iStep = stepId + bufferRadius + 1;
+                iStep < m_timeSteps.nSteps(); ++iStep) {
+            m_data[iStep] = nullptr;
+        }
+        // preload nearby steps of the same volume name
+        for (int iStep = std::max(stepId - bufferRadius, 0);
+                iStep <=
+                    std::min(stepId + bufferRadius, m_timeSteps.nSteps() - 1);
+                ++iStep) {
+            if (!this->step(iStep)->dumbVolume(name))
+                m_dataLoader->asyncLoad({ iStep, name });
+        }
+        // preload different volumes in the same step
+        for (auto histConfig : m_histConfigs) {
+            if (!this->step(stepId)->dumbVolume(histConfig.name()))
+                m_dataLoader->asyncLoad({ stepId, histConfig.name() });
+        }
+    });
 
 //    for (auto histConfig : m_histConfigs) {
 //        if (!m_data[stepId])

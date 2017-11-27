@@ -22,7 +22,7 @@ float calcAverage(std::shared_ptr<const Hist1D> hist) {
                 (hist->dimMax(0) - hist->dimMin(0)) / hist->nBins();
         double beginBinValue = 0.5 * deltaBinValue;
         double binValue = beginBinValue + iBin * deltaBinValue;
-        double frequency = hist->bin(iBin).value();
+        double frequency = hist->binFreq(iBin);
         sum += binValue * frequency;
     }
     return sum / hist->nBins();
@@ -50,6 +50,21 @@ QMap<QString, std::vector<int>> getVarsToDims(const HistConfig& config) {
         varsToDims.insert(str, {i, j});
     }
     return varsToDims;
+}
+
+QMap<std::vector<int>, QString> getDimsToVars(const HistConfig& config) {
+    QMap<std::vector<int>, QString> dimsToVars;
+    for (int i = 0; i < int(config.vars.size()); ++i) {
+        QString str = QString::fromStdString(config.vars[i]);
+        dimsToVars.insert({i}, str);
+    }
+    for (int i = 0; i < int(config.vars.size()); ++i)
+    for (int j = i + 1; j < int(config.vars.size()); ++j) {
+        QString str =
+                QString::fromStdString(config.vars[i] + "-" + config.vars[j]);
+        dimsToVars.insert({i, j}, str);
+    }
+    return dimsToVars;
 }
 
 QStringList getHistDimVars(const HistConfig& config) {
@@ -135,6 +150,7 @@ void HistVolumePhysicalView::setHistConfigs(std::vector<HistConfig> configs) {
     _histConfigs = configs;
     _currHistConfigId = 0;
     _histDims = {0};
+    LazyUI::instance().sectionHeader("histConfigHeader", "Histogram Configs");
     LazyUI::instance().labeledCombo(
             tr("histVolume"), tr("Histogram Volumes"),
             getHistConfigNames(_histConfigs), FluidLayout::Item::Large, this,
@@ -182,12 +198,14 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             _currSliceId = _defaultSliceId;
             updateSliceIdScrollBar();
             updateCurrSlice();
+            render();
             update();
         });
+        LazyUI::instance().sectionHeader("freqHeader", "Frequency Range");
         LazyUI::instance().labeledCombo(
-                "freqRangeMethod", "Frequency Range Per",
+                "freqRangeMethod", "Per",
                 {"Histogram", "Histogram Volume", "Histogram Slice", "Custom"},
-                FluidLayout::Item::Large, this, [=](const QString& text) {
+                FluidLayout::Item::Medium, this, [=](const QString& text) {
             if (tr("Histogram") == text) {
                 _currFreqNormPer = NormPer_Histogram;
             } else if (tr("Histogram Slice") == text) {
@@ -205,30 +223,34 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
                     "freqRangeMin", QString::number(_currFreqRange[0]));
             LazyUI::instance().labeledLineEdit(
                     "freqRangeMax", QString::number(_currFreqRange[1]));
+            render();
             update();
         });
-        LazyUI::instance().labeledLineEdit("freqRangeMin", "Frequency Minimum",
+        LazyUI::instance().labeledLineEdit("freqRangeMin", "Minimum",
                 "nan", FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
             _currFreqNormPer = NormPer_Custom;
             LazyUI::instance().labeledCombo("freqRangeMethod", "Custom");
             _currFreqRange[0] = text.toDouble();
             setFreqRangesToHistPainters(_currFreqRange);
+            render();
             update();
         });
-        LazyUI::instance().labeledLineEdit("freqRangeMax", "Frequency Maximum",
+        LazyUI::instance().labeledLineEdit("freqRangeMax", "Maximum",
                 "nan", FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
             _currFreqNormPer = NormPer_Custom;
             LazyUI::instance().labeledCombo("freqRangeMethod", "Custom");
             _currFreqRange[1] = text.toDouble();
             setFreqRangesToHistPainters(_currFreqRange);
+            render();
             update();
         });
+        LazyUI::instance().sectionHeader("histHeader", "Histogram Ranges");
         LazyUI::instance().labeledCombo(
-                "histRangeMethod", "Histogram Range Per",
+                "histRangeMethod", "Per",
                 {"Histogram", "Histogram Volume", "Histogram Slice", "Custom"},
-                FluidLayout::Item::Large, this, [=](const QString& text) {
+                FluidLayout::Item::Medium, this, [=](const QString& text) {
             if (tr("Histogram") == text) {
                 _currHistNormPer = NormPer_Histogram;
             } else if (tr("Histogram Slice") == text) {
@@ -250,53 +272,58 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
                     "histRange2Min", QString::number(_currHistRanges[1][0]));
             LazyUI::instance().labeledLineEdit(
                     "histRange2Max", QString::number(_currHistRanges[1][1]));
+            render();
             update();
         });
         LazyUI::instance().labeledLineEdit(
-                "histRange1Min", "Histogram X Minimum",
+                "histRange1Min", "X Minimum",
                 tr("nan"), FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
             _currHistNormPer = NormPer_Custom;
             LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
             _currHistRanges[0][0] = text.toDouble();
             setHistRangesToHistPainters(_currHistRanges);
+            render();
             update();
         });
         LazyUI::instance().labeledLineEdit(
-                "histRange1Max", "Histogram X Maximum",
+                "histRange1Max", "X Maximum",
                 tr("nan"), FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
             _currHistNormPer = NormPer_Custom;
             LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
             _currHistRanges[0][1] = text.toDouble();
             setHistRangesToHistPainters(_currHistRanges);
+            render();
             update();
         });
         LazyUI::instance().labeledLineEdit(
-                "histRange2Min", "Histogram Y Minimum",
+                "histRange2Min", "Y Minimum",
                 tr("nan"), FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
             _currHistNormPer = NormPer_Custom;
             LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
             _currHistRanges[1][0] = text.toDouble();
             setHistRangesToHistPainters(_currHistRanges);
+            render();
             update();
         });
         LazyUI::instance().labeledLineEdit(
-                "histRange2Max", "Histogram Y Maximum",
+                "histRange2Max", "Y Maximum",
                 tr("nan"), FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
             _currHistNormPer = NormPer_Custom;
             LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
             _currHistRanges[1][1] = text.toDouble();
             setHistRangesToHistPainters(_currHistRanges);
+            render();
             update();
         });
     });
 
     delayForInit([this]() {
-//        glClearColor(0.9f, 0.9f, 0.9f, 0.9f);
         glClearColor(0.8f, 0.8f, 0.8f, 0.8f);
+        _histSliceFbo = createWidgetSizeFbo();
 //        _volren =
 //                yy::volren::VolRenFactory::create(
 //                    yy::volren::Method_Raycast_GL);
@@ -307,13 +334,16 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
 void HistVolumePhysicalOpenGLView::setHistVolume(
         HistConfig histConfig,
         std::shared_ptr<HistFacadeVolume> histVolume) {
+    if (_histConfig != histConfig) {
+        _histConfig = histConfig;
+        _currDims = _defaultDims;
+        _currSliceId = _defaultSliceId;
+    }
     _histVolume = histVolume;
-    _currDims = _defaultDims;
-    _currSliceId = _defaultSliceId;
     LazyUI::instance().labeledCombo(
             tr("histVar"), tr("Histogram Variables"),
-            getHistDimVars(histConfig), FluidLayout::Item::Large, this,
-            [=](const QString& text) {
+            getHistDimVars(histConfig), getDimsToVars(_histConfig)[_currDims],
+            FluidLayout::Item::Large, this, [=](const QString& text) {
         auto varsToDims = getVarsToDims(histConfig);
         std::vector<int> dims = varsToDims[text];
         assert(!dims.empty());
@@ -322,6 +352,7 @@ void HistVolumePhysicalOpenGLView::setHistVolume(
         emitSelectedHistsChanged();
         updateSliceIdScrollBar();
         updateCurrSlice();
+        render();
         update();
     });
     updateSliceIdScrollBar();
@@ -329,6 +360,7 @@ void HistVolumePhysicalOpenGLView::setHistVolume(
     emitSelectedHistsChanged();
     delayForInit([this]() {
         updateCurrSlice();
+        render();
     });
 }
 
@@ -338,6 +370,13 @@ void HistVolumePhysicalOpenGLView::resizeGL(int w, int h) {
     }
     boundSliceTransform();
     updateHistPainterRects();
+    QTimer::singleShot(0, this, [this]() {
+        delayForInit([this]() {
+            _histSliceFbo = createWidgetSizeFbo();
+        });
+        render();
+        update();
+    });
 //    _camera->setAspectRatio(float(w) / float(h));
 //    _volren->resize(w, h);
 }
@@ -346,9 +385,8 @@ void HistVolumePhysicalOpenGLView::paintGL() {
     if (!_histVolume) {
         return;
     }
-    for (auto painter : _histPainters) {
-        painter->paint();
-    }
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    QOpenGLFramebufferObject::blitFramebuffer(nullptr, _histSliceFbo.get());
     // hovered histogram
     if (isHistSliceIdsValid(_hoveredHistSliceIds)) {
         Painter painter(this);
@@ -381,6 +419,7 @@ bool HistVolumePhysicalOpenGLView::event(QEvent *event) {
             gestureEvent->accept();
             QPinchGesture* pinch = static_cast<QPinchGesture*>(gesture);
             zoomEvent(pinch->scaleFactor(), QVector2D(pinch->centerPoint()));
+            render();
             update();
             return true;
         }
@@ -464,6 +503,7 @@ void HistVolumePhysicalOpenGLView::mouseMoveEvent(QMouseEvent *event) {
     if (event->buttons() & Qt::LeftButton) {
         //        _camera->orbit(mouseDir);
         translateEvent(QVector2D(mouseCurr - _mousePrev));
+        render();
     }
 //    if (event->buttons() & Qt::RightButton)
 //        _camera->track(mouseDir);
@@ -480,11 +520,13 @@ void HistVolumePhysicalOpenGLView::mouseMoveEvent(QMouseEvent *event) {
 void HistVolumePhysicalOpenGLView::wheelEvent(QWheelEvent *event) {
     if (Qt::MouseEventNotSynthesized != event->source()) {
         translateEvent(QVector2D(event->pixelDelta()));
+        render();
         update();
         return;
     }
     auto numDegrees = float(event->angleDelta().y()) / 8.f;
     zoomEvent((100.f + numDegrees) / 100.f, QVector2D(event->posF()));
+    render();
     update();
 }
 
@@ -494,6 +536,18 @@ void HistVolumePhysicalOpenGLView::enterEvent(QEvent *) {
 void HistVolumePhysicalOpenGLView::leaveEvent(QEvent *) {
     _hoveredHistSliceIds = {{-1, -1}};
     update();
+}
+
+void HistVolumePhysicalOpenGLView::render() {
+    delayForInit([this]() {
+        _histSliceFbo->bind();
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glViewport(0, 0, _histSliceFbo->width(), _histSliceFbo->height());
+        for (auto painter : _histPainters) {
+            painter->paint();
+        }
+        _histSliceFbo->release();
+    });
 }
 
 QRectF HistVolumePhysicalOpenGLView::calcDefaultSliceRect() const {
@@ -771,6 +825,7 @@ void HistVolumePhysicalOpenGLView::updateSliceIdScrollBar() {
             [this](int value) {
         _currSliceId = value;
         updateCurrSlice();
+        render();
         update();
     });
 }
@@ -888,6 +943,14 @@ void HistVolumePhysicalOpenGLView::zoomEvent(
     // bound the zoom so that it's not too big or too small
     boundSliceTransform();
     updateHistPainterRects();
+}
+
+std::shared_ptr<QOpenGLFramebufferObject>
+        HistVolumePhysicalOpenGLView::createWidgetSizeFbo() const {
+    QOpenGLFramebufferObjectFormat format;
+    format.setSamples(16);
+    return std::make_shared<QOpenGLFramebufferObject>(
+        this->size() * this->devicePixelRatio(), format);
 }
 
 std::vector<std::array<int, 2>> HistVolumePhysicalOpenGLView::filterByCurrSlice(

@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <cassert>
 #include <cmath>
+#include <algorithm>
 #include "histreader.h"
 
 bool operator==(const Interval<float> &a, const Interval<float> &b)
@@ -20,11 +21,9 @@ std::ostream& operator<<(std::ostream& out, const Hist& hist)
     assert(hist.nDim() > 0);
     int ix = 0;
     std::cout << "nBins = " << hist.nBins() << std::endl;
-    for (int flatId = 0; flatId < hist.nBins(); ++flatId)
-    {
-        out << std::setw(4) << hist.bin(flatId).value() << " ";
-        if (++ix >= hist.dim()[0])
-        {
+    for (int flatId = 0; flatId < hist.nBins(); ++flatId) {
+        out << std::setw(4) << hist.binFreq(flatId) << " ";
+        if (++ix >= hist.dim()[0]) {
             ix = 0;
             out << std::endl;
         }
@@ -101,8 +100,8 @@ HistBin Hist::binSum() const
     double value = 0.0;
     float percent = 0.f;
     for (int iBin = 0; iBin < nBins(); ++iBin) {
-        value += bin(iBin).value();
-        value += bin(iBin).percent();
+        value += binFreq(iBin);
+        percent += binPercent(iBin);
     }
     return HistBin(value, percent);
 }
@@ -125,16 +124,14 @@ HistBin Hist::binSum(std::vector<std::pair<int, int> > binRanges) const
     double value = 0.0;
     float percent = 0.f;
     std::vector<int> incs(binRanges.size(), 0);
-    for (int iBin = 0; iBin < nBin; ++iBin)
-    {
-        value += bin(iBins).value();
-        percent += bin(iBins).percent();
+    for (int iBin = 0; iBin < nBin; ++iBin) {
+        value += binFreq(iBins);
+        percent += binPercent(iBins);
         // increment (so complicating... Orz)
         std::fill(incs.begin(), incs.end(), 0);
         incs[0] = 1;
 
-        for (int iDim = 0; iDim < BIN_RANGE_SZ - 1; ++iDim)
-        {
+        for (int iDim = 0; iDim < BIN_RANGE_SZ - 1; ++iDim) {
             incs[iDim + 1] =
                     (iBins[iDim] + incs[iDim] - binRanges[iDim].first) /
                     (nBins[iDim]);
@@ -250,7 +247,8 @@ Hist1D Hist2D::to1D(int dimidx) const
     int dimidy = 1 - dimidx;
     int dimx = m_dim[dimidx];
     int dimy = m_dim[dimidy];
-    double min = m_mins[dimidx], max = m_maxs[dimidx], logBase = m_logBases[dimidx];
+    double min = m_mins[dimidx], max = m_maxs[dimidx];
+    double logBase = m_logBases[dimidx];
     std::string var = m_vars[dimidx];
     std::vector<double> values(dimx);
     std::vector<int> binId2(2);
@@ -258,11 +256,10 @@ Hist1D Hist2D::to1D(int dimidx) const
         binId2[dimidx] = x;
         for (int y = 0; y < dimy; ++y) {
             binId2[dimidy] = y;
-            values[x] += bin(binId2).value();
+            values[x] += binFreq(binId2);
         }
     }
     return Hist1D(dimx, min, max, logBase, var, values);
-
 }
 
 std::shared_ptr<Hist1D> Hist2D::to1DPtr(int dimidx) const
@@ -270,17 +267,13 @@ std::shared_ptr<Hist1D> Hist2D::to1DPtr(int dimidx) const
     return std::make_shared<Hist1D>(to1D(dimidx));
 }
 
-bool Hist2D::checkRange( std::vector< std::pair< int32_t, int32_t > > binRanges, float threshold ) const
-{
+bool Hist2D::checkRange(std::vector<std::pair<int32_t, int32_t>> binRanges,
+        float threshold) const {
     float sum = 0;
-    for( int xI = binRanges[ 0 ].first; xI <= binRanges[ 0 ].second; ++xI )
-    {
-        for( int yI = binRanges[ 1 ].first; yI <= binRanges[ 1 ].second; ++yI )
-        {
-            sum += Hist::bin( std::vector< int >( { xI, yI } ) ).percent();
-        }
+    for(int xI = binRanges[0].first; xI <= binRanges[0].second; ++xI)
+    for(int yI = binRanges[1].first; yI <= binRanges[1].second; ++yI ) {
+        sum += binPercent(xI, yI);
     }
-
     return sum*100 >= threshold;
 }
 
@@ -291,15 +284,10 @@ bool Hist2D::checkRange( std::vector< std::pair< int32_t, int32_t > > binRanges,
 bool Hist3D::checkRange( std::vector< std::pair< int32_t, int32_t > > binRanges, float threshold ) const
 {
     float sum = 0;
-    for( int xI = binRanges[ 0 ].first; xI <= binRanges[ 0 ].second; ++xI )
-    {
-        for( int yI = binRanges[ 1 ].first; yI <= binRanges[ 1 ].second; ++yI )
-        {
-            for( int zI = binRanges[ 2 ].first; zI <= binRanges[ 2 ].second; ++zI )
-            {
-                sum += bin(xI, yI, zI).percent();
-            }
-        }
+    for(int xI = binRanges[0].first; xI <= binRanges[0].second; ++xI)
+    for(int yI = binRanges[1].first; yI <= binRanges[1].second; ++yI)
+    for(int zI = binRanges[2].first; zI <= binRanges[2].second; ++zI) {
+        sum += binPercent(xI, yI, zI);
     }
     return sum*100 >= threshold;
 }
@@ -335,7 +323,7 @@ Hist2D Hist3D::to2D(int dimidx, int dimidy) const
         for (int z = 0; z < dimz; ++z)
         {
             binId3[dimidz] = z;
-            values[flatId] += bin(binId3).value();
+            values[flatId] += binFreq(binId3);
         }
     }
 
@@ -375,11 +363,11 @@ std::shared_ptr<Hist> Hist3DFull::toSparse()
     return std::make_shared<Hist3DSparse>(m_dim[0], m_dim[1], m_dim[2], m_mins, m_maxs, m_logBases, m_vars, binIds, values);
 }
 
-HistBin Hist3DFull::bin(const int flatId) const
-{
-    assert(flatId < int(m_values.size()));
-    return HistBin(m_values[flatId], float(m_values[flatId]) / float(m_sum));
-}
+//HistBin Hist3DFull::bin(const int flatId) const
+//{
+//    assert(flatId < int(m_values.size()));
+//    return HistBin(m_values[flatId], float(m_values[flatId]) / float(m_sum));
+//}
 
 
 
@@ -422,29 +410,37 @@ std::shared_ptr<Hist> Hist3DSparse::toFull()
 
     /// TODO: obviously there is a faster way to do this
     for (unsigned int binId = 0; binId < values.size(); ++binId)
-        values[binId] = bin(binId).value();
+        values[binId] = binFreq(binId);
 
     return std::make_shared<Hist3DFull>(
             m_dim[0], m_dim[1], m_dim[2], m_mins, m_maxs, m_logBases, m_vars, values);
 }
 
-HistBin Hist3DSparse::bin(const int flatId) const
-{
-    // find if the bin has anything
-    int arrayIndex = -1;
-    for (unsigned int i = 0; i < m_binIds.size(); ++i)
-    {
-        if (flatId == m_binIds[i])
-        {
-            arrayIndex = i;
-            break;
-        }
+//HistBin Hist3DSparse::bin(const int flatId) const
+//{
+//    // find if the bin has anything
+//    int arrayIndex = -1;
+//    for (unsigned int i = 0; i < m_binIds.size(); ++i)
+//    {
+//        if (flatId == m_binIds[i])
+//        {
+//            arrayIndex = i;
+//            break;
+//        }
+//    }
+//    // id not found
+//    if (-1 == arrayIndex)
+//        return HistBin(0.0, 0.f);
+//    // id found
+//    return HistBin(m_values[arrayIndex], m_values[arrayIndex] / m_sum);
+//}
+
+double Hist3DSparse::binFreq(const int flatId) const {
+    auto itr = std::find(m_binIds.begin(), m_binIds.end(), flatId);
+    if (m_binIds.end() == itr) {
+        return 0.0;
     }
-    // id not found
-    if (-1 == arrayIndex)
-        return HistBin(0.0, 0.f);
-    // id found
-    return HistBin(m_values[arrayIndex], m_values[arrayIndex] / m_sum);
+    return *itr;
 }
 
 std::shared_ptr<const Hist> HistCollapser::collapseTo(

@@ -4,6 +4,10 @@
 
 void HistFacadePainter::paint()
 {
+    if (_left > 1.f || _bottom > 1.f || _left + _width < 0.f
+            || _bottom + _height < 0.f) {
+        return;
+    }
     _painter->setNormalizedViewport(_left, _bottom, _width, _height);
     setPainterNormalizedRect(_painter, normalizedRect());
     _painter->setFreqRange(_min, _max);

@@ -79,7 +79,7 @@ void Hist1DVBOPainter::initialize()
     _bordersRenderPass.setUniforms(
             "viewport", glm::vec4(0.f, 0.f, 1.f, 1.f),
             "rect", glm::vec4(0.f, 0.f, 1.f, 1.f), "vMin", 0.f, "vMax", 1.f,
-            "thickness", 0.005f);
+            "thickness", 0.1f);
 }
 
 void Hist1DVBOPainter::paint()
@@ -221,7 +221,6 @@ std::shared_ptr<yy::gl::program>
                 uniform vec4 rect;
                 uniform float vMin, vMax;
                 uniform float nBins;
-                uniform float thickness;
                 layout(points) in;
                 layout(line_strip, max_vertices = 4) out;
                 in float vg_freq[];
@@ -296,7 +295,7 @@ std::shared_ptr<yy::gl::program>
                 out vec2 gf_position;
                 void main() {
                     float normValue = (vg_freq[0] - vMin) / (vMax - vMin);
-                    float t = 0.5 * thickness * viewport.z;
+                    float t = 0.5 * thickness * rect.z / nBins;
                     float w = rect.z * 2.0 / nBins;
                     float h = max(t, rect.w * 0.9 * normValue * 2.0);
                     float x = rect.x * 2.0 - 1.0 + vg_vertexID[0] * w;

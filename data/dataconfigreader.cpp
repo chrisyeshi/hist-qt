@@ -128,6 +128,17 @@ bool HistConfig::load(std::istream &in)
     return true;
 }
 
+bool operator==(const HistConfig &a, const HistConfig &b) {
+    return a.nDim == b.nDim && a.vars == b.vars
+            && a.rangeMethods == b.rangeMethods && a.nBins == b.nBins
+            && a.mins == b.mins && a.maxs == b.maxs;
+}
+
+bool operator!=(const HistConfig &a, const HistConfig &b) {
+    return !(a == b);
+}
+
+
 /**
  * @brief S3DDataConfigReader::S3DDataConfigReader
  * @param dir

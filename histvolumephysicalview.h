@@ -3,7 +3,9 @@
 
 #include <histvolumeview.h>
 #include <openglwidget.h>
+#include <QOpenGLFramebufferObject>
 #include <yygl/gltexture.h>
+#include <yygl/glrenderpass.h>
 #include <volren/volume/volumegl.h>
 #include <volren/volren.h>
 #include <camera.h>
@@ -76,6 +78,7 @@ protected:
     void leaveEvent(QEvent *);
 
 private:
+    void render();
     int sw() const { return width(); }
     int sh() const { return height(); }
     int swf() const { return width(); }
@@ -110,6 +113,7 @@ private:
     std::array<int, 3> sliceIdsToHistIds(std::array<int, 2> histSliceIds);
     void translateEvent(const QVector2D& delta);
     void zoomEvent(float scale, const QVector2D& pos);
+    std::shared_ptr<QOpenGLFramebufferObject> createWidgetSizeFbo() const;
 
 private:
     const float _clickDelta = 5.f;
@@ -125,6 +129,7 @@ private:
     static const int _defaultSliceId = 0;
 
 private:
+    HistConfig _histConfig;
     std::shared_ptr<HistFacadeVolume> _histVolume = nullptr;
     std::vector<int> _currDims = _defaultDims;
     Orien _currOrien = _defaultOrien;
@@ -134,6 +139,7 @@ private:
     QVector2D _currTranslate = _defaultTranslate;
     QPointF _mousePrev, _mousePress;
     std::vector<std::shared_ptr<HistFacadePainter>> _histPainters;
+    std::shared_ptr<QOpenGLFramebufferObject> _histSliceFbo;
     std::array<int, 2> _hoveredHistSliceIds = {{-1, -1}};
     std::vector<std::array<int, 3>> _selectedHistIds;
     NormalizedPer _currFreqNormPer = _defaultFreqNormPer;

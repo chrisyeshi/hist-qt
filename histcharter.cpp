@@ -81,9 +81,10 @@ std::string Hist2DFacadeCharter::setMouseHover(float x, float y)
     int iby = hy / dy;
     _hoveredBin[0] = ibx;
     _hoveredBin[1] = iby;
-    HistBin bin = hist2d->bin(ibx, iby);
-    std::string valueStr = std::to_string(int(bin.value() + 0.5));
-    std::string percentStr = std::to_string(int(bin.percent() * 100.f + 0.5f));
+    double binFreq = hist2d->binFreq(ibx, iby);
+    float binPercent = hist2d->binPercent(ibx, iby);
+    std::string valueStr = std::to_string(int(binFreq + 0.5));
+    std::string percentStr = std::to_string(int(binPercent * 100.f + 0.5f));
     return valueStr + " (" + percentStr + "%)";
 }
 
@@ -255,9 +256,10 @@ std::string Hist1DFacadeCharter::setMouseHover(float x, float /*y*/)
     float dx = histWidth() / hist->dim()[0];
     int ibx = hx / dx;
     _hoveredBin = ibx;
-    HistBin bin = hist->bin(ibx);
-    std::string valueStr = std::to_string(int(bin.value() + 0.5));
-    std::string percentStr = std::to_string(int(bin.percent() * 100.f + 0.5f));
+    double binFreq = hist->binFreq(ibx);
+    float binPercent = hist->binPercent(ibx);
+    std::string valueStr = std::to_string(int(binFreq + 0.5));
+    std::string percentStr = std::to_string(int(binPercent * 100.f + 0.5f));
     return valueStr + " (" + percentStr + "%)";
 }
 

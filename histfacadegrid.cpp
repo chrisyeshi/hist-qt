@@ -309,40 +309,55 @@ int HistFacadeVolume::nDomains() const {
     return _dimDomains.nElement();
 }
 
-std::shared_ptr<HistFacadeRect> HistFacadeVolume::xySlice(int z) const
-{
+std::shared_ptr<HistFacadeRect> HistFacadeVolume::xySlice(int z) const {
+    if (0 < _cachedXYSlices.count(z)) {
+        return _cachedXYSlices.at(z);
+    }
     auto nHist = helper().nh_x * helper().nh_y;
     std::vector<std::shared_ptr<const HistFacade>> hists(nHist);
     for (auto x = 0; x < helper().nh_x; ++x)
     for (auto y = 0; y < helper().nh_y; ++y) {
         hists[x + helper().nh_x * y] = hist(x, y, z);
     }
-    return std::make_shared<HistFacadeRect>(
-            helper().nh_x, helper().nh_y, hists);
+    auto slice =
+            std::make_shared<HistFacadeRect>(
+                helper().nh_x, helper().nh_y, hists);
+    _cachedXYSlices[z] = slice;
+    return slice;
 }
 
-std::shared_ptr<HistFacadeRect> HistFacadeVolume::xzSlice(int y) const
-{
+std::shared_ptr<HistFacadeRect> HistFacadeVolume::xzSlice(int y) const {
+    if (0 < _cachedXZSlices.count(y)) {
+        return _cachedXZSlices.at(y);
+    }
     auto nHist = helper().nh_x * helper().nh_z;
     std::vector<std::shared_ptr<const HistFacade>> hists(nHist);
     for (auto x = 0; x < helper().nh_x; ++x)
     for (auto z = 0; z < helper().nh_z; ++z) {
         hists[x + helper().nh_x * z] = hist(x, y, z);
     }
-    return std::make_shared<HistFacadeRect>(
-            helper().nh_x, helper().nh_z, hists);
+    auto slice =
+            std::make_shared<HistFacadeRect>(
+                helper().nh_x, helper().nh_z, hists);
+    _cachedXZSlices[y] = slice;
+    return slice;
 }
 
-std::shared_ptr<HistFacadeRect> HistFacadeVolume::yzSlice(int x) const
-{
+std::shared_ptr<HistFacadeRect> HistFacadeVolume::yzSlice(int x) const {
+    if (0 < _cachedYZSlices.count(x)) {
+        return _cachedYZSlices.at(x);
+    }
     auto nHist = helper().nh_y * helper().nh_z;
     std::vector<std::shared_ptr<const HistFacade>> hists(nHist);
     for (auto y = 0; y < helper().nh_y; ++y)
     for (auto z = 0; z < helper().nh_z; ++z) {
         hists[y + helper().nh_y * z] = hist(x, y, z);
     }
-    return std::make_shared<HistFacadeRect>(
+    auto slice =
+            std::make_shared<HistFacadeRect>(
                 helper().nh_y, helper().nh_z, hists);
+    _cachedYZSlices[x] = slice;
+    return slice;
 }
 
 std::vector<int> HistFacadeVolume::dhtoids(

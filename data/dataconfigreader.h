@@ -81,6 +81,8 @@ struct HistConfig {
     std::string name() const;
     bool load(std::istream& in);
 };
+bool operator==(const HistConfig& a, const HistConfig& b);
+bool operator!=(const HistConfig& a, const HistConfig& b);
 
 /**
  * @brief The DataConfigReader class

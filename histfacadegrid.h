@@ -112,6 +112,7 @@ public:
     int nDomains() const;
 
 public:
+    enum SliceDirection : int {YZ = 0, XZ = 1, XY = 2};
     std::shared_ptr<HistFacadeRect> xySlice(int z) const;
     std::shared_ptr<HistFacadeRect> xzSlice(int y) const;
     std::shared_ptr<HistFacadeRect> yzSlice(int x) const;
@@ -132,6 +133,9 @@ private:
     Extent _dimDomains;
     std::string _dir, _name;
     std::vector<std::string> _vars;
+    mutable std::map<int, std::shared_ptr<HistFacadeRect>> _cachedXYSlices;
+    mutable std::map<int, std::shared_ptr<HistFacadeRect>> _cachedXZSlices;
+    mutable std::map<int, std::shared_ptr<HistFacadeRect>> _cachedYZSlices;
 
 private:
     mutable bool _helperCached;
