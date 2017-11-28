@@ -212,9 +212,26 @@ void MainWindow::createSimpleLayout() {
     _histView = new HistViewHolder(this);
     _histView->setText(tr("Please open a dataset."));
     auto physicalView = new HistVolumePhysicalView(this);
-    connect(physicalView, &HistVolumePhysicalView::selectedHistsChanged, this,
-            [this](std::vector<std::shared_ptr<const Hist>> hists) {
-        std::shared_ptr<const Hist> merged = mergeHists(hists);
+//    connect(physicalView, &HistVolumePhysicalView::selectedHistsChanged, this,
+//            [this](std::vector<std::shared_ptr<const Hist>> hists) {
+//        std::shared_ptr<const Hist> merged = mergeHists(hists);
+//        auto histFacade = HistFacade::create(merged, merged->vars());
+//        auto dims = createIncrementVector(0, merged->nDim());
+//        _histView->setHist(histFacade, dims);
+//        if (dims.empty()) {
+//            _histView->setText(
+//                    tr("Selected/merged histogram will be shown here."));
+//        }
+//        _histView->update();
+//    }, Qt::QueuedConnection);
+    connect(physicalView, &HistVolumePhysicalView::selectedHistIdsChanged, this,
+            [this](std::string volumeName, std::vector<int> flatIds,
+                std::vector<int> displayDims) {
+        auto volume = _data.step(_currTimeStep)->dumbVolume(volumeName);
+        auto hists = yy::fp::map(flatIds, [&](int flatId) {
+            return volume->hist(flatId)->hist(displayDims);
+        });
+        auto merged = mergeHists(hists);
         auto histFacade = HistFacade::create(merged, merged->vars());
         auto dims = createIncrementVector(0, merged->nDim());
         _histView->setHist(histFacade, dims);

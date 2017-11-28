@@ -295,7 +295,9 @@ std::shared_ptr<yy::gl::program>
                 out vec2 gf_position;
                 void main() {
                     float normValue = (vg_freq[0] - vMin) / (vMax - vMin);
-                    float t = 0.5 * thickness * rect.z / nBins;
+                    float t =
+                            min(0.005 * viewport.z,
+                                0.5 * thickness / nBins * rect.z);
                     float w = rect.z * 2.0 / nBins;
                     float h = max(t, rect.w * 0.9 * normValue * 2.0);
                     float x = rect.x * 2.0 - 1.0 + vg_vertexID[0] * w;

@@ -317,6 +317,7 @@ void Hist1DFacadeCharter::mouseMoveEvent(QMouseEvent *event) {
 }
 
 void Hist1DFacadeCharter::leaveEvent(QEvent*) {
+    _hoveredBin = -1;
     _showLabel(0, 0, "");
 }
 

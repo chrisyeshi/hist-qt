@@ -90,6 +90,8 @@ std::array<float, 2> calcFreqRange(
     for (int iHist = 0; iHist < hists->nHist(); ++iHist) {
         auto collapsedHist = hists->hist(iHist)->hist(dims);
         for (auto iBin = 0; iBin < collapsedHist->nBins(); ++iBin) {
+            if (collapsedHist->binPercent(iBin) < 0.f)
+                continue;
             vMin = std::min(vMin, collapsedHist->binPercent(iBin));
             vMax = std::max(vMax, collapsedHist->binPercent(iBin));
         }
@@ -101,6 +103,8 @@ std::array<float, 2> calcFreqRange(const std::shared_ptr<const Hist>& hist) {
     float vMin = std::numeric_limits<float>::max();
     float vMax = std::numeric_limits<float>::lowest();
     for (auto iBin = 0; iBin < hist->nBins(); ++iBin) {
+        if (hist->binPercent(iBin) < 0.f)
+            continue;
         vMin = std::min(vMin, hist->binPercent(iBin));
         vMax = std::max(vMax, hist->binPercent(iBin));
     }
@@ -126,6 +130,7 @@ QVector2D calcDeltaVecPixel(const QList<QTouchEvent::TouchPoint>& touchPoints) {
 HistVolumePhysicalView::HistVolumePhysicalView(QWidget *parent)
       : HistVolumeView(parent)
       , _histVolumeView(new HistVolumePhysicalOpenGLView(this)) {
+    qRegisterMetaType<std::string>();
     auto hLayout = new QHBoxLayout(this);
     hLayout->setMargin(0);
     hLayout->setSpacing(5);
@@ -137,6 +142,12 @@ HistVolumePhysicalView::HistVolumePhysicalView(QWidget *parent)
             SIGNAL(
                 selectedHistsChanged(
                     std::vector<std::shared_ptr<const Hist>>)));
+    connect(_histVolumeView,
+            &HistVolumePhysicalOpenGLView::selectedHistIdsChanged,
+            this,
+            [this](std::vector<int> flatIds, std::vector<int> displayDims) {
+        emit selectedHistIdsChanged(currHistName(), flatIds, displayDims);
+    });
 }
 
 void HistVolumePhysicalView::update() {
@@ -920,11 +931,15 @@ QColor HistVolumePhysicalOpenGLView::fullColor() const {
 void HistVolumePhysicalOpenGLView::emitSelectedHistsChanged() {
     std::vector<std::shared_ptr<const Hist>> hists;
     hists.reserve(_selectedHistIds.size());
-    for (auto histIds : _selectedHistIds) {
-        auto histFacade = _histVolume->hist(histIds[0], histIds[1], histIds[2]);
+    std::vector<int> flatIds(_selectedHistIds.size());
+    for (auto i = 0; i < _selectedHistIds.size(); ++i) {
+        auto histIds = _selectedHistIds[i];
+        flatIds[i] = _histVolume->dimHists().idstoflat(histIds);
+        auto histFacade = _histVolume->hist(flatIds[i]);
         hists.push_back(histFacade->hist(_currDims));
     }
     emit selectedHistsChanged(hists);
+    emit selectedHistIdsChanged(flatIds, _currDims);
 }
 
 std::array<int, 3> HistVolumePhysicalOpenGLView::sliceIdsToHistIds(

@@ -15,6 +15,8 @@ class HistVolumePhysicalOpenGLView;
 class HistFacadePainter;
 class QGestureEvent;
 
+Q_DECLARE_METATYPE(std::string)
+
 /**
  * @brief The HistVolumePhysicalView class
  */
@@ -25,6 +27,8 @@ public:
 
 signals:
     void selectedHistsChanged(std::vector<std::shared_ptr<const Hist>>);
+    void selectedHistIdsChanged(
+            std::string, std::vector<int>, std::vector<int>);
 
 public:
     virtual void update() override;
@@ -62,6 +66,7 @@ public:
 
 signals:
     void selectedHistsChanged(std::vector<std::shared_ptr<const Hist>>);
+    void selectedHistIdsChanged(std::vector<int>, std::vector<int>);
 
 public:
     void setHistVolume(HistConfig histConfig,
