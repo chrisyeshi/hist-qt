@@ -156,13 +156,14 @@ void Hist2DFacadeCharter::chart() {
         painter.save();
         painter.translate(histLeft() + ix * dx,
                 height() - (histBottom() - 2.f * devicePixelRatioF()));
-        painter.rotate(-45);
+        painter.rotate(tickAngleDegree());
         double min = hist2d->dimMin(0);
         double max = hist2d->dimMax(0);
         double number = float(ix) / hist2d->dim()[0] * (max - min) + min;
         painter.drawText(
-                -50 * devicePixelRatio(), 0 * devicePixelRatio(),
-                50 * devicePixelRatio(), fontMetrics.height(),
+                -tickWidth(), 0, tickWidth(), tickHeight(),
+//                -50 * devicePixelRatio(), 0 * devicePixelRatio(),
+//                50 * devicePixelRatio(), fontMetrics.height(),
                 Qt::AlignTop | Qt::AlignRight, QString::number(number, 'g', 3));
         painter.restore();
     }
@@ -174,13 +175,14 @@ void Hist2DFacadeCharter::chart() {
         painter.save();
         painter.translate((histLeft() - 2.f * devicePixelRatioF()),
                 height() - (histBottom() + iy * dy));
-        painter.rotate(-45);
+        painter.rotate(tickAngleDegree());
         double min = hist2d->dimMin(1);
         double max = hist2d->dimMax(1);
         double number = float(iy) / hist2d->dim()[1] * (max - min) + min;
         painter.drawText(
-                -50 * devicePixelRatio(), -10 * devicePixelRatio(),
-                50 * devicePixelRatio(), fontMetrics.height(),
+                -tickWidth(), -tickHeight(), tickWidth(), tickHeight(),
+//                -50 * devicePixelRatio(), -10 * devicePixelRatio(),
+//                50 * devicePixelRatio(), fontMetrics.height(),
                 Qt::AlignBottom | Qt::AlignRight,
                 QString::number(number, 'g', 3));
         painter.restore();
@@ -373,13 +375,14 @@ void Hist1DFacadeCharter::chart()
         painter.save();
         painter.translate(histLeft() + ix * dx,
                 height() - (histBottom() - 2.f * devicePixelRatioF()));
-        painter.rotate(-45);
+        painter.rotate(tickAngleDegree());
         double min = hist->dimMin(0);
         double max = hist->dimMax(0);
         double number = float(ix) / hist->dim()[0] * (max - min) + min;
         painter.drawText(
-                -50 * devicePixelRatio(), 0 * devicePixelRatio(),
-                50 * devicePixelRatio(), fontMetrics.height(),
+                -tickWidth(), 0, tickWidth(), tickHeight(),
+//                -50 * devicePixelRatio(), 0 * devicePixelRatio(),
+//                50 * devicePixelRatio(), fontMetrics.height(),
                 Qt::AlignTop | Qt::AlignRight, QString::number(number, 'g', 3));
         painter.restore();
     }
@@ -391,13 +394,14 @@ void Hist1DFacadeCharter::chart()
         painter.save();
         painter.translate((histLeft() - 2.f * devicePixelRatioF()),
                 height() - (histBottom() + iy * dy));
-        painter.rotate(-45);
+        painter.rotate(tickAngleDegree());
         double min = _vMin;
         double max = _vMax;
         double number = float(iy) / nTicks * (max - min) + min;
         painter.drawText(
-                -50 * devicePixelRatio(), -10 * devicePixelRatio(),
-                50 * devicePixelRatio(), fontMetrics.height(),
+                -tickWidth(), -tickHeight(), tickWidth(), tickHeight(),
+//                -50 * devicePixelRatio(), -10 * devicePixelRatio(),
+//                50 * devicePixelRatio(), fontMetrics.height(),
                 Qt::AlignBottom | Qt::AlignRight,
                 QString::number(number, 'g', 3));
         painter.restore();

@@ -7,6 +7,11 @@
 #include <vector>
 #include <string>
 #include <functional>
+#include <cmath>
+#include <QtMath>
+#include <QFont>
+#include <QFontMetricsF>
+#include <QDebug>
 
 class Hist;
 class HistFacade;
@@ -48,13 +53,32 @@ protected:
     virtual int height() const = 0;
 
 protected:
+    virtual float tickAngleDegree() const { return -45; }
+    virtual float tickAngleRadian() const {
+        return qDegreesToRadians(tickAngleDegree());
+    }
+    virtual QFont tickFont() const { return QFont("mono", 8.f); }
+    virtual QFontMetricsF tickFontMetrics() const {
+        return QFontMetricsF(tickFont());
+    }
+    virtual int maxTickCharCount() const { return 10; }
+    virtual float tickWidth() const {
+        return maxTickCharCount() * tickFontMetrics().averageCharWidth();
+    }
+    virtual float tickHeight() const { return tickFontMetrics().height(); }
     virtual float labelBottom() const { return 12.f * devicePixelRatioF(); }
     virtual float labelLeft() const { return 16.f * devicePixelRatioF(); }
     virtual float histLeft() const {
-        return 44.f * devicePixelRatioF() + labelLeft();
+        auto tanAngle = std::abs(std::tan(tickAngleRadian()));
+        auto extendedWidth = tickHeight() / tanAngle + tickWidth();
+        return extendedWidth * tanAngle + labelLeft();
+//        return 44.f * devicePixelRatioF() + labelLeft();
     }
     virtual float histBottom() const {
-        return 48.f * devicePixelRatioF() + labelBottom();
+        auto tanAngle = std::abs(std::tan(tickAngleRadian()));
+        auto extendedWidth = tickHeight() / tanAngle + tickWidth();
+        return extendedWidth * tanAngle + labelBottom();
+//        return 48.f * devicePixelRatioF() + labelBottom();
     }
     virtual float histTop() const { return 10.f * devicePixelRatioF(); }
     virtual float histRight() const { return 10.f * devicePixelRatioF(); }
