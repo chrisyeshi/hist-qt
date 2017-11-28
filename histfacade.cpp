@@ -67,7 +67,7 @@ std::shared_ptr<yy::gl::texture> HistFacade::texture(
     /// histograms.
     std::vector<float> freqs(hist->nBins());
     for (auto iBin = 0; iBin < hist->nBins(); ++iBin) {
-        freqs[iBin] = hist->values()[iBin];
+        freqs[iBin] = hist->binPercent(iBin);
     }
     auto texture = std::make_shared<yy::gl::texture>();
     texture->setWrapMode(
@@ -87,7 +87,9 @@ std::shared_ptr<yy::gl::texture> HistFacade::texture(
     return texture(varsToDims(vars));
 }
 
-/// TODO: consider returning const yy::gl::vector& instead.
+/// TODO: instead of returning yy::gl::vector, which wastes memory, return
+/// yy::gl::vertex_attrib instead. For this to happen, the shared_ptr of
+/// yy::gl::buffer will have to be stored in another array.
 std::shared_ptr<yy::gl::vector<float>> HistFacade::vbo(
         const std::vector<int> &dims) const {
     if (0 < _cachedVBOs.count(dims)) {
@@ -97,7 +99,8 @@ std::shared_ptr<yy::gl::vector<float>> HistFacade::vbo(
     auto freqsPtr = std::make_shared<yy::gl::vector<float>>(hist->nBins());
     auto& freqs = *freqsPtr;
     for (auto iBin = 0; iBin < hist->nBins(); ++iBin) {
-        freqs[iBin] = hist->values()[iBin];
+        freqs[iBin] = hist->binPercent(iBin);
+//        freqs[iBin] = hist->values()[iBin];
     }
     _cachedVBOs[dims] = freqsPtr;
     return freqsPtr;

@@ -3,14 +3,18 @@
 
 #include <memory>
 #include <array>
+#include <map>
 #include <vector>
 #include <string>
+#include <functional>
 
 class Hist;
 class HistFacade;
 class Hist2DTexturePainter;
 class Hist1DVBOPainter;
 class QPaintDevice;
+class QMouseEvent;
+class QEvent;
 
 /**
  * @brief The IHistCharter class
@@ -20,13 +24,22 @@ public:
     static std::shared_ptr<IHistCharter> create(
             std::shared_ptr<const HistFacade> histFacade = nullptr,
             std::vector<int> displayDims = {},
-            QPaintDevice* paintDevice = nullptr);
+            QPaintDevice* paintDevice = nullptr,
+            std::function<void(float, float, const std::string&)> showLabel =
+                [](float, float, const std::string&) {});
+
+public:
+    typedef std::map<int, std::array<float, 2>> HistRangesMap;
+    std::function<void(HistRangesMap)> selectedHistRangesChanged;
 
 public:
     virtual void chart() = 0;
     virtual void setSize(int width, int height, int devicePixelRatio) = 0;
     virtual void setRange(float vMin, float vMax) = 0;
-    virtual std::string setMouseHover(float x, float y) = 0;
+    virtual void mousePressEvent(QMouseEvent*) = 0;
+    virtual void mouseReleaseEvent(QMouseEvent*) = 0;
+    virtual void mouseMoveEvent(QMouseEvent*) = 0;
+    virtual void leaveEvent(QEvent*) = 0;
 
 protected:
     virtual int devicePixelRatio() const = 0;
@@ -58,7 +71,10 @@ public:
     virtual void chart() override {}
     virtual void setSize(int, int, int) override {}
     virtual void setRange(float, float) override {}
-    virtual std::string setMouseHover(float, float) override { return ""; }
+    virtual void mousePressEvent(QMouseEvent*) override {}
+    virtual void mouseReleaseEvent(QMouseEvent*) override {}
+    virtual void mouseMoveEvent(QMouseEvent*) override {}
+    virtual void leaveEvent(QEvent*) override {}
 
 protected:
     virtual int devicePixelRatio() const override { return 1; }
@@ -73,14 +89,18 @@ protected:
 class Hist2DFacadeCharter : public IHistCharter {
 public:
     Hist2DFacadeCharter(std::shared_ptr<const HistFacade> histFacade,
-            std::array<int, 2> displayDims, QPaintDevice* paintDevice);
+            std::array<int, 2> displayDims, QPaintDevice* paintDevice,
+            std::function<void(float, float, const std::string&)> showLabel);
 
 public:
     virtual void chart() override;
     virtual void setSize(
             int width, int height, int devicePixelRatio) override;
     virtual void setRange(float vMin, float vMax) override;
-    virtual std::string setMouseHover(float x, float y) override;
+    virtual void mousePressEvent(QMouseEvent *event) override;
+    virtual void mouseReleaseEvent(QMouseEvent* event) override;
+    virtual void mouseMoveEvent(QMouseEvent* event) override;
+    virtual void leaveEvent(QEvent *event) override;
 
 protected:
     virtual int devicePixelRatio() const override { return _devicePixelRatio; }
@@ -113,6 +133,7 @@ private:
     std::array<int, 2> _displayDims;
     QPaintDevice* _paintDevice = nullptr;
     std::shared_ptr<Hist2DTexturePainter> _histPainter;
+    std::function<void(float, float, const std::string&)> _showLabel;
     std::array<int, 2> _hoveredBin = {{ -1, -1 }};
     std::array<float, 2> _freqRange = {{ 0.f, 1.f }};
 };
@@ -124,13 +145,17 @@ class Hist1DFacadeCharter : public IHistCharter {
 public:
     Hist1DFacadeCharter(
             std::shared_ptr<const HistFacade> histFacade, int displayDim,
-            QPaintDevice* paintDevice);
+            QPaintDevice* paintDevice,
+            std::function<void(float, float, const std::string&)> showLabel);
 
 public:
     virtual void chart() override;
     virtual void setSize(int width, int height, int devicePixelRatio) override;
     virtual void setRange(float vMin, float vMax) override;
-    virtual std::string setMouseHover(float x, float) override;
+    virtual void mousePressEvent(QMouseEvent *event) override;
+    virtual void mouseReleaseEvent(QMouseEvent* event) override;
+    virtual void mouseMoveEvent(QMouseEvent* event) override;
+    virtual void leaveEvent(QEvent*) override;
 
 protected:
     virtual int devicePixelRatio() const override { return _devicePixelRatio; }
@@ -141,13 +166,21 @@ protected:
     virtual int height() const override { return _height * _devicePixelRatio; }
 
 private:
+    int posToBinId(float x) const;
+
+private:
     int _width = 0, _height = 0, _devicePixelRatio = 1;
     float _vMin, _vMax;
     std::shared_ptr<const HistFacade> _histFacade;
     int _displayDim;
     QPaintDevice* _paintDevice = nullptr;
     std::shared_ptr<Hist1DVBOPainter> _histPainter;
+    std::function<void(float, float, const std::string&)> _showLabel;
     int _hoveredBin = -1;
+    bool _isMousePressed = false;
+    bool _isBinSelected = false;
+    int _selectedBinBeg = -1;
+    int _selectedBinEnd = -1;
 };
 
 #endif // HISTCHARTER_H

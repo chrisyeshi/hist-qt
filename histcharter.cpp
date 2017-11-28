@@ -3,10 +3,15 @@
 #include <histfacade.h>
 #include <histpainter.h>
 #include <painter.h>
+#include <QMouseEvent>
 
 namespace {
 
 typedef PainterYYGLImpl UsePainterImpl;
+
+int clamp(int v, int a, int b) {
+    return std::max(a, std::min(b, v));
+}
 
 } // unnamed namespace
 
@@ -18,7 +23,8 @@ typedef PainterYYGLImpl UsePainterImpl;
  */
 std::shared_ptr<IHistCharter> IHistCharter::create(
         std::shared_ptr<const HistFacade> histFacade,
-        std::vector<int> displayDims, QPaintDevice *paintDevice) {
+        std::vector<int> displayDims, QPaintDevice *paintDevice,
+        std::function<void(float, float, const std::string &)> showLabel) {
     if (!histFacade || displayDims.empty()) {
         return std::make_shared<HistNullCharter>();
     }
@@ -26,11 +32,11 @@ std::shared_ptr<IHistCharter> IHistCharter::create(
         return std::make_shared<Hist2DFacadeCharter>(
                 histFacade,
                 std::array<int, 2>{{ displayDims[0], displayDims[1] }},
-                paintDevice);
+                paintDevice, showLabel);
     }
     if (1 == displayDims.size()) {
         return std::make_shared<Hist1DFacadeCharter>(
-                histFacade, displayDims[0], paintDevice);
+                histFacade, displayDims[0], paintDevice, showLabel);
     }
     assert(false);
 }
@@ -42,10 +48,12 @@ std::shared_ptr<IHistCharter> IHistCharter::create(
  */
 Hist2DFacadeCharter::Hist2DFacadeCharter(
         std::shared_ptr<const HistFacade> histFacade,
-        std::array<int, 2> displayDims, QPaintDevice *paintDevice)
+        std::array<int, 2> displayDims, QPaintDevice *paintDevice,
+        std::function<void(float, float, const std::string &)> showLabel)
   : _histFacade(histFacade)
   , _displayDims(displayDims)
-  , _paintDevice(paintDevice) {
+  , _paintDevice(paintDevice)
+  , _showLabel(showLabel) {
     _histPainter = std::make_shared<Hist2DTexturePainter>();
     _histPainter->initialize();
     _histPainter->setTexture(_histFacade->texture(_displayDims));
@@ -66,14 +74,24 @@ void Hist2DFacadeCharter::setRange(float vMin, float vMax)
     _histPainter->setFreqRange(vMin, vMax);
 }
 
-std::string Hist2DFacadeCharter::setMouseHover(float x, float y)
-{
+void Hist2DFacadeCharter::mousePressEvent(QMouseEvent *event) {
+
+}
+
+void Hist2DFacadeCharter::mouseReleaseEvent(QMouseEvent *event) {
+
+}
+
+void Hist2DFacadeCharter::mouseMoveEvent(QMouseEvent *event) {
+    float x = event->localPos().x();
+    float y = event->localPos().y();
     auto hist2d = hist();
     float hx = x * devicePixelRatioF() - histLeft();
     float hy = histHeight() - (y * devicePixelRatioF() - histTop());
     if (hx < 0.f || hx >= histWidth() || hy < 0.f || hy >= histHeight()) {
         _hoveredBin[0] = -1;
-        return "";
+        _showLabel(x, y, "");
+        return;
     }
     float dx = histWidth() / hist2d->dim()[0];
     float dy = histHeight() / hist2d->dim()[1];
@@ -85,7 +103,11 @@ std::string Hist2DFacadeCharter::setMouseHover(float x, float y)
     float binPercent = hist2d->binPercent(ibx, iby);
     std::string valueStr = std::to_string(int(binFreq + 0.5));
     std::string percentStr = std::to_string(int(binPercent * 100.f + 0.5f));
-    return valueStr + " (" + percentStr + "%)";
+    _showLabel(x, y, valueStr + " (" + percentStr + "%)");
+}
+
+void Hist2DFacadeCharter::leaveEvent(QEvent *event) {
+    _showLabel(0, 0, "");
 }
 
 void Hist2DFacadeCharter::chart() {
@@ -219,10 +241,12 @@ std::shared_ptr<const Hist> Hist2DFacadeCharter::hist() const {
  */
 Hist1DFacadeCharter::Hist1DFacadeCharter(
         std::shared_ptr<const HistFacade> histFacade, int displayDim,
-        QPaintDevice* paintDevice)
+        QPaintDevice* paintDevice,
+        std::function<void(float, float, const std::string &)> showLabel)
   : _histFacade(histFacade)
   , _displayDim(displayDim)
-  , _paintDevice(paintDevice) {
+  , _paintDevice(paintDevice)
+  , _showLabel(showLabel) {
     _histPainter = std::make_shared<Hist1DVBOPainter>();
     _histPainter->initialize();
     _histPainter->setVBO(_histFacade->vbo(_displayDim));
@@ -245,22 +269,60 @@ void Hist1DFacadeCharter::setRange(float vMin, float vMax)
     _histPainter->setFreqRange(vMin, vMax);
 }
 
-std::string Hist1DFacadeCharter::setMouseHover(float x, float /*y*/)
-{
+void Hist1DFacadeCharter::mousePressEvent(QMouseEvent *event) {
+    _isMousePressed = true;
     auto hist = _histFacade->hist(_displayDim);
-    float hx = x * devicePixelRatioF() - histLeft();
-    if (hx < 0.f || hx >= histWidth()) {
-        _hoveredBin = -1;
-        return "";
+    int ibx = posToBinId(event->localPos().x());
+    if (ibx < 0 || ibx >= hist->nBins()) {
+        _isBinSelected = false;
+        return;
     }
-    float dx = histWidth() / hist->dim()[0];
-    int ibx = hx / dx;
+    _isBinSelected = true;
+    _selectedBinBeg = ibx;
+    _selectedBinEnd = ibx;
+}
+
+void Hist1DFacadeCharter::mouseReleaseEvent(QMouseEvent *event) {
+    _isMousePressed = false;
+    auto dimRange = _histFacade->dimRange(0);
+    auto nBins = _histFacade->hist(_displayDim)->dim()[0];
+    auto binWidth = (dimRange[1] - dimRange[0]) / nBins;
+    int binLower = std::min(_selectedBinBeg, _selectedBinEnd);
+    int binUpper = std::max(_selectedBinBeg, _selectedBinEnd);
+    float xMin = dimRange[0] + binWidth * binLower;
+    float xMax = dimRange[0] + binWidth * (1 + binUpper);
+    selectedHistRangesChanged({{_displayDim, {xMin, xMax}}});
+}
+
+void Hist1DFacadeCharter::mouseMoveEvent(QMouseEvent *event) {
+    float x = event->localPos().x();
+    float y = event->localPos().y();
+    auto hist = _histFacade->hist(_displayDim);
+    int ibx = posToBinId(x);
     _hoveredBin = ibx;
+    if (_isMousePressed && _isBinSelected) {
+        _selectedBinEnd = clamp(ibx, 0, hist->nBins() - 1);
+    }
+    if (ibx < 0 || ibx >= hist->nBins()) {
+        _showLabel(x, y, "");
+        return;
+    }
     double binFreq = hist->binFreq(ibx);
     float binPercent = hist->binPercent(ibx);
     std::string valueStr = std::to_string(int(binFreq + 0.5));
     std::string percentStr = std::to_string(int(binPercent * 100.f + 0.5f));
-    return valueStr + " (" + percentStr + "%)";
+    _showLabel(x, y, valueStr + " (" + percentStr + "%)");
+}
+
+void Hist1DFacadeCharter::leaveEvent(QEvent*) {
+    _showLabel(0, 0, "");
+}
+
+int Hist1DFacadeCharter::posToBinId(float x) const {
+    float hx = x * devicePixelRatioF() - histLeft();
+    float dx = histWidth() / _histFacade->hist(_displayDim)->dim()[0];
+    int ibx = hx / dx;
+    return ibx;
 }
 
 void Hist1DFacadeCharter::chart()
@@ -340,8 +402,18 @@ void Hist1DFacadeCharter::chart()
                 QString::number(number, 'g', 3));
         painter.restore();
     }
+    // selected bin
+    if (_isBinSelected) {
+        int binLower = std::min(_selectedBinBeg, _selectedBinEnd);
+        int binUpper = std::max(_selectedBinBeg, _selectedBinEnd);
+        painter.fillRect(
+                QRectF(histLeft() + binLower * dx, histTop(),
+                    (binUpper - binLower + 1) * dx, histHeight()),
+                QColor(231, 76, 60, 100));
+    }
     // hovered bin
-    if (-1 != _hoveredBin) {
+    if (0 <= _hoveredBin &&
+            _hoveredBin < _histFacade->hist(_displayDim)->dim()[0]) {
         painter.fillRect(
                 QRectF(
                     histLeft() + _hoveredBin * dx, histTop(), dx, histHeight()),
@@ -358,5 +430,4 @@ void Hist1DFacadeCharter::chart()
     painter.drawText(histBottom(), 0, histHeight(), labelLeft(),
             Qt::AlignBottom | Qt::AlignHCenter, "frequency");
     painter.restore();
-//    painter.paint(_paintDevice);
 }

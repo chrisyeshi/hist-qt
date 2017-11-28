@@ -16,8 +16,13 @@ class QPushButton;
 class QStackedLayout;
 
 class HistViewHolder : public QWidget {
+    Q_OBJECT
 public:
     HistViewHolder(QWidget* parent = nullptr);
+    typedef std::map<int, std::array<float, 2>> HistRangesMap;
+
+signals:
+    void selectedHistRangesChanged(HistRangesMap histRangesMap);
 
 public:
     void update();

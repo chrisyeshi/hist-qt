@@ -70,6 +70,11 @@ HistViewHolder::HistViewHolder(QWidget *parent)
     _layout = new QStackedLayout(this);
     _layout->addWidget(_histView);
     _layout->addWidget(_label);
+    // signal slots
+    connect(_histView,
+            SIGNAL(selectedHistRangesChanged(HistRangesMap)),
+            this,
+            SIGNAL(selectedHistRangesChanged(HistRangesMap)));
 }
 
 void HistViewHolder::setHist(std::shared_ptr<const HistFacade> histFacade,
@@ -222,6 +227,10 @@ void MainWindow::createSimpleLayout() {
     _histVolumeView = physicalView;
     _histCompareView->hide();
     _particleView->hide();
+    connect(_histView, &HistViewHolder::selectedHistRangesChanged,
+            this, [this](HistVolumeView::HistRangesMap histRangesMap) {
+        _histVolumeView->setCustomHistRanges(histRangesMap);
+    });
 
     auto vLayout = new QVBoxLayout(ui->centralWidget);
     vLayout->setMargin(5);

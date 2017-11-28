@@ -424,7 +424,7 @@ void DataPool::loadHistVolume(DataLoader::HistVolumeId histVolumeId) {
     this->step(stepId)->setVolume(name, histVol);
 
     QTimer::singleShot(0, this, [=]() {
-        int bufferRadius = 5;
+        int bufferRadius = 40;
         // remove steps that are too far away from the selected step
         for (int iStep = 0; iStep < stepId - bufferRadius; ++iStep) {
             m_data[iStep] = nullptr;

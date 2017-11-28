@@ -62,7 +62,8 @@ void HistFacadePainter::setRanges(std::vector<std::array<double, 2>> ranges) {
 
 std::array<float, 4> HistFacadePainter::normalizedRect() const {
     std::array<float, 4> rect = {_left, _bottom, _width, _height};
-    if (_ranges.size() > 0) {
+    if (_displayDims.size() > 0) {
+//    if (_ranges.size() > 0) {
         auto dimRange = _histFacade->dimRange(_displayDims[0]);
         double lower =
                 (dimRange[0] - _ranges[0][0]) / (_ranges[0][1] - _ranges[0][0]);
@@ -73,7 +74,8 @@ std::array<float, 4> HistFacadePainter::normalizedRect() const {
         rect[0] = _left + lower * _width;
         rect[2] = _width * (upper - lower);
     }
-    if (_ranges.size() > 1) {
+    if (_displayDims.size() > 1) {
+//    if (_ranges.size() > 1) {
         auto dimRange = _histFacade->dimRange(_displayDims[1]);
         double lower =
                 (dimRange[0] - _ranges[1][0]) / (_ranges[1][1] - _ranges[1][0]);

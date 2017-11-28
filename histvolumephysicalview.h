@@ -30,6 +30,8 @@ public:
     virtual void update() override;
     virtual void setHistConfigs(std::vector<HistConfig> configs) override;
     virtual void setDataStep(std::shared_ptr<DataStep> dataStep) override;
+    virtual void setCustomHistRanges(
+            const HistRangesMap& histRangesMap) override;
 
 private:
     std::string currHistName() const;
@@ -64,6 +66,8 @@ signals:
 public:
     void setHistVolume(HistConfig histConfig,
             std::shared_ptr<HistFacadeVolume> histVolume);
+    typedef std::map<int, std::array<float, 2>> HistRangesMap;
+    void setCustomHistRanges(const HistRangesMap& histRangesMap);
 
 protected:
     void resizeGL(int w, int h);

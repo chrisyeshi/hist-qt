@@ -13,6 +13,10 @@ class HistView : public OpenGLWidget {
     Q_OBJECT
 public:
     explicit HistView(QWidget* parent = 0);
+    typedef std::map<int, std::array<float, 2>> HistRangesMap;
+
+signals:
+    void selectedHistRangesChanged(HistRangesMap histRanges);
 
 public:
     void setHist(std::shared_ptr<const HistFacade> histFacade,
@@ -31,7 +35,6 @@ protected:
 
 private:
     std::shared_ptr<IHistCharter> _histCharter;
-    QPointF _mousePress;
 };
 
 #endif // HISTVIEW_H

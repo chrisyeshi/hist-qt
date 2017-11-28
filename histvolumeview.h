@@ -14,6 +14,8 @@ public:
     virtual void update() = 0;
     virtual void setHistConfigs(std::vector<HistConfig> configs) = 0;
     virtual void setDataStep(std::shared_ptr<DataStep> dataStep) = 0;
+    typedef std::map<int, std::array<float, 2>> HistRangesMap;
+    virtual void setCustomHistRanges(const HistRangesMap& histRangesMap) = 0;
 };
 
 /**
@@ -25,6 +27,8 @@ public:
     virtual void update() override {}
     virtual void setHistConfigs(std::vector<HistConfig>) override {}
     virtual void setDataStep(std::shared_ptr<DataStep>) override {}
+    virtual void setCustomHistRanges(
+            const HistRangesMap& histRangesMap) override {}
 };
 
 #endif // HISTVOLUMEVIEW_H

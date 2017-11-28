@@ -172,6 +172,7 @@ std::vector<std::vector<int>> makeIdsArray(
 
 int HistMerger::calcBinCount(
         int iDim, const std::vector<std::shared_ptr<const Hist>>& hists) const {
+    const int maxBinCount = 100;
     if (int(_binCounts.size()) > iDim && _binCounts[iDim]._binCount > 0) {
         return _binCounts[iDim]._binCount;
     }
@@ -183,7 +184,8 @@ int HistMerger::calcBinCount(
             totalValue += hist->binSum().value();
         }
         // apply sturge's formula
-        return HistBinWidthCalculatorSturges::nBins(totalValue);
+        return std::min(
+                maxBinCount, HistBinWidthCalculatorSturges::nBins(totalValue));
     }
     if ("freedman" == _binCounts[iDim]._methodName) {
         double totalValue = 0.0;
@@ -228,7 +230,8 @@ int HistMerger::calcBinCount(
             return 10;
         }
         double binWidth = 2 * iqr / std::pow(totalValue, 1.0 / 3.0);
-        return std::ceil((totalMax - totalMin) /  binWidth);
+        return std::min(
+                maxBinCount, int(std::ceil((totalMax - totalMin) /  binWidth)));
     }
     assert(false);
     throw "Incorrect bin count and/or method names.";

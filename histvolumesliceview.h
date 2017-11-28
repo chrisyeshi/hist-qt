@@ -35,6 +35,8 @@ public:
     virtual void update() override;
     virtual void setHistConfigs(std::vector<HistConfig> configs) override;
     virtual void setDataStep(std::shared_ptr<DataStep> dataStep) override;
+    virtual void setCustomHistRanges(
+            const HistRangesMap& histRangesMap) override {}
 
 private:
     enum Layout : int { SLICE = 0, LIST = 1 };

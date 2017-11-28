@@ -89,9 +89,9 @@ std::array<float, 2> calcFreqRange(
     float vMax = std::numeric_limits<float>::lowest();
     for (int iHist = 0; iHist < hists->nHist(); ++iHist) {
         auto collapsedHist = hists->hist(iHist)->hist(dims);
-        for (auto v : collapsedHist->values()) {
-            vMin = std::min(vMin, float(v));
-            vMax = std::max(vMax, float(v));
+        for (auto iBin = 0; iBin < collapsedHist->nBins(); ++iBin) {
+            vMin = std::min(vMin, collapsedHist->binPercent(iBin));
+            vMax = std::max(vMax, collapsedHist->binPercent(iBin));
         }
     }
     return {vMin, vMax};
@@ -100,9 +100,9 @@ std::array<float, 2> calcFreqRange(
 std::array<float, 2> calcFreqRange(const std::shared_ptr<const Hist>& hist) {
     float vMin = std::numeric_limits<float>::max();
     float vMax = std::numeric_limits<float>::lowest();
-    for (auto v : hist->values()) {
-        vMin = std::min(vMin, float(v));
-        vMax = std::max(vMax, float(v));
+    for (auto iBin = 0; iBin < hist->nBins(); ++iBin) {
+        vMin = std::min(vMin, hist->binPercent(iBin));
+        vMax = std::max(vMax, hist->binPercent(iBin));
     }
     return {vMin, vMax};
 }
@@ -164,6 +164,12 @@ void HistVolumePhysicalView::setHistConfigs(std::vector<HistConfig> configs) {
 
 void HistVolumePhysicalView::setDataStep(std::shared_ptr<DataStep> dataStep) {
     _dataStep = dataStep;
+}
+
+void HistVolumePhysicalView::setCustomHistRanges(
+        const HistVolumeView::HistRangesMap &histRangesMap) {
+    _histVolumeView->setCustomHistRanges(histRangesMap);
+    _histVolumeView->update();
 }
 
 std::string HistVolumePhysicalView::currHistName() const {
@@ -362,6 +368,26 @@ void HistVolumePhysicalOpenGLView::setHistVolume(
         updateCurrSlice();
         render();
     });
+}
+
+void HistVolumePhysicalOpenGLView::setCustomHistRanges(
+        const HistRangesMap &histRangesMap) {
+    _currHistNormPer = NormPer_Custom;
+    for (auto dimRange : histRangesMap) {
+        _currHistRanges[dimRange.first][0] = dimRange.second[0];
+        _currHistRanges[dimRange.first][1] = dimRange.second[1];
+    }
+    LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
+    LazyUI::instance().labeledLineEdit(
+            "histRange1Min", QString::number(_currHistRanges[0][0]));
+    LazyUI::instance().labeledLineEdit(
+            "histRange1Max", QString::number(_currHistRanges[0][1]));
+    LazyUI::instance().labeledLineEdit(
+            "histRange2Min", QString::number(_currHistRanges[1][0]));
+    LazyUI::instance().labeledLineEdit(
+            "histRange2Max", QString::number(_currHistRanges[1][1]));
+    setHistRangesToHistPainters(_currHistRanges);
+    render();
 }
 
 void HistVolumePhysicalOpenGLView::resizeGL(int w, int h) {

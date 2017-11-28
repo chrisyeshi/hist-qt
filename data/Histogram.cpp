@@ -360,7 +360,9 @@ std::shared_ptr<Hist> Hist3DFull::toSparse()
             values.push_back(m_values[binId]);
         }
     }
-    return std::make_shared<Hist3DSparse>(m_dim[0], m_dim[1], m_dim[2], m_mins, m_maxs, m_logBases, m_vars, binIds, values);
+    return std::make_shared<Hist3DSparse>(
+            m_dim[0], m_dim[1], m_dim[2], m_mins, m_maxs, m_logBases, m_vars,
+            binIds, values);
 }
 
 //HistBin Hist3DFull::bin(const int flatId) const

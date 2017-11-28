@@ -18,6 +18,7 @@ HistView::HistView(QWidget *parent)
     delayForInit([this]() {
         glClearColor(1.f, 1.f, 1.f, 1.f);
     });
+    qRegisterMetaType<IHistCharter::HistRangesMap>("HistRangesMap");
 }
 
 void HistView::setHist(std::shared_ptr<const HistFacade> histFacade,
@@ -25,13 +26,27 @@ void HistView::setHist(std::shared_ptr<const HistFacade> histFacade,
     delayForInit([this, histFacade, displayDims]() {
         _histCharter =
                 IHistCharter::create(
-                    histFacade, displayDims, this /*paintDevice*/);
+                    histFacade, displayDims, this /*paintDevice*/,
+                    [this](float x, float y, const std::string& label) {
+            if (label.empty()) {
+                QToolTip::hideText();
+            } else {
+                QPoint pos = this->mapToGlobal(QPoint(x, y));
+                QToolTip::showText(pos, tr("placeholder"));
+                QToolTip::showText(pos, QString::fromStdString(label));
+            }
+        });
+        _histCharter->selectedHistRangesChanged =
+                [this](IHistCharter::HistRangesMap histRangesMap) {
+            emit selectedHistRangesChanged(histRangesMap);
+        };
         if (!histFacade)
             return;
         auto hist2d = histFacade->hist(displayDims);
         float vMin = std::numeric_limits<float>::max();
         float vMax = std::numeric_limits<float>::lowest();
-        for (auto v : hist2d->values()) {
+        for (auto iBin = 0; iBin < hist2d->nBins(); ++iBin) {
+            auto v = hist2d->binPercent(iBin);
             vMin = std::min(vMin, float(v));
             vMax = std::max(vMax, float(v));
         }
@@ -39,36 +54,28 @@ void HistView::setHist(std::shared_ptr<const HistFacade> histFacade,
     });
 }
 
-void HistView::paintGL()
-{
+void HistView::paintGL() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     _histCharter->setSize(width(), height(), 1);
     _histCharter->chart();
 }
 
 void HistView::mousePressEvent(QMouseEvent *event) {
-    _mousePress = event->localPos();
-}
-
-void HistView::mouseReleaseEvent(QMouseEvent *event) {
-
-}
-
-void HistView::mouseMoveEvent(QMouseEvent *event) {
-    std::string label =
-            _histCharter->setMouseHover(
-                event->localPos().x(), event->localPos().y());
-    if (label.empty())
-        QToolTip::hideText();
-    else {
-        QToolTip::showText(event->globalPos(), "label");
-        QToolTip::showText(event->globalPos(), QString::fromStdString(label));
-    }
+    _histCharter->mousePressEvent(event);
     update();
 }
 
-void HistView::leaveEvent(QEvent *)
-{
-    _histCharter->setMouseHover(-1.f, -1.f);
+void HistView::mouseReleaseEvent(QMouseEvent *event) {
+    _histCharter->mouseReleaseEvent(event);
+    update();
+}
+
+void HistView::mouseMoveEvent(QMouseEvent *event) {
+    _histCharter->mouseMoveEvent(event);
+    update();
+}
+
+void HistView::leaveEvent(QEvent *event) {
+    _histCharter->leaveEvent(event);
     update();
 }
