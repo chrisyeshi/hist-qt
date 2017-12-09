@@ -212,21 +212,13 @@ void MainWindow::createSimpleLayout() {
     _histView = new HistViewHolder(this);
     _histView->setText(tr("Please open a dataset."));
     auto physicalView = new HistVolumePhysicalView(this);
-//    connect(physicalView, &HistVolumePhysicalView::selectedHistsChanged, this,
-//            [this](std::vector<std::shared_ptr<const Hist>> hists) {
-//        std::shared_ptr<const Hist> merged = mergeHists(hists);
-//        auto histFacade = HistFacade::create(merged, merged->vars());
-//        auto dims = createIncrementVector(0, merged->nDim());
-//        _histView->setHist(histFacade, dims);
-//        if (dims.empty()) {
-//            _histView->setText(
-//                    tr("Selected/merged histogram will be shown here."));
-//        }
-//        _histView->update();
-//    }, Qt::QueuedConnection);
     connect(physicalView, &HistVolumePhysicalView::selectedHistIdsChanged, this,
             [this](std::string volumeName, std::vector<int> flatIds,
                 std::vector<int> displayDims) {
+        qInfo() << "HistVolumePhysicalView::selectedHistIdsChanged"
+                << "volumeName" << QString::fromStdString(volumeName)
+                << "flatIds" << QVector<int>::fromStdVector(flatIds)
+                << "displayDims" << QVector<int>::fromStdVector(displayDims);
         auto volume = _data.step(_currTimeStep)->dumbVolume(volumeName);
         auto hists = yy::fp::map(flatIds, [&](int flatId) {
             return volume->hist(flatId)->hist(displayDims);
@@ -246,6 +238,11 @@ void MainWindow::createSimpleLayout() {
     _particleView->hide();
     connect(_histView, &HistViewHolder::selectedHistRangesChanged,
             this, [this](HistVolumeView::HistRangesMap histRangesMap) {
+        qInfo() << "HistView brushing to select histogram ranges:";
+        for (auto dimRange : histRangesMap) {
+            qInfo() << dimRange.first << ":"
+                    << dimRange.second[0] << dimRange.second[1];
+        }
         _histVolumeView->setCustomHistRanges(histRangesMap);
     });
 
@@ -274,8 +271,14 @@ void MainWindow::createSimpleLayout() {
     }(), 1);
     vLayout->addWidget(_timelineView);
     connect(_timelineView, &TimelineView::timeStepChanged,
-            this, &MainWindow::setTimeStep);
-    LazyUI::instance().button(tr("Open"), this, [this]() { open(); });
+            this, [this](int timeStep) {
+        qInfo() << "TimelineView::timeStepChanged" << timeStep;
+        setTimeStep(timeStep);
+    });
+    LazyUI::instance().button(tr("Open"), this, [this]() {
+        qInfo() << "openButton";
+        open();
+    });
     readSettings();
 }
 

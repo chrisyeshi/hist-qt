@@ -37,7 +37,7 @@ const glm::vec4 _yellowBlueBackgroundColor = {1.f, 1.f, 1.f, 1.f};
 } // unnamed namespace
 
 const glm::vec4 Hist1DVBOPainter::_yellowBlueBarColor = {
-    51/255.f, 110/255.f, 123/255.f, 1.f
+    139/255.f, 164/255.f, 215/255.f, 1.f
 };
 const glm::vec4 Hist1DVBOPainter::_grayScaleBackgroundColor = {
     200/255.0, 200/255.0, 200/255.0, 1.f
@@ -452,6 +452,8 @@ std::shared_ptr<yy::gl::program> Hist2DTexturePainter::sharedShaderProgram()
                         discard;
                     float val = texture(tex, vf_texCoord).r;
                     float freq = log(val - vMin + 1) / log(vMax - vMin + 1);
+                    if (freq <= 0)
+                        discard;
                     f_color = texture(colormap, freq);
                 }
             )GLSL");

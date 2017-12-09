@@ -61,7 +61,7 @@ protected:
     virtual QFontMetricsF tickFontMetrics() const {
         return QFontMetricsF(tickFont());
     }
-    virtual int maxTickCharCount() const { return 10; }
+    virtual int maxTickCharCount() const { return 11; }
     virtual float tickWidth() const {
         return maxTickCharCount() * tickFontMetrics().averageCharWidth();
     }

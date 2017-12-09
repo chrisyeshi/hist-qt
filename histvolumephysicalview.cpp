@@ -166,6 +166,7 @@ void HistVolumePhysicalView::setHistConfigs(std::vector<HistConfig> configs) {
             tr("histVolume"), tr("Histogram Volumes"),
             getHistConfigNames(_histConfigs), FluidLayout::Item::Large, this,
             [this](const QString& text) {
+        qInfo() << "histVolumeCombo" << text;
         QStringList names = getHistConfigNames(_histConfigs);
         assert(names.contains(text));
         _currHistConfigId = names.indexOf(text);
@@ -205,6 +206,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
                 tr("sliceDirections"), tr("Slicing Direction"),
                 {tr("XY"), tr("XZ"), tr("YZ")}, this,
                 [this](const QString& text) {
+            qInfo() << "sliceDirectionsCombo" << text;
             if (tr("YZ") == text) {
                 _currOrien = YZ;
             } else if (tr("XZ") == text) {
@@ -218,11 +220,14 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             render();
             update();
         });
+        LazyUI::instance().labeledScrollBar(
+                tr("sliceId"), tr("Slice Index"), FluidLayout::Item::FullLine);
         LazyUI::instance().sectionHeader("freqHeader", "Frequency Range");
         LazyUI::instance().labeledCombo(
                 "freqRangeMethod", "Per",
                 {"Histogram", "Histogram Volume", "Histogram Slice", "Custom"},
                 FluidLayout::Item::Large, this, [=](const QString& text) {
+            qInfo() << "freqRangeMethodCombo" << text;
             if (tr("Histogram") == text) {
                 _currFreqNormPer = NormPer_Histogram;
             } else if (tr("Histogram Slice") == text) {
@@ -246,6 +251,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
         LazyUI::instance().labeledLineEdit("freqRangeMin", "Minimum",
                 "nan", FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
+            qInfo() << "freqRangeMinLineEdit" << text;
             _currFreqNormPer = NormPer_Custom;
             LazyUI::instance().labeledCombo("freqRangeMethod", "Custom");
             _currFreqRange[0] = text.toDouble();
@@ -256,6 +262,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
         LazyUI::instance().labeledLineEdit("freqRangeMax", "Maximum",
                 "nan", FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
+            qInfo() << "freqRangeMaxLineEdit" << text;
             _currFreqNormPer = NormPer_Custom;
             LazyUI::instance().labeledCombo("freqRangeMethod", "Custom");
             _currFreqRange[1] = text.toDouble();
@@ -268,6 +275,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
                 "histRangeMethod", "Per",
                 {"Histogram", "Histogram Volume", "Histogram Slice", "Custom"},
                 FluidLayout::Item::Large, this, [=](const QString& text) {
+            qInfo() << "histRangeMethodCombo" << text;
             if (tr("Histogram") == text) {
                 _currHistNormPer = NormPer_Histogram;
             } else if (tr("Histogram Slice") == text) {
@@ -296,6 +304,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
                 "histRange1Min", "X Minimum",
                 tr("nan"), FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
+            qInfo() << "histRange1MinLineEdit" << text;
             _currHistNormPer = NormPer_Custom;
             LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
             _currHistRanges[0][0] = text.toDouble();
@@ -307,6 +316,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
                 "histRange1Max", "X Maximum",
                 tr("nan"), FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
+            qInfo() << "histRange1MaxLineEdit" << text;
             _currHistNormPer = NormPer_Custom;
             LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
             _currHistRanges[0][1] = text.toDouble();
@@ -318,6 +328,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
                 "histRange2Min", "Y Minimum",
                 tr("nan"), FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
+            qInfo() << "histRange2MinLineEdit" << text;
             _currHistNormPer = NormPer_Custom;
             LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
             _currHistRanges[1][0] = text.toDouble();
@@ -329,6 +340,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
                 "histRange2Max", "Y Maximum",
                 tr("nan"), FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
+            qInfo() << "histRange2MaxLineEdit" << text;
             _currHistNormPer = NormPer_Custom;
             LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
             _currHistRanges[1][1] = text.toDouble();
@@ -361,6 +373,7 @@ void HistVolumePhysicalOpenGLView::setHistVolume(
             tr("histVar"), tr("Histogram Variables"),
             getHistDimVars(histConfig), getDimsToVars(_histConfig)[_currDims],
             FluidLayout::Item::Large, this, [=](const QString& text) {
+        qInfo() << "histVarCombo" << text;
         auto varsToDims = getVarsToDims(histConfig);
         std::vector<int> dims = varsToDims[text];
         assert(!dims.empty());
@@ -804,7 +817,7 @@ std::vector<std::array<double, 2>>
         }
         for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist)
         for (int iDim = 0; iDim < _currDims.size(); ++iDim) {
-            auto range = _currSlice->hist(iHist)->dimRange(iDim);
+            auto range = _currSlice->hist(iHist)->dimRange(_currDims[iDim]);
             minmaxs[iDim][0] = std::min(range[0], minmaxs[iDim][0]);
             minmaxs[iDim][1] = std::max(range[1], minmaxs[iDim][1]);
         }
@@ -818,7 +831,7 @@ std::vector<std::array<double, 2>>
         }
         for (int iHist = 0; iHist < _histVolume->helper().N_HIST; ++iHist)
         for (int iDim = 0; iDim < _currDims.size(); ++iDim) {
-            auto range = _histVolume->hist(iHist)->dimRange(iDim);
+            auto range = _histVolume->hist(iHist)->dimRange(_currDims[iDim]);
             minmaxs[iDim][0] = std::min(range[0], minmaxs[iDim][0]);
             minmaxs[iDim][1] = std::max(range[1], minmaxs[iDim][1]);
         }
@@ -868,6 +881,7 @@ void HistVolumePhysicalOpenGLView::updateSliceIdScrollBar() {
     LazyUI::instance().labeledScrollBar(tr("sliceId"), tr("Slice Index"),
             0, nSlices - 1, _currSliceId, FluidLayout::Item::FullLine, this,
             [this](int value) {
+        qInfo() << "sliceIdScrollBar" << value;
         _currSliceId = value;
         updateCurrSlice();
         render();

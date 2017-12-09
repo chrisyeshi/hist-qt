@@ -155,7 +155,8 @@ public:
                 _dimVoxels, _dimProcs, _dimHistsPerDomain, _volMin, _volMax);
     }
     TimeSteps timeSteps() const {
-        return TimeSteps(_nTimes, _nTimesPerField, _freqTracer);
+//        return TimeSteps(_nTimes, _nTimesPerField, _freqTracer);
+        return _timeSteps;
     }
     std::vector<int> dimVoxels() const { return _dimVoxels; }
     std::vector<int> dimProcs() const { return _dimProcs; }
@@ -174,6 +175,7 @@ private:
     std::vector<float> _volMin, _volMax;
     float _freqTracer;
     std::vector<HistConfig> _histConfigs;
+    TimeSteps _timeSteps;
 };
 
 /**

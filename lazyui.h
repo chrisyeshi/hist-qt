@@ -169,7 +169,7 @@ private:
     }
 
 private:
-    const int lineHeight = 50;
+    const int lineHeight = 40;
     const int nCellsPerLine = 12;
     const int minimumCellCount = 1;
     QList<Item> _items;
@@ -325,6 +325,15 @@ public:
         connect(combo, &QComboBox::currentTextChanged, context, func);
     }
 
+    void labeledScrollBar(
+            QString key, const QString& label, FluidLayout::Item::Size size) {
+        if (!_widgets.contains(key)) {
+            auto labeledScrollBar = new LabeledWidget<QScrollBar>(label);
+            labeledScrollBar->widget()->setOrientation(Qt::Horizontal);
+            _panel->addWidget(labeledScrollBar, size);
+            _widgets[key] = labeledScrollBar;
+        }
+    }
     void labeledScrollBar(QString key, const QString& label, int minimum,
             int maximum, int value, QObject* context,
             std::function<void(int)> func) {
@@ -334,12 +343,7 @@ public:
     void labeledScrollBar(QString key, const QString& label, int minimum,
             int maximum, int value, FluidLayout::Item::Size size,
             QObject* context, std::function<void(int)> func) {
-        if (!_widgets.contains(key)) {
-            auto labeledScrollBar = new LabeledWidget<QScrollBar>(label);
-            labeledScrollBar->widget()->setOrientation(Qt::Horizontal);
-            _panel->addWidget(labeledScrollBar, size);
-            _widgets[key] = labeledScrollBar;
-        }
+        labeledScrollBar(key, label, size);
         auto labeledScrollBar =
                 static_cast<LabeledWidget<QScrollBar>*>(_widgets[key]);
         auto scrollBar = labeledScrollBar->widget();

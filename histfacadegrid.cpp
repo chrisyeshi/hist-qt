@@ -3,6 +3,7 @@
 #include <data/histreader.h>
 #include <QElapsedTimer>
 #include <util.h>
+#include <data/directory.h>
 
 namespace {
 
@@ -155,20 +156,33 @@ HistFacadeVolume::HistFacadeVolume(
 {
     _domains.resize(nDomains());
     if (isFileExist(dir + "/pdfs-ycolumn-001.00000")) {
-        int nYColumns = dims[0] * dims[2];
-        for (int iYColumn = 0; iYColumn < nYColumns; ++iYColumn) {
-            char iYColumnStr[6];
-            sprintf(iYColumnStr, "%05d", iYColumn);
-            auto histDomains =
-                    HistFacadeYColumnReader(
-                        dir, name, iYColumnStr, vars).read();
-            int nYDomains = dims[1];
-            for (int iYDomain = 0; iYDomain < nYDomains; ++iYDomain) {
-                auto yColumnIds = Extent(dims[0], dims[2]).flattoids(iYColumn);
-                int iDomain =
-                        Extent(dims).idstoflat(
-                            yColumnIds[0], iYDomain, yColumnIds[1]);
-                _domains[iDomain] = histDomains[iYDomain];
+        auto entries = entryNamesInDirectory(dir);
+        auto yColumns =
+                yy::fp::filter(entries, [name](const std::string& entry) {
+            return entry.size() >= 16 && name == entry.substr(13, 3);
+        });
+        if (yColumns.size() != dims[0] * dims[2]) {
+            // everything in one file, other than "." and ".."
+            assert(3 == entries.size());
+            _domains = HistFacadeYColumnReader(dir, name, "00000", vars).read();
+        } else {
+            // actual y columns
+            int nYColumns = dims[0] * dims[2];
+            for (int iYColumn = 0; iYColumn < nYColumns; ++iYColumn) {
+                char iYColumnStr[6];
+                sprintf(iYColumnStr, "%05d", iYColumn);
+                auto histDomains =
+                        HistFacadeYColumnReader(
+                            dir, name, iYColumnStr, vars).read();
+                int nYDomains = dims[1];
+                for (int iYDomain = 0; iYDomain < nYDomains; ++iYDomain) {
+                    auto yColumnIds =
+                            Extent(dims[0], dims[2]).flattoids(iYColumn);
+                    int iDomain =
+                            Extent(dims).idstoflat(
+                                yColumnIds[0], iYDomain, yColumnIds[1]);
+                    _domains[iDomain] = histDomains[iYDomain];
+                }
             }
         }
     } else {
