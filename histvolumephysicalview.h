@@ -37,6 +37,10 @@ public:
     virtual void setCustomHistRanges(
             const HistRangesMap& histRangesMap) override;
 
+public:
+    void reset(std::vector<int> displayDims = {0});
+    void render();
+
 private:
     std::string currHistName() const;
 
@@ -73,6 +77,7 @@ public:
             std::shared_ptr<HistFacadeVolume> histVolume);
     typedef std::map<int, std::array<float, 2>> HistRangesMap;
     void setCustomHistRanges(const HistRangesMap& histRangesMap);
+    void reset(std::vector<int> displayDims = {0});
 
 protected:
     void resizeGL(int w, int h);

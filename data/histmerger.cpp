@@ -172,7 +172,7 @@ std::vector<std::vector<int>> makeIdsArray(
 
 int HistMerger::calcBinCount(
         int iDim, const std::vector<std::shared_ptr<const Hist>>& hists) const {
-    const int maxBinCount = 100;
+    const int maxBinCount = 32;
     if (int(_binCounts.size()) > iDim && _binCounts[iDim]._binCount > 0) {
         return _binCounts[iDim]._binCount;
     }

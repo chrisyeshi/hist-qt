@@ -75,35 +75,77 @@ void Hist2DFacadeCharter::setRange(float vMin, float vMax)
 }
 
 void Hist2DFacadeCharter::mousePressEvent(QMouseEvent *event) {
-
+    _isMousePressed = true;
+    auto binIds = posToBinIds(event->localPos().x(), event->localPos().y());
+    if (binIds[0] < 0) {
+        _isBinSelected = false;
+        return;
+    }
+    _isBinSelected = true;
+    _selectedBinBeg = binIds;
+    _selectedBinEnd = binIds;
 }
 
 void Hist2DFacadeCharter::mouseReleaseEvent(QMouseEvent *event) {
-
+    _isMousePressed = false;
+    auto hist2d = hist();
+    std::array<int, 2> binLower, binUpper;
+    binLower[0] =
+            clamp(std::min(_selectedBinBeg[0], _selectedBinEnd[0]),
+                0, hist2d->dim()[0] - 1);
+    binLower[1] =
+            clamp(std::min(_selectedBinBeg[1], _selectedBinEnd[1]),
+                0, hist2d->dim()[1] - 1);
+    binUpper[0] =
+            clamp(std::max(_selectedBinBeg[0], _selectedBinEnd[0]),
+                0, hist2d->dim()[0] - 1);
+    binUpper[1] =
+            clamp(std::max(_selectedBinBeg[1], _selectedBinEnd[1]),
+                0, hist2d->dim()[1] - 1);
+    auto xFullRange = _histFacade->dimRange(0);
+    auto yFullRange = _histFacade->dimRange(1);
+    auto xBinWidth = (xFullRange[1] - xFullRange[0]) / hist()->dim()[0];
+    auto yBinWidth = (yFullRange[1] - yFullRange[0]) / hist()->dim()[1];
+    std::array<float, 2> xRange, yRange;
+    xRange[0] = xFullRange[0] + xBinWidth * binLower[0];
+    xRange[1] = xFullRange[0] + xBinWidth * (1 + binUpper[0]);
+    yRange[0] = yFullRange[0] + yBinWidth * binLower[1];
+    yRange[1] = yFullRange[0] + yBinWidth * (1 + binUpper[1]);
+    selectedHistRangesChanged(
+            {{_displayDims[0], xRange}, {_displayDims[1], yRange}});
 }
 
 void Hist2DFacadeCharter::mouseMoveEvent(QMouseEvent *event) {
     float x = event->localPos().x();
     float y = event->localPos().y();
     auto hist2d = hist();
-    float hx = x * devicePixelRatioF() - histLeft();
-    float hy = histHeight() - (y * devicePixelRatioF() - histTop());
-    if (hx < 0.f || hx >= histWidth() || hy < 0.f || hy >= histHeight()) {
-        _hoveredBin[0] = -1;
+    auto binIds = posToBinIds(x, y);
+    if (_isMousePressed && _isBinSelected) {
+        _selectedBinEnd = binIds;
+    }
+    if (binIds[0] < 0 || binIds[0] >= hist2d->dim()[0] ||
+            binIds[1] < 0 || binIds[1] >= hist2d->dim()[1]) {
+        _hoveredBin = {{-1, -1}};
         _showLabel(x, y, "");
         return;
     }
-    float dx = histWidth() / hist2d->dim()[0];
-    float dy = histHeight() / hist2d->dim()[1];
-    int ibx = hx / dx;
-    int iby = hy / dy;
-    _hoveredBin[0] = ibx;
-    _hoveredBin[1] = iby;
+    _hoveredBin = binIds;
+    int ibx = _hoveredBin[0];
+    int iby = _hoveredBin[1];
     double binFreq = hist2d->binFreq(ibx, iby);
     float binPercent = hist2d->binPercent(ibx, iby);
-    std::string valueStr = std::to_string(int(binFreq + 0.5));
-    std::string percentStr = std::to_string(int(binPercent * 100.f + 0.5f));
-    _showLabel(x, y, valueStr + " (" + percentStr + "%)");
+    std::vector<std::array<double, 2>> binRanges = hist2d->binRanges(ibx, iby);
+    QString label =
+            QString("frequency: %1 (%2\%)\n%3: [%4, %5]\n%6: [%7, %8]")
+                .arg(QString::number(binFreq, 'g', 5))
+                .arg(QString::number(binPercent * 100.f, 'g', 3))
+                .arg(hist2d->var(0).c_str())
+                .arg(QString::number(binRanges[0][0], 'g', 3))
+                .arg(QString::number(binRanges[0][1], 'g', 3))
+                .arg(hist2d->var(1).c_str())
+                .arg(QString::number(binRanges[1][0], 'g', 3))
+                .arg(QString::number(binRanges[1][1], 'g', 3));
+    _showLabel(x, y, label.toStdString());
 }
 
 void Hist2DFacadeCharter::leaveEvent(QEvent *event) {
@@ -134,6 +176,28 @@ void Hist2DFacadeCharter::chart() {
                 QLineF(histLeft(), height() - (histBottom() + iy * dy),
                     width() - histRight(),
                     height() - (histBottom() + iy * dy)));
+    }
+    // selected bins
+    if (_isBinSelected) {
+        std::array<int, 2> binLower, binUpper;
+        binLower[0] =
+                clamp(std::min(_selectedBinBeg[0], _selectedBinEnd[0]),
+                    0, hist2d->dim()[0] - 1);
+        binLower[1] =
+                clamp(std::min(_selectedBinBeg[1], _selectedBinEnd[1]),
+                    0, hist2d->dim()[1] - 1);
+        binUpper[0] =
+                clamp(std::max(_selectedBinBeg[0], _selectedBinEnd[0]),
+                    0, hist2d->dim()[0] - 1);
+        binUpper[1] =
+                clamp(std::max(_selectedBinBeg[1], _selectedBinEnd[1]),
+                    0, hist2d->dim()[1] - 1);
+        painter.fillRect(
+                histLeft() + binLower[0] * dx,
+                histTop() + histHeight() - (binUpper[1] + 1) * dy,
+                (binUpper[0] - binLower[0] + 1) * dx,
+                (binUpper[1] - binLower[1] + 1) * dy,
+                QColor(231, 76, 60, 100));
     }
     // hovered bin
     if (-1 != _hoveredBin[0]) {
@@ -236,6 +300,17 @@ std::shared_ptr<const Hist> Hist2DFacadeCharter::hist() const {
     return _histFacade->hist(_displayDims);
 }
 
+std::array<int, 2> Hist2DFacadeCharter::posToBinIds(float x, float y) const {
+    float hx = x * devicePixelRatioF() - histLeft();
+    float hy = histHeight() - (y * devicePixelRatioF() - histTop());
+    auto hist2d = hist();
+    float dx = histWidth() / hist2d->dim()[0];
+    float dy = histHeight() / hist2d->dim()[1];
+    int ibx = hx / dx;
+    int iby = hy / dy;
+    return {{ibx, iby}};
+}
+
 /**
  * @brief Hist1DFacadeCharter::Hist1DFacadeCharter
  * @param histFacade
@@ -311,9 +386,15 @@ void Hist1DFacadeCharter::mouseMoveEvent(QMouseEvent *event) {
     }
     double binFreq = hist->binFreq(ibx);
     float binPercent = hist->binPercent(ibx);
-    std::string valueStr = std::to_string(int(binFreq + 0.5));
-    std::string percentStr = std::to_string(int(binPercent * 100.f + 0.5f));
-    _showLabel(x, y, valueStr + " (" + percentStr + "%)");
+    std::vector<std::array<double, 2>> binRanges = hist->binRanges({ibx});
+    QString label =
+            QString("frequency: %1 (%2\%)\n%3: [%4, %5]")
+                .arg(QString::number(binFreq, 'g', 5))
+                .arg(QString::number(binPercent * 100.f, 'g', 3))
+                .arg(hist->var(0).c_str())
+                .arg(QString::number(binRanges[0][0], 'g', 3))
+                .arg(QString::number(binRanges[0][1], 'g', 3));
+    _showLabel(x, y, label.toStdString());
 }
 
 void Hist1DFacadeCharter::leaveEvent(QEvent*) {

@@ -4,6 +4,7 @@
 #include <QGestureEvent>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QTimer>
 #include <histview.h>
 #include <lazyui.h>
 #include <histfacadepainter.h>
@@ -182,6 +183,10 @@ void HistVolumePhysicalView::setCustomHistRanges(
         const HistVolumeView::HistRangesMap &histRangesMap) {
     _histVolumeView->setCustomHistRanges(histRangesMap);
     _histVolumeView->update();
+}
+
+void HistVolumePhysicalView::reset(std::vector<int> displayDims) {
+    _histVolumeView->reset(displayDims);
 }
 
 std::string HistVolumePhysicalView::currHistName() const {
@@ -378,7 +383,7 @@ void HistVolumePhysicalOpenGLView::setHistVolume(
         std::vector<int> dims = varsToDims[text];
         assert(!dims.empty());
         _currDims = dims;
-        _selectedHistIds.clear();
+//        _selectedHistIds.clear();
         emitSelectedHistsChanged();
         updateSliceIdScrollBar();
         updateCurrSlice();
@@ -386,7 +391,7 @@ void HistVolumePhysicalOpenGLView::setHistVolume(
         update();
     });
     updateSliceIdScrollBar();
-    _selectedHistIds.clear();
+//    _selectedHistIds.clear();
     emitSelectedHistsChanged();
     delayForInit([this]() {
         updateCurrSlice();
@@ -414,19 +419,69 @@ void HistVolumePhysicalOpenGLView::setCustomHistRanges(
     render();
 }
 
+void HistVolumePhysicalOpenGLView::reset(std::vector<int> displayDims) {
+    _currDims = displayDims;
+    _currOrien = _defaultOrien;
+    _currSliceId = _defaultSliceId;
+    _currFreqNormPer = _defaultFreqNormPer;
+    _currFreqRange = calcFreqRange();
+    _currHistNormPer = _defaultHistNormPer;
+    _currHistRanges = calcHistRanges();
+    _currTranslate = _defaultTranslate;
+    _currZoom = _defaultZoom;
+    // update internal states
+    updateSliceIdScrollBar();
+    _selectedHistIds.clear();
+    delayForInit([this]() {
+        updateCurrSlice();
+        render();
+        update();
+    });
+    // update UI
+    auto dimsToVars = getDimsToVars(_histConfig);
+    LazyUI::instance().labeledCombo(tr("histVar"), dimsToVars[_currDims]);
+    if (YZ == _currOrien) {
+        LazyUI::instance().labeledCombo(tr("sliceDirections"), tr("YZ"));
+    } else if (XZ == _currOrien) {
+        LazyUI::instance().labeledCombo(tr("sliceDirections"), tr("XZ"));
+    } else if (XY == _currOrien) {
+        LazyUI::instance().labeledCombo(tr("sliceDirections"), tr("XY"));
+    }
+    LazyUI::instance().labeledCombo("freqRangeMethod", "Histogram");
+    LazyUI::instance().labeledLineEdit(
+            "freqRangeMin", QString::number(_currFreqRange[0]));
+    LazyUI::instance().labeledLineEdit(
+            "freqRangeMax", QString::number(_currFreqRange[1]));
+    LazyUI::instance().labeledCombo("histRangeMethod", "Histogram");
+    LazyUI::instance().labeledLineEdit(
+            "histRange1Min", QString::number(_currHistRanges[0][0]));
+    LazyUI::instance().labeledLineEdit(
+            "histRange1Max", QString::number(_currHistRanges[0][1]));
+    LazyUI::instance().labeledLineEdit(
+            "histRange2Min", QString::number(_currHistRanges[1][0]));
+    LazyUI::instance().labeledLineEdit(
+            "histRange2Max", QString::number(_currHistRanges[1][1]));
+}
+
 void HistVolumePhysicalOpenGLView::resizeGL(int w, int h) {
     if (!_histVolume) {
         return;
     }
     boundSliceTransform();
     updateHistPainterRects();
-    QTimer::singleShot(0, this, [this]() {
-        delayForInit([this]() {
-            _histSliceFbo = createWidgetSizeFbo();
+    static QTimer* timer = [this]() {
+        QTimer* timer = new QTimer(this);
+        timer->setSingleShot(true);
+        connect(timer, &QTimer::timeout, this, [this]() {
+            delayForInit([this]() {
+                _histSliceFbo = createWidgetSizeFbo();
+            });
+            render();
+            update();
         });
-        render();
-        update();
-    });
+        return timer;
+    }();
+    timer->start(10);
 //    _camera->setAspectRatio(float(w) / float(h));
 //    _volren->resize(w, h);
 }
@@ -978,6 +1033,15 @@ void HistVolumePhysicalOpenGLView::translateEvent(const QVector2D &delta) {
             -delta.y() / sliceRect.height());
     _currTranslate -= translate;
     boundSliceTransform();
+    static QTimer* timer = [this]() {
+        QTimer* timer = new QTimer(this);
+        timer->setSingleShot(true);
+        connect(timer, &QTimer::timeout, this, [this]() {
+            qInfo() << "translate event:" << _currTranslate << _currZoom;
+        });
+        return timer;
+    }();
+    timer->start(10);
     updateHistPainterRects();
 }
 
@@ -1005,13 +1069,22 @@ void HistVolumePhysicalOpenGLView::zoomEvent(
     _currTranslate = QVector2D(newTranslate.x(), newTranslate.y());
     // bound the zoom so that it's not too big or too small
     boundSliceTransform();
+    static QTimer* timer = [this]() {
+        QTimer* timer = new QTimer(this);
+        timer->setSingleShot(true);
+        connect(timer, &QTimer::timeout, this, [this]() {
+            qInfo() << "zoom event:" << _currTranslate << _currZoom;
+        });
+        return timer;
+    }();
+    timer->start(10);
     updateHistPainterRects();
 }
 
 std::shared_ptr<QOpenGLFramebufferObject>
         HistVolumePhysicalOpenGLView::createWidgetSizeFbo() const {
     QOpenGLFramebufferObjectFormat format;
-    format.setSamples(16);
+    format.setSamples(4);
     return std::make_shared<QOpenGLFramebufferObject>(
         this->size() * this->devicePixelRatio(), format);
 }

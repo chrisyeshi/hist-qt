@@ -94,6 +94,30 @@ public:
     float binPercent(int currId, Targs... ids) const {
         return binPercent(m_dim.idstoflat(currId, ids...));
     }
+    virtual std::vector<std::array<double, 2>> binRanges(
+            const int flatId) const {
+        auto ids = m_dim.flattoids(flatId);
+        std::vector<std::array<double, 2>> ranges(ids.size());
+        for (auto iDim = 0; iDim < ids.size(); ++iDim) {
+            auto min = m_mins[iDim];
+            auto max = m_maxs[iDim];
+            auto range = max - min;
+            auto nBin = m_dim[iDim];
+            auto binRange = range / nBin;
+            ranges[iDim][0] = min + (ids[iDim] + 0) * binRange;
+            ranges[iDim][1] = min + (ids[iDim] + 1) * binRange;
+        }
+        return ranges;
+    }
+    virtual std::vector<std::array<double, 2>> binRanges(
+            const std::vector<int>& ids) const {
+        return binRanges(m_dim.idstoflat(ids));
+    }
+    template <typename... Targs>
+    std::vector<std::array<double, 2>> binRanges(
+            int currId, Targs... ids) const {
+        return binRanges(m_dim.idstoflat(currId, ids...));
+    }
 
 
     virtual const std::vector<float>& values() const {

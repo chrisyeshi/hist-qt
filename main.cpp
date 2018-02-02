@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     surfaceFormat.setVersion(3, 3);
     surfaceFormat.setProfile(QSurfaceFormat::CoreProfile);
     surfaceFormat.setOption(QSurfaceFormat::DebugContext);
-    surfaceFormat.setSamples(16);
+    surfaceFormat.setSamples(4);
     QSurfaceFormat::setDefaultFormat(surfaceFormat);
     // set shared opengl context
     QCoreApplication::setOrganizationName("VIDi");
@@ -40,6 +40,7 @@ int main(int argc, char *argv[])
     // initiate the application
     QApplication a(argc, argv);
     // main window
+//    MainWindow w("user study");
     MainWindow w("physical");
     w.show();
     return a.exec();

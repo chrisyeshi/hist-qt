@@ -20,3 +20,7 @@ void TimelineView::setDataPool(DataPool* dataPool)
     _timePlotView->setDataPool(dataPool);
     _timePlotView->update();
 }
+
+void TimelineView::setTimeStep(int timeStep) {
+    _timePlotView->setTimeStep(timeStep);
+}

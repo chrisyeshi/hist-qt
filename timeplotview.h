@@ -12,6 +12,7 @@ public:
 
 public:
     void setDataPool(DataPool* dataPool);
+    void setTimeStep(int timeStep);
 
 protected:
     virtual void paintGL() override;
@@ -19,6 +20,7 @@ protected:
     virtual void mousePressEvent(QMouseEvent *event) override;
     virtual void mouseReleaseEvent(QMouseEvent *event) override;
     virtual void leaveEvent(QEvent*) override;
+    virtual void keyPressEvent(QKeyEvent* event) override;
 
 signals:
     void timeStepChanged(int);

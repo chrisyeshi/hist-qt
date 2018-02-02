@@ -16,6 +16,7 @@ public:
 
 public:
     void setDataPool(DataPool* dataPool);
+    void setTimeStep(int timeStep);
 
 signals:
     void timeStepChanged(int);

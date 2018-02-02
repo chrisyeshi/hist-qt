@@ -21,6 +21,7 @@ TimePlotView::TimePlotView(QWidget *parent)
   , _data(nullptr)
   , _hoveredStep(-1)
   , _selectedStep(0) {
+    setFocusPolicy(Qt::ClickFocus);
     setMinimumHeight(30);
     setMouseTracking(true);
     delayForInit([this]() {
@@ -33,6 +34,11 @@ void TimePlotView::setDataPool(DataPool *dataPool)
     _data = dataPool;
     _hoveredStep = -1;
     _selectedStep = 0;
+    update();
+}
+
+void TimePlotView::setTimeStep(int timeStep) {
+    _selectedStep = timeStep;
     update();
 }
 
@@ -51,9 +57,6 @@ void TimePlotView::paintGL()
     painter.setPen(QPen(Qt::black, 0.25f));
     painter.setFont(QFont("mono", 8.f * deviceRatioF));
     // label rect
-//    QRect labelRect(0, 0, 100, 100);
-//    painter.painter()->drawText(0, 0, 100, 100, Qt::AlignBottom | Qt::AlignLeft,
-//            QString::number(0.012345678, 'g', 5), &labelRect);
     QRect labelRect =
             painter.boundingRect(
                 0, 0, 100, 100,
@@ -79,7 +82,8 @@ void TimePlotView::paintGL()
     for (int iStep = 0; iStep < nSteps; iStep += labelStep) {
         painter.drawText(left + stepWidth * iStep, h - bottomHeight,
                 labelWidth, bottomHeight, Qt::AlignTop | Qt::AlignLeft,
-                QString::number(_data->timeStepDouble(iStep), 'g', 5));
+                QString::number(iStep, 'g', 5));
+//                QString::number(_data->timeStepDouble(iStep), 'g', 5));
 //                QString::fromStdString(_data->timeStepStr(iStep)));
 //                QString::number(iStep * _data->interval(), 'g', 5));
     }
@@ -118,15 +122,33 @@ void TimePlotView::mousePressEvent(QMouseEvent *event)
     update();
 }
 
-void TimePlotView::mouseReleaseEvent(QMouseEvent */*event*/)
-{
+void TimePlotView::mouseReleaseEvent(QMouseEvent */*event*/) {
 
 }
 
-void TimePlotView::leaveEvent(QEvent *)
-{
+void TimePlotView::leaveEvent(QEvent *) {
     _hoveredStep = -1;
     update();
+}
+
+void TimePlotView::keyPressEvent(QKeyEvent *event) {
+    if (!_data) {
+        OpenGLWidget::keyPressEvent(event);
+        return;
+    }
+    if (Qt::Key_Right == event->key()) {
+        qInfo() << "TimePlotView key right pressed.";
+        setSelectedStep(clamp(_selectedStep + 1, 0, _data->numSteps() -1));
+        update();
+        return;
+    }
+    if (Qt::Key_Left == event->key()) {
+        qInfo() << "TimePlotView key left pressed.";
+        setSelectedStep(clamp(_selectedStep - 1, 0, _data->numSteps() -1));
+        update();
+        return;
+    }
+    OpenGLWidget::keyPressEvent(event);
 }
 
 int TimePlotView::localPosToStep(float x, float /*y*/) const

@@ -14,6 +14,7 @@ class TimelineView;
 class QComboBox;
 class QPushButton;
 class QStackedLayout;
+class UserStudyCtrlView;
 
 class HistViewHolder : public QWidget {
     Q_OBJECT
@@ -61,6 +62,7 @@ protected:
 private:
     void createParticleLayout();
     void createSimpleLayout();
+    void createUserStudyLayout();
 
 private:
     void open();
@@ -76,6 +78,12 @@ private:
     void readSettings();
 
 private:
+    void toWelcomePage();
+    void toUserStudyBgPage();
+    void toTutorialPage();
+    void toUserStudyPage(int pageId);
+
+private:
     unsigned int nHist() const;
 
 private:
@@ -85,6 +93,8 @@ private:
     TimelineView* _timelineView;
     ParticleView* _particleView;
     HistViewHolder* _histView;
+    QStackedLayout* _sLayout;
+    UserStudyCtrlView* _userStudyCtrlView;
 
 private:
     QPushButton* _queryViewToggleButton;

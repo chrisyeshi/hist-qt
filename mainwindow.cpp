@@ -4,6 +4,7 @@
 #include <histvolumesliceview.h>
 #include "histvolumephysicalview.h"
 #include <histcompareview.h>
+#include "userstudyctrlview.h"
 #include <data/histmerger.h>
 #include <queryview.h>
 #include <particleview.h>
@@ -20,6 +21,8 @@
 #include <QProcessEnvironment>
 #include <QResizeEvent>
 #include <QStackedLayout>
+#include <QFormLayout>
+#include <signupwidget.h>
 
 namespace {
 
@@ -124,6 +127,8 @@ MainWindow::MainWindow(const std::string &layout, QWidget *parent)
         createParticleLayout();
     } else if ("physical" == layout) {
         createSimpleLayout();
+    } else if ("user study" == layout) {
+        createUserStudyLayout();
     } else {
         assert(false);
     }
@@ -282,6 +287,151 @@ void MainWindow::createSimpleLayout() {
     readSettings();
 }
 
+void MainWindow::createUserStudyLayout() {
+    _histView = new HistViewHolder(this);
+    _histView->setText(tr("Please open a dataset."));
+    auto physicalView = new HistVolumePhysicalView(this);
+    connect(physicalView, &HistVolumePhysicalView::selectedHistIdsChanged, this,
+            [this](std::string volumeName, std::vector<int> flatIds,
+                std::vector<int> displayDims) {
+        qInfo() << "HistVolumePhysicalView::selectedHistIdsChanged"
+                << "volumeName" << QString::fromStdString(volumeName)
+                << "flatIds" << QVector<int>::fromStdVector(flatIds)
+                << "displayDims" << QVector<int>::fromStdVector(displayDims);
+        auto volume = _data.step(_currTimeStep)->dumbVolume(volumeName);
+        auto hists = yy::fp::map(flatIds, [&](int flatId) {
+            return volume->hist(flatId)->hist(displayDims);
+        });
+        auto merged = mergeHists(hists);
+        auto histFacade = HistFacade::create(merged, merged->vars());
+        auto dims = createIncrementVector(0, merged->nDim());
+        _histView->setHist(histFacade, dims);
+        if (dims.empty()) {
+            _histView->setText(
+                    tr("Selected/merged histogram will be shown here."));
+        }
+        _histView->update();
+    }, Qt::QueuedConnection);
+    _histVolumeView = physicalView;
+    _histCompareView->hide();
+    _particleView->hide();
+    connect(_histView, &HistViewHolder::selectedHistRangesChanged,
+            this, [this](HistVolumeView::HistRangesMap histRangesMap) {
+        qInfo() << "HistView brushing to select histogram ranges:";
+        for (auto dimRange : histRangesMap) {
+            qInfo() << dimRange.first << ":"
+                    << dimRange.second[0] << dimRange.second[1];
+        }
+        _histVolumeView->setCustomHistRanges(histRangesMap);
+    });
+    // the tool layout
+    auto vLayout = new QVBoxLayout();
+    vLayout->setMargin(5);
+    vLayout->setSpacing(5);
+    vLayout->addLayout([this]() {
+        auto hLayout = new QHBoxLayout();
+        hLayout->addLayout([this]() {
+            auto vLayout = new QVBoxLayout();
+            LazyUI::instance().panel()->setMinimumSize(150, 100);
+            LazyUI::instance().panel()->setSizePolicy(
+                    QSizePolicy::Expanding, QSizePolicy::Expanding);
+            QScrollArea* scrollArea = new QScrollArea();
+            scrollArea->setWidget(LazyUI::instance().panel());
+            scrollArea->setFrameStyle(QFrame::NoFrame);
+            scrollArea->setWidgetResizable(true);
+            scrollArea->setAlignment(Qt::AlignTop);
+            scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            vLayout->addWidget(scrollArea, 1);
+            vLayout->addWidget(_histView);
+            return vLayout;
+        }(), 1);
+        hLayout->addLayout([this]() {
+            auto vLayout = new QVBoxLayout();
+            vLayout->setMargin(0);
+            vLayout->setSpacing(5);
+            _userStudyCtrlView = new UserStudyCtrlView();
+            connect(_userStudyCtrlView, &UserStudyCtrlView::toPage,
+                    this, &MainWindow::toUserStudyPage);
+            vLayout->addWidget(_userStudyCtrlView, 0);
+            vLayout->addWidget(_histVolumeView, 3);
+            return vLayout;
+        }(), 3);
+        return hLayout;
+    }(), 1);
+    vLayout->addWidget(_timelineView);
+    // the stacked layout for user study
+    _sLayout = new QStackedLayout();
+    _sLayout->setMargin(0);
+    _sLayout->setSpacing(0);
+    _sLayout->addWidget([&]() {
+        auto widget = new QWidget();
+        widget->setAutoFillBackground(true);
+        widget->setPalette([&widget]() {
+            auto pal = widget->palette();
+            pal.setColor(QPalette::Background, Qt::white);
+            return pal;
+        }());
+        auto title = new QLabel(widget);
+        title->setFont(QFont(tr("mono"), 50));
+        title->move(150, 300);
+        title->setText(tr("Welcome\n"));
+        auto message = new QLabel(widget);
+        message->setFont(QFont(tr("mono"), 15));
+        message->setAlignment(Qt::AlignTop);
+        message->setWordWrap(true);
+        message->setGeometry(150, 380, 600, 600);
+        message->setText(
+                tr("The purpose of this user study is to gather user") +
+                tr(" experience feedback in order to improve the") +
+                tr(" visualization tool under development. It is a tool") +
+                tr(" for scientists to explore and analyze volumetric") +
+                tr(" histograms. A typical usage is to identify") +
+                tr(" regions of interest in a simulation volume.") +
+                tr(" The tasks in this user study are designed to be") +
+                tr(" simplified versions of what the scientists will") +
+                tr(" perform."));
+        auto start = new QPushButton(tr("Start"), widget);
+        start->move(150, 500);
+        connect(start, &QPushButton::clicked,
+                this, &MainWindow::toUserStudyBgPage);
+        return widget;
+    }());
+    _sLayout->addWidget([&]() {
+        SignUpWidget* signUp = new SignUpWidget();
+        signUp->setAutoFillBackground(true);
+        signUp->setPalette([&signUp]() {
+            auto pal = signUp->palette();
+            pal.setColor(QPalette::Background, Qt::white);
+            return pal;
+        }());
+        QFormLayout* layout = static_cast<QFormLayout*>(signUp->layout());
+        layout->setFormAlignment(Qt::AlignLeft | Qt::AlignTop);
+        layout->setLabelAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+        connect(signUp, &SignUpWidget::submit,
+                this, &MainWindow::toTutorialPage);
+        connect(signUp, &SignUpWidget::cancel,
+                this, &MainWindow::toWelcomePage);
+        return signUp;
+    }());
+    _sLayout->addWidget([&]() {
+        auto vWidget = new QWidget();
+        vWidget->setLayout(vLayout);
+        return vWidget;
+    }());
+    //
+    ui->centralWidget->setLayout(_sLayout);
+    connect(_timelineView, &TimelineView::timeStepChanged,
+            this, [this](int timeStep) {
+        qInfo() << "TimelineView::timeStepChanged" << timeStep;
+        setTimeStep(timeStep);
+    });
+    LazyUI::instance().button(tr("Open"), this, [this]() {
+        qInfo() << "openButton";
+        open();
+    });
+    readSettings();
+}
+
 void MainWindow::open()
 {
     QString dir = QFileDialog::getExistingDirectory(this, "s3d_run");
@@ -354,6 +504,7 @@ void MainWindow::exportParticles()
 void MainWindow::setTimeStep(int timeStep)
 {
     _currTimeStep = timeStep;
+    _timelineView->setTimeStep(_currTimeStep);
     _histVolumeView->setDataStep(_data.step(_currTimeStep));
     _histVolumeView->update();
     if (_particleView->isVisible()) {
@@ -398,6 +549,62 @@ void MainWindow::readSettings() {
     QSettings settings("VIDi", "Histogram");
     restoreGeometry(settings.value("geometry").toByteArray());
     restoreState(settings.value("windowState").toByteArray());
+}
+
+void MainWindow::toWelcomePage() {
+    _sLayout->setCurrentIndex(0);
+    qInfo() << "to welcome page";
+}
+
+void MainWindow::toUserStudyBgPage() {
+    _sLayout->setCurrentIndex(1);
+    qInfo() << "to participant background page";
+}
+
+void MainWindow::toTutorialPage() {
+    toUserStudyPage(0);
+}
+
+void MainWindow::toUserStudyPage(int pageId) {
+    HistVolumePhysicalView* volView =
+            static_cast<HistVolumePhysicalView*>(_histVolumeView);
+    if (0 == pageId) {
+        setTimeStep(0);
+        _histView->setHist(std::make_shared<HistNullFacade>(), {});
+        _histView->update();
+        volView->reset();
+        _sLayout->setCurrentIndex(2);
+        _userStudyCtrlView->setCurrentPage(0);
+        qInfo() << "to features walk through page";
+
+    } else if (17 == pageId) {
+        _sLayout->setCurrentIndex(0);
+        _userStudyCtrlView->setCurrentPage(0);
+        qInfo() << "to welcome page";
+
+    } else if (6 == pageId || 10 == pageId) {
+        setTimeStep(0);
+        _histView->setHist(std::make_shared<HistNullFacade>(), {});
+        _histView->update();
+        volView->reset({0, 1});
+        _sLayout->setCurrentIndex(2);
+        _userStudyCtrlView->setCurrentPage(pageId);
+        qInfo() << "to user study page" << pageId;
+
+    } else if (11 <= pageId && pageId <= 16) {
+        _sLayout->setCurrentIndex(2);
+        _userStudyCtrlView->setCurrentPage(pageId);
+        qInfo() << "to user study page" << pageId;
+
+    } else {
+        setTimeStep(0);
+        _histView->setHist(std::make_shared<HistNullFacade>(), {});
+        _histView->update();
+        volView->reset();
+        _sLayout->setCurrentIndex(2);
+        _userStudyCtrlView->setCurrentPage(pageId);
+        qInfo() << "to user study page" << pageId;
+    }
 }
 
 unsigned int MainWindow::nHist() const

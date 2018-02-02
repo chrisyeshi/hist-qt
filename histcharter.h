@@ -150,6 +150,7 @@ protected:
 
 private:
     std::shared_ptr<const Hist> hist() const;
+    std::array<int, 2> posToBinIds(float x, float y) const;
 
 private:
     int _width = 0, _height = 0, _devicePixelRatio = 1;
@@ -160,6 +161,10 @@ private:
     std::function<void(float, float, const std::string&)> _showLabel;
     std::array<int, 2> _hoveredBin = {{ -1, -1 }};
     std::array<float, 2> _freqRange = {{ 0.f, 1.f }};
+    bool _isMousePressed = false;
+    bool _isBinSelected = false;
+    std::array<int, 2> _selectedBinBeg = {{-1, -1}};
+    std::array<int, 2> _selectedBinEnd = {{-1, -1}};
 };
 
 /**

@@ -21,10 +21,10 @@ protected:
         if(!gladLoadGL())
             throw "gladLoadGL failed!";
 #endif
+        _isInitialized = true;
         for (auto& initFunc : _initFuncs)
             initFunc();
         _initFuncs.clear();
-        _isInitialized = true;
     }
     void delayForInit(std::function<void()> func) {
         if (_isInitialized) {
