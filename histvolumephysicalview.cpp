@@ -4,6 +4,7 @@
 #include <QGestureEvent>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QShortcut>
 #include <QTimer>
 #include <histview.h>
 #include <lazyui.h>
@@ -201,6 +202,30 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
       : OpenGLWidget(parent)
 //      , _camera(std::make_shared<Camera>())
 {
+    // keyboard shortcuts
+    auto ctrlUp = new QShortcut(QKeySequence(tr("ctrl+up")), this);
+    connect(ctrlUp, &QShortcut::activated, this, [this]() {
+        int nSlices =
+                getSliceCountInDirection(_histVolume->dimHists(), _currOrien);
+        _currSliceId = clamp(_currSliceId + 1, 0, nSlices - 1);
+        qInfo() << "sliceIdKeyboard" << _currSliceId;
+        updateCurrSlice();
+        LazyUI::instance().labeledScrollBar(tr("sliceId"), _currSliceId);
+        render();
+        update();
+    });
+    auto ctrlDown = new QShortcut(QKeySequence(tr("ctrl+down")), this);
+    connect(ctrlDown, &QShortcut::activated, this, [this]() {
+        int nSlices =
+                getSliceCountInDirection(_histVolume->dimHists(), _currOrien);
+        _currSliceId = clamp(_currSliceId - 1, 0, nSlices - 1);
+        qInfo() << "sliceIdKeyboard" << _currSliceId;
+        updateCurrSlice();
+        LazyUI::instance().labeledScrollBar(tr("sliceId"), _currSliceId);
+        render();
+        update();
+    });
+
     qRegisterMetaType<std::vector<std::shared_ptr<const Hist>>>();
     setMouseTracking(true);
     setAttribute(Qt::WA_AcceptTouchEvents);

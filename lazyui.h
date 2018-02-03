@@ -11,6 +11,7 @@
 #include <QBoxLayout>
 #include <QScrollBar>
 #include <QPushButton>
+#include <cassert>
 
 /**
  * @brief The FluidLayout class
@@ -325,6 +326,15 @@ public:
         connect(combo, &QComboBox::currentTextChanged, context, func);
     }
 
+    void labeledScrollBar(QString key, int value) {
+        assert(_widgets.contains(key));
+        auto labeledScrollBar =
+                static_cast<LabeledWidget<QScrollBar>*>(_widgets[key]);
+        auto scrollBar = labeledScrollBar->widget();
+        scrollBar->blockSignals(true);
+        scrollBar->setValue(value);
+        scrollBar->blockSignals(false);
+    }
     void labeledScrollBar(
             QString key, const QString& label, FluidLayout::Item::Size size) {
         if (!_widgets.contains(key)) {

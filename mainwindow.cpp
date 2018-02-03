@@ -46,6 +46,12 @@ std::shared_ptr<const Hist> mergeHists(
     return HistMerger(binCounts).merge(hists);
 }
 
+template<class T>
+constexpr const T& clamp(const T& v, const T& lo, const T& hi)
+{
+    return std::max(lo, std::min(hi, v));
+}
+
 } // unnamed namespace
 
 /**
@@ -119,9 +125,17 @@ MainWindow::MainWindow(const std::string &layout, QWidget *parent)
   , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    // the ctrl+w shortcut to close
+    // keyboard shortcuts
     auto ctrlw = new QShortcut(QKeySequence(tr("Ctrl+w")), this);
     connect(ctrlw, &QShortcut::activated, this, &MainWindow::close);
+    auto ctrlLeft = new QShortcut(QKeySequence(tr("ctrl+left")), this);
+    connect(ctrlLeft, &QShortcut::activated, this, [this]() {
+        setTimeStep(clamp(_currTimeStep - 1, 0, _data.numSteps() - 1));
+    });
+    auto ctrlRight = new QShortcut(QKeySequence(tr("ctrl+right")), this);
+    connect(ctrlRight, &QShortcut::activated, this, [this]() {
+        setTimeStep(clamp(_currTimeStep + 1, 0, _data.numSteps() - 1));
+    });
     // layout
     if ("particle" == layout) {
         createParticleLayout();
