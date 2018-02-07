@@ -14,7 +14,7 @@ void messageHandler(
     auto timeStr =
             QDateTime::currentDateTime().toString("dd-MM-yyyy HH:mm:ss:zzz");
     if (QtDebugMsg == type) {
-        QTextStream(stdout) << msg;
+        QTextStream(stdout) << msg << endl;
     }
     QTextStream(&logFile) << timeStr << " " << msg << endl;
 }

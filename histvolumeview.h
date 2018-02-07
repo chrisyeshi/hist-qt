@@ -16,6 +16,7 @@ public:
     virtual void setDataStep(std::shared_ptr<DataStep> dataStep) = 0;
     typedef std::map<int, std::array<float, 2>> HistRangesMap;
     virtual void setCustomHistRanges(const HistRangesMap& histRangesMap) = 0;
+    virtual void setCurrHistVolume(const QString& histVolumeName) = 0;
 };
 
 /**
@@ -29,6 +30,7 @@ public:
     virtual void setDataStep(std::shared_ptr<DataStep>) override {}
     virtual void setCustomHistRanges(
             const HistRangesMap& histRangesMap) override {}
+    virtual void setCurrHistVolume(const QString& histVolumeName) override {}
 };
 
 #endif // HISTVOLUMEVIEW_H

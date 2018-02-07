@@ -163,7 +163,7 @@ std::shared_ptr<yy::gl::program> Hist1DVBOPainter::sharedBarsShaderProgram()
                 void main() {
                     float normValue = (vg_freq[0] - vMin) / (vMax - vMin);
                     float w = rect.z * 2.0 / nBins;
-                    float h = rect.w * 0.9 * normValue * 2.0;
+                    float h = rect.w * normValue * 2.0;
                     float x = rect.x * 2.0 - 1.0 + vg_vertexID[0] * w;
                     float y = rect.y * 2.0 - 1.0;
 
@@ -229,7 +229,7 @@ std::shared_ptr<yy::gl::program>
                 void main() {
                     float normValue = (vg_freq[0] - vMin) / (vMax - vMin);
                     float w = rect.z * 2.0 / nBins;
-                    float h = rect.w * 0.9 * normValue * 2.0;
+                    float h = rect.w * normValue * 2.0;
                     float x = rect.x * 2.0 - 1.0 + vg_vertexID[0] * w;
                     float y = rect.y * 2.0 - 1.0;
 
@@ -299,7 +299,7 @@ std::shared_ptr<yy::gl::program>
                             min(0.005 * viewport.z,
                                 0.5 * thickness / nBins * rect.z);
                     float w = rect.z * 2.0 / nBins;
-                    float h = max(t, rect.w * 0.9 * normValue * 2.0);
+                    float h = max(t, rect.w * normValue * 2.0);
                     float x = rect.x * 2.0 - 1.0 + vg_vertexID[0] * w;
                     float y = rect.y * 2.0 - 1.0;
 

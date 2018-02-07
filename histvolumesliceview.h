@@ -37,6 +37,9 @@ public:
     virtual void setDataStep(std::shared_ptr<DataStep> dataStep) override;
     virtual void setCustomHistRanges(
             const HistRangesMap& histRangesMap) override {}
+    virtual void setCurrHistVolume(const QString& histVolumeName) override {
+        selectHistVolume(histVolumeName);
+    }
 
 private:
     enum Layout : int { SLICE = 0, LIST = 1 };

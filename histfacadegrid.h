@@ -112,6 +112,12 @@ public:
     int nDomains() const;
 
 public:
+    struct Stats {
+        std::map<std::string, float> means;
+    };
+    Stats stats() const;
+
+public:
     enum SliceDirection : int {YZ = 0, XZ = 1, XY = 2};
     std::shared_ptr<HistFacadeRect> xySlice(int z) const;
     std::shared_ptr<HistFacadeRect> xzSlice(int y) const;

@@ -6,6 +6,7 @@
 #include <cmath>
 #include <algorithm>
 #include "histreader.h"
+#include <yy/functional.h>
 
 bool operator==(const Interval<float> &a, const Interval<float> &b)
 {
@@ -167,6 +168,21 @@ bool Hist::checkRange(
     return checkRange(binRanges, threshold * 100.f);
 }
 
+std::vector<float> Hist::means() const {
+    std::vector<float> averages(nDim(), 0.f);
+    for (int iBin = 0; iBin < nBins(); ++iBin) {
+        auto ranges = binRanges(iBin);
+        auto centers = yy::fp::map(ranges, [](std::array<double, 2> range) {
+            return 0.5 * (range[0] + range[1]);
+        });
+        float percent = binPercent(iBin);
+        for (int iDim = 0; iDim < nDim(); ++iDim) {
+            averages[iDim] += percent * centers[iDim];
+        }
+    }
+    return averages;
+}
+
 
 //////////////////////////////////////////////////////////////////////////////
 // Hist1D
@@ -194,6 +210,30 @@ Hist1D::Hist1D(int dim, double min, double max, double logBase,
         m_values[binIds[iBin]] = values[iBin];
         m_sum += values[iBin];
     }
+}
+
+std::vector<float> Hist1D::means() const {
+    std::vector<float> binCenters(m_dim[0]);
+//    std::cout << var(0) << std::endl;
+//    std::cout << "binCenters = [";
+    for (unsigned int iBin = 0; iBin < m_dim[0]; ++iBin) {
+        float valRange = m_maxs[0] - m_mins[0];
+        float binLower = valRange / m_dim[0] * (iBin + 0) + m_mins[0];
+        float binUpper = valRange / m_dim[0] * (iBin + 1) + m_mins[0];
+        binCenters[iBin] = 0.5f * (binLower + binUpper);
+//        std::cout << binCenters[iBin] << ",";
+    }
+//    std::cout << "]" << std::endl;
+//    std::cout << "average = [";
+    float average = 0.f;
+    for (unsigned int iBin = 0; iBin < m_dim[0]; ++iBin) {
+        float percent = binPercent(iBin);
+        float center = binCenters[iBin];
+        average += percent * center;
+//        std::cout << average << ",";
+    }
+//    std::cout << "]" << std::endl;
+    return {average};
 }
 
 
@@ -442,7 +482,7 @@ float Hist3DSparse::binFreq(const int flatId) const {
     if (m_binIds.end() == itr) {
         return 0.0;
     }
-    return *itr;
+    return m_values[itr - m_binIds.begin()];
 }
 
 std::shared_ptr<const Hist> HistCollapser::collapseTo(

@@ -2,6 +2,7 @@
 #include <sstream>
 #include <algorithm>
 #include <cstdio>
+#include <cassert>
 #include <unordered_set>
 #include <util.h>
 #include "dataconfigreader.h"
@@ -10,6 +11,21 @@ namespace {
     const std::string data_out = "/data/";
     const std::string tracer_pre = "tracer-";
     const std::string pdf_pre = "pdf-";
+
+    template <typename AsyncFunc, typename Callback>
+    void asyncRun(QObject* obj, AsyncFunc asyncFunc, Callback callback) {
+        auto asyncFuncWrapper = [=]() {
+            auto result = asyncFunc();
+            QTimer::singleShot(0, obj, std::bind(callback, result));
+        };
+        QtConcurrent::run(asyncFuncWrapper);
+    }
+
+    // Convenient function to run the callback in the main thread.
+    template <typename AsyncFunc, typename Callback>
+    void asyncRun(AsyncFunc asyncFunc, Callback callback) {
+        asyncRun(QCoreApplication::instance(), asyncFunc, callback);
+    }
 }
 
 /**
@@ -364,6 +380,14 @@ std::shared_ptr<DataStep> DataPool::step(int iStep)
         m_data[iStep]->setQueryRules(m_queryRules);
     }
     return m_data[iStep];
+}
+
+void DataPool::stats(std::function<void(Stats)> callback) const {
+    assert(m_isOpen);
+    static std::shared_ptr<StatsThread> statsThread =
+            std::make_shared<StatsThread>();
+    statsThread->compute(m_dir, m_gridConfig, m_timeSteps, m_pdfInTracerDir,
+            m_histConfigs, QThread::currentThread(), callback);
 }
 
 Extent DataPool::dimHists() const

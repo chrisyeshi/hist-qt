@@ -323,6 +323,24 @@ int HistFacadeVolume::nDomains() const {
     return _dimDomains.nElement();
 }
 
+HistFacadeVolume::Stats HistFacadeVolume::stats() const {
+    std::vector<float> sums(_vars.size(), 0.f);
+    for (int iHist = 0; iHist < nHist(); ++iHist) {
+        auto histAverages = hist(iHist)->hist()->means();
+        for (int iVar = 0; iVar < _vars.size(); ++iVar) {
+            sums[iVar] += histAverages[iVar];
+        }
+    }
+    std::vector<float> averages = yy::fp::map(sums, [&](float sum) {
+        return sum / nHist();
+    });
+    Stats stats;
+    for (int iVar = 0; iVar < _vars.size(); ++iVar) {
+        stats.means[_vars[iVar]] = averages[iVar];
+    }
+    return stats;
+}
+
 std::shared_ptr<HistFacadeRect> HistFacadeVolume::xySlice(int z) const {
     if (0 < _cachedXYSlices.count(z)) {
         return _cachedXYSlices.at(z);

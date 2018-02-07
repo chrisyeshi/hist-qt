@@ -21,6 +21,8 @@ public:
     vector(InputIt first, InputIt last)
       : hostVector(first, last), synchronized(false) {
     }
+    vector(const std::vector<T>& other)
+      : hostVector(other), synchronized(false) {}
     vector(std::initializer_list<T> init)
       : hostVector(init), synchronized(false) {
     }

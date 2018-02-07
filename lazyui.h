@@ -288,12 +288,25 @@ public:
         connect(button, &QPushButton::clicked, context, func);
     }
 
+    QString labeledCombo(const QString& key) {
+        auto combo =
+                static_cast<LabeledWidget<QComboBox>*>(_widgets[key])->widget();
+        return combo->currentText();
+    }
     void labeledCombo(const QString& key, const QString& option) {
         auto combo =
                 static_cast<LabeledWidget<QComboBox>*>(_widgets[key])->widget();
         combo->blockSignals(true);
         combo->setCurrentText(option);
         combo->blockSignals(false);
+    }
+    void labeledCombo(
+            QString key, const QString& label, FluidLayout::Item::Size size) {
+        if (!_widgets.contains(key)) {
+            auto labeledCombo = new LabeledWidget<QComboBox>(label);
+            _panel->addWidget(labeledCombo, size);
+            _widgets[key] = labeledCombo;
+        }
     }
     void labeledCombo(QString key, const QString& label,
             const QStringList& items, QObject* context,
@@ -306,15 +319,14 @@ public:
             QObject* context, std::function<void(const QString&)> func) {
         labeledCombo(key, label, items, items.at(0), size, context, func);
     }
-    void labeledCombo(QString key, const QString& label,
-            const QStringList& items, const QString& select,
-            FluidLayout::Item::Size size, QObject* context,
+    void labeledCombo(
+            QString key, const QStringList& items, QObject* context,
             std::function<void(const QString&)> func) {
-        if (!_widgets.contains(key)) {
-            auto labeledCombo = new LabeledWidget<QComboBox>(label);
-            _panel->addWidget(labeledCombo, size);
-            _widgets[key] = labeledCombo;
-        }
+        labeledCombo(key, items, items.at(0), context, func);
+    }
+    void labeledCombo(
+            QString key, const QStringList& items, const QString& select,
+            QObject* context, std::function<void(const QString&)> func) {
         auto combo =
                 static_cast<LabeledWidget<QComboBox>*>(_widgets[key])->widget();
         combo->blockSignals(true);
@@ -324,6 +336,13 @@ public:
         combo->blockSignals(false);
         disconnect(combo, nullptr, context, nullptr);
         connect(combo, &QComboBox::currentTextChanged, context, func);
+    }
+    void labeledCombo(QString key, const QString& label,
+            const QStringList& items, const QString& select,
+            FluidLayout::Item::Size size, QObject* context,
+            std::function<void(const QString&)> func) {
+        labeledCombo(key, label, size);
+        labeledCombo(key, items, select, context, func);
     }
 
     void labeledScrollBar(QString key, int value) {

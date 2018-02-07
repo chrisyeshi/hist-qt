@@ -119,7 +119,6 @@ public:
         return binRanges(m_dim.idstoflat(currId, ids...));
     }
 
-
     virtual const std::vector<float>& values() const {
         std::cout << "Are you sure the histogram is in dense representation?"
                   << std::endl;
@@ -132,6 +131,7 @@ public:
             float threshold) const;
     virtual bool checkRange(const std::vector<Interval<float>>& intervals,
             float threshold) const;
+    virtual std::vector<float> means() const;
 
 public:
     const Extent& dim() const { return m_dim; }
@@ -186,7 +186,6 @@ public:
     virtual float binPercent(const int flatId) const override { return -1.f; }
     using Hist::binPercent;
 
-
     virtual const std::vector<float>& values() const override {
         static std::vector<float> v;
         return v;
@@ -197,6 +196,7 @@ public:
     virtual double dimMax(int) const override {
         return std::numeric_limits<double>::lowest();
     }
+    virtual std::vector<float> means() const override { return {}; }
 };
 
 
@@ -230,6 +230,7 @@ public:
     using Hist::binPercent;
 
     virtual const std::vector<float>& values() const { return m_values; }
+    virtual std::vector<float> means() const override;
 
 private:
     std::vector<float> m_values;

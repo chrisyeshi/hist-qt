@@ -221,7 +221,8 @@ void HistSliceView::updateHistRects(int w, int h)
         float perHistHeight = perHistHeightPixels / h;
         float left = (_border + x * perHistWidthPixels + x * _spacing) / w;
         float bottom = (_border + y * perHistHeightPixels + y * _spacing) / h;
-        painter->setNormalizedViewportAndRect(left, bottom, perHistWidth, perHistHeight);
+        painter->setNormalizedViewportAndRect(
+                left, bottom, perHistWidth, perHistHeight);
     }
     doneCurrent();
 }

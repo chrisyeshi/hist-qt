@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <map>
+#include <functional>
 #include <QObject>
 #include <QtConcurrent/QtConcurrent>
 #include "histgrid.h"
@@ -88,6 +89,9 @@ signals:
     void signalLoadHistVolume(DataLoader::HistVolumeId);
 
 public:
+    typedef std::map<std::string, HistFacadeVolume::Stats> Stats;
+
+public:
     int nHist() const;
     const std::vector<HistConfig>& histConfigs() const { return m_histConfigs; }
     const HistConfig& histConfig(const std::string& name) const;
@@ -122,6 +126,10 @@ class DataPool : public QObject
 public:
     DataPool();
     ~DataPool();
+
+public:
+    typedef std::vector<DataStep::Stats> Stats;
+    void stats(std::function<void(Stats)> callback) const;
 
 public:
     bool setDir(const std::string& dir);
@@ -169,6 +177,90 @@ private:
     TimeSteps m_timeSteps;
     std::vector<HistConfig> m_histConfigs;
     std::vector<QueryRule> m_queryRules;
+};
+
+/**
+ * @brief The StatsThread class
+ */
+class StatsThread : public QThread {
+    Q_OBJECT
+public:
+    StatsThread(QObject *parent = nullptr) : QThread(parent) {}
+    virtual ~StatsThread() {
+        _mutex.lock();
+        _abort = true;
+        _condition.wakeOne();
+        _mutex.unlock();
+        qDebug() << "destructing";
+        wait();
+    }
+
+public:
+    void compute(std::string dir, GridConfig gridConfig, TimeSteps timeSteps,
+            bool pdfInTracerDir, std::vector<HistConfig> histConfigs,
+            QObject* context, std::function<void(DataPool::Stats)> callback) {
+        QMutexLocker locker(&_mutex);
+        _dir = dir;
+        _gridConfig = gridConfig;
+        _timeSteps = timeSteps;
+        _pdfInTracerDir = pdfInTracerDir;
+        _histConfigs = histConfigs;
+        _context = context;
+        _callback = callback;
+        if (!isRunning()) {
+            start(LowPriority);
+        } else {
+            _restart = true;
+            _condition.wakeOne();
+        }
+    }
+
+protected:
+    virtual void run() override {
+        forever {
+            std::shared_ptr<DataLoader> loader = std::make_shared<DataLoader>();
+            loader->initialize(_dir, _gridConfig, _timeSteps, _pdfInTracerDir,
+                    _histConfigs);
+            DataPool::Stats dataStats;
+            for (int iStep = 0; iStep < _timeSteps.nSteps(); ++iStep) {
+                if (_restart) break;
+                if (_abort) return;
+                DataStep::Stats stepStats;
+                for (int iConfig = 0; iConfig < _histConfigs.size();
+                        ++iConfig) {
+                    auto name = _histConfigs[iConfig].name();
+                    DataLoader::HistVolumeId histVolumeId = {iStep, name};
+                    auto histVolume = loader->load(histVolumeId);
+                    auto statsPerVolume = histVolume->stats();
+                    stepStats[name] = statsPerVolume;
+                }
+                dataStats.push_back(stepStats);
+                QTimer::singleShot(
+                        0, _context, std::bind(_callback, dataStats));
+            }
+            // mutex for waking the thread
+            _mutex.lock();
+            if (!_restart) {
+                _condition.wait(&_mutex);
+            }
+            _restart = false;
+            _mutex.unlock();
+        };
+
+    }
+
+private:
+    QMutex _mutex;
+    QWaitCondition _condition;
+    bool _restart = false;
+    bool _abort = false;
+    std::string _dir;
+    GridConfig _gridConfig;
+    TimeSteps _timeSteps;
+    bool _pdfInTracerDir;
+    std::vector<HistConfig> _histConfigs;
+    QObject* _context;
+    std::function<void(DataPool::Stats)> _callback;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

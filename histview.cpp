@@ -50,7 +50,8 @@ void HistView::setHist(std::shared_ptr<const HistFacade> histFacade,
             vMin = std::min(vMin, float(v));
             vMax = std::max(vMax, float(v));
         }
-        _histCharter->setRange(vMin, vMax);
+        float vRange = vMax - vMin;
+        _histCharter->setRange(0.f, vMax + 0.1f * vRange);
     });
 }
 

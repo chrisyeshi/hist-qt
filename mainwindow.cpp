@@ -52,6 +52,15 @@ constexpr const T& clamp(const T& v, const T& lo, const T& hi)
     return std::max(lo, std::min(hi, v));
 }
 
+QStringList getHistConfigNames(const std::vector<HistConfig>& configs) {
+    QStringList names;
+    names.reserve(configs.size());
+    for (unsigned int iConfig = 0; iConfig < configs.size(); ++iConfig) {
+        names.insert(iConfig, QString::fromStdString(configs[iConfig].name()));
+    }
+    return names;
+}
+
 } // unnamed namespace
 
 /**
@@ -196,8 +205,8 @@ void MainWindow::createParticleLayout() {
             _timelineViewToggleButton->setChecked(true);
             connect(_timelineViewToggleButton, &QPushButton::toggled,
                     this, &MainWindow::toggleTimelineView);
-            connect(_timelineView, &TimelineView::visibilityChanged,
-                    this, &MainWindow::toggleTimelineView);
+//            connect(_timelineView, &TimelineView::visibilityChanged,
+//                    this, &MainWindow::toggleTimelineView);
             connect(_timelineView, &TimelineView::timeStepChanged,
                     this, &MainWindow::setTimeStep);
 
@@ -231,6 +240,12 @@ void MainWindow::createSimpleLayout() {
     _histView = new HistViewHolder(this);
     _histView->setText(tr("Please open a dataset."));
     auto physicalView = new HistVolumePhysicalView(this);
+    connect(physicalView, &HistVolumePhysicalView::currHistConfigDimsChanged,
+            this, [this](std::string name, std::vector<int> displayDims) {
+        _timelineView->setHistConfig(_data.histConfig(name));
+        _timelineView->setDisplayDims(displayDims);
+        _timelineView->update();
+    });
     connect(physicalView, &HistVolumePhysicalView::selectedHistIdsChanged, this,
             [this](std::string volumeName, std::vector<int> flatIds,
                 std::vector<int> displayDims) {
@@ -298,6 +313,11 @@ void MainWindow::createSimpleLayout() {
         qInfo() << "openButton";
         open();
     });
+    LazyUI::instance().sectionHeader("histConfigHeader", "Histogram Configs");
+    LazyUI::instance().labeledCombo(tr("histVolume"), tr("Histogram Volumes"),
+            FluidLayout::Item::Large);
+    LazyUI::instance().labeledCombo(tr("histVar"), tr("Histogram Variables"),
+            FluidLayout::Item::Large);
     readSettings();
 }
 
@@ -459,7 +479,11 @@ void MainWindow::open(const QString &dir)
     if (!_data.setDir(dir.toStdString()))
         return;
     _currTimeStep = 0;
-    _timelineView->setDataPool(&_data);
+    _timelineView->setStepCount(_data.numSteps());
+    _data.stats([this](DataPool::Stats dataStats) {
+        _timelineView->setStats(dataStats);
+        _timelineView->update();
+    });
     _histVolumeView->setHistConfigs(_data.histConfigs());
     _histVolumeView->setDataStep(_data.step(_currTimeStep));
     _histVolumeView->update();
@@ -469,6 +493,14 @@ void MainWindow::open(const QString &dir)
     glm::vec3 lower(_data.volMin()[0], _data.volMin()[1], _data.volMin()[2]);
     glm::vec3 upper(_data.volMax()[0], _data.volMax()[1], _data.volMax()[2]);
     _particleView->setBoundingBox(lower, upper);
+    // update the settings panel
+    LazyUI::instance().labeledCombo(
+            tr("histVolume"), getHistConfigNames(_data.histConfigs()), this,
+            [this](const QString& text) {
+        qInfo() << "histVolumeCombo" << text;
+        _histVolumeView->setCurrHistVolume(text);
+        _histVolumeView->update();
+    });
 }
 
 void MainWindow::toggleQueryView(bool show)

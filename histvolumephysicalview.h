@@ -26,6 +26,7 @@ public:
     HistVolumePhysicalView(QWidget* parent = nullptr);
 
 signals:
+    void currHistConfigDimsChanged(std::string name, std::vector<int> dims);
     void selectedHistsChanged(std::vector<std::shared_ptr<const Hist>>);
     void selectedHistIdsChanged(
             std::string, std::vector<int>, std::vector<int>);
@@ -36,6 +37,7 @@ public:
     virtual void setDataStep(std::shared_ptr<DataStep> dataStep) override;
     virtual void setCustomHistRanges(
             const HistRangesMap& histRangesMap) override;
+    virtual void setCurrHistVolume(const QString& histVolumeName) override;
 
 public:
     void reset(std::vector<int> displayDims = {0});
@@ -69,6 +71,7 @@ public:
     HistVolumePhysicalOpenGLView(QWidget* parent = nullptr);
 
 signals:
+    void currHistConfigDimsChanged(std::string name, std::vector<int> dims);
     void selectedHistsChanged(std::vector<std::shared_ptr<const Hist>>);
     void selectedHistIdsChanged(std::vector<int>, std::vector<int>);
 
@@ -121,6 +124,7 @@ private:
     bool isHistSliceIdsValid(std::array<int, 2> histSliceIds) const;
     QColor quarterColor() const;
     QColor fullColor() const;
+    void emitCurrHistConfigDims();
     void emitSelectedHistsChanged();
     std::vector<std::array<int, 2>> filterByCurrSlice(
             const std::vector<std::array<int, 3>>& histIds);

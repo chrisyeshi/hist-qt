@@ -138,6 +138,10 @@ HistVolumePhysicalView::HistVolumePhysicalView(QWidget *parent)
     hLayout->setSpacing(5);
     hLayout->addWidget(_histVolumeView, 3);
     connect(_histVolumeView,
+            SIGNAL(currHistConfigDimsChanged(std::string,std::vector<int>)),
+            this,
+            SIGNAL(currHistConfigDimsChanged(std::string,std::vector<int>)));
+    connect(_histVolumeView,
             SIGNAL(
                 selectedHistsChanged(std::vector<std::shared_ptr<const Hist>>)),
             this,
@@ -163,17 +167,6 @@ void HistVolumePhysicalView::setHistConfigs(std::vector<HistConfig> configs) {
     _histConfigs = configs;
     _currHistConfigId = 0;
     _histDims = {0};
-    LazyUI::instance().sectionHeader("histConfigHeader", "Histogram Configs");
-    LazyUI::instance().labeledCombo(
-            tr("histVolume"), tr("Histogram Volumes"),
-            getHistConfigNames(_histConfigs), FluidLayout::Item::Large, this,
-            [this](const QString& text) {
-        qInfo() << "histVolumeCombo" << text;
-        QStringList names = getHistConfigNames(_histConfigs);
-        assert(names.contains(text));
-        _currHistConfigId = names.indexOf(text);
-        update();
-    });
 }
 
 void HistVolumePhysicalView::setDataStep(std::shared_ptr<DataStep> dataStep) {
@@ -184,6 +177,12 @@ void HistVolumePhysicalView::setCustomHistRanges(
         const HistVolumeView::HistRangesMap &histRangesMap) {
     _histVolumeView->setCustomHistRanges(histRangesMap);
     _histVolumeView->update();
+}
+
+void HistVolumePhysicalView::setCurrHistVolume(const QString &histVolumeName) {
+    QStringList names = getHistConfigNames(_histConfigs);
+    assert(names.contains(histVolumeName));
+    _currHistConfigId = names.indexOf(histVolumeName);
 }
 
 void HistVolumePhysicalView::reset(std::vector<int> displayDims) {
@@ -232,6 +231,8 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
     grabGesture(Qt::PanGesture);
     grabGesture(Qt::PinchGesture);
     QTimer::singleShot(0, this, [=]() {
+        LazyUI::instance().sectionHeader(
+                "histSliceOrientation", "Histogram Slice Orientation");
         LazyUI::instance().labeledCombo(
                 tr("sliceDirections"), tr("Slicing Direction"),
                 {tr("XY"), tr("XZ"), tr("YZ")}, this,
@@ -408,7 +409,7 @@ void HistVolumePhysicalOpenGLView::setHistVolume(
         std::vector<int> dims = varsToDims[text];
         assert(!dims.empty());
         _currDims = dims;
-//        _selectedHistIds.clear();
+        emitCurrHistConfigDims();
         emitSelectedHistsChanged();
         updateSliceIdScrollBar();
         updateCurrSlice();
@@ -416,7 +417,7 @@ void HistVolumePhysicalOpenGLView::setHistVolume(
         update();
     });
     updateSliceIdScrollBar();
-//    _selectedHistIds.clear();
+    emitCurrHistConfigDims();
     emitSelectedHistsChanged();
     delayForInit([this]() {
         updateCurrSlice();
@@ -876,6 +877,8 @@ void HistVolumePhysicalOpenGLView::setFreqRangesToHistPainters(
     for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
         auto hist = _currSlice->hist(iHist)->hist(_currDims);
         auto r = std::isnan(range[0]) ? ::calcFreqRange(hist) : range;
+        r[0] = 0.f;
+        r[1] = r[1] + 0.1f * (r[1] - r[0]);
         _histPainters[iHist]->setFreqRange(r[0], r[1]);
     }
 }
@@ -928,11 +931,11 @@ void HistVolumePhysicalOpenGLView::setHistRangesToHistPainters(
         const std::vector<std::array<double, 2> > &ranges) {
     for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
         auto minmaxs =
-                std::isnan(ranges[0][0]) ?
-                    yy::fp::map(_currDims, [=](int iDim) {
-                        return _currSlice->hist(iHist)->dimRange(iDim);
-                    }) :
-                    ranges;
+                std::isnan(ranges[0][0])
+                ? yy::fp::map(_currDims, [=](int iDim) {
+                    return _currSlice->hist(iHist)->dimRange(iDim);
+                })
+                : ranges;
         _histPainters[iHist]->setRanges(minmaxs);
     }
 }
@@ -1020,6 +1023,10 @@ QColor HistVolumePhysicalOpenGLView::fullColor() const {
     QColor color = _spacingColor;
     color.setAlphaF(0.75f * color.alphaF());
     return color;
+}
+
+void HistVolumePhysicalOpenGLView::emitCurrHistConfigDims() {
+    emit currHistConfigDimsChanged(_histConfig.name(), _currDims);
 }
 
 void HistVolumePhysicalOpenGLView::emitSelectedHistsChanged() {

@@ -411,7 +411,7 @@ int Hist1DFacadeCharter::posToBinId(float x) const {
 
 void Hist1DFacadeCharter::chart()
 {
-    const float vMaxRatio = 0.9f;
+    const float vMaxRatio = 1.f / 1.1f;
     const int nTicks = 6;
     // ticks under the histogram
     {

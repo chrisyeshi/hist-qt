@@ -103,6 +103,7 @@ private:
 
 private:
     DataPool _data;
+    DataPool::Stats _dataStats;
     int _currTimeStep;
     std::vector<Particle> _particles;
 
