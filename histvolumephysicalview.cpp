@@ -17,6 +17,16 @@ float clamp(float val, float min, float max) {
     return std::min(max, std::max(min, val));
 }
 
+template <typename T>
+void extendSet(std::vector<T>& recvSet, const std::vector<T>& mergingSet) {
+    for (const auto& element : mergingSet) {
+        auto itr = std::find(recvSet.begin(), recvSet.end(), element);
+        if (recvSet.end() == itr) {
+            recvSet.push_back(element);
+        }
+    }
+}
+
 float calcAverage(std::shared_ptr<const Hist1D> hist) {
     double sum = 0.f;
     for (int iBin = 0; iBin < hist->nBins(); ++iBin) {
@@ -535,7 +545,13 @@ void HistVolumePhysicalOpenGLView::paintGL() {
             painter.drawRect(calcHistRect(histSliceIds));
         }
     }
-
+    // lasso
+    if (_lasso.ongoing()) {
+        Painter painter(this);
+        painter.fillRect(
+                QRectF(_lasso.initLocalPos, _lasso.currLocalPos),
+                quarterColor());
+    }
 //    _volren->setMatVP(_camera->matView(), _camera->matProj());
 //    _volren->render();
 //    glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject());
@@ -558,9 +574,51 @@ bool HistVolumePhysicalOpenGLView::event(QEvent *event) {
     return OpenGLWidget::event(event);
 }
 
+void HistVolumePhysicalOpenGLView::lassoBeginEvent(const QPointF& localPos) {
+    _lasso.state = Lasso::Initiate;
+    _lasso.initLocalPos = localPos;
+    _lasso.currLocalPos = localPos;
+    update();
+}
+
+void HistVolumePhysicalOpenGLView::lassoEndEvent(const QPointF &localPos) {
+    _lasso.state = Lasso::Idle;
+    _lasso.endLocalPos = localPos;
+    auto initHistSliceIds = localPositionToHistSliceId(_lasso.initLocalPos);
+    auto endHistSliceIds = localPositionToHistSliceId(_lasso.endLocalPos);
+    int xDelta = endHistSliceIds[0] - initHistSliceIds[0];
+    int yDelta = endHistSliceIds[1] - initHistSliceIds[1];
+    int xInc = xDelta ? xDelta / std::abs(xDelta) : 1;
+    int yInc = yDelta ? yDelta / std::abs(yDelta) : 1;
+    std::vector<std::array<int, 3>> lassoHistIds;
+    for (int x = initHistSliceIds[0]; x != endHistSliceIds[0] + xInc; x += xInc)
+    for (int y = initHistSliceIds[1]; y != endHistSliceIds[1] + yInc;
+            y += yInc) {
+        std::array<int, 2> histSliceIds = {x, y};
+        if (isHistSliceIdsValid(histSliceIds))
+            lassoHistIds.push_back(sliceIdsToHistIds(histSliceIds));
+    }
+    extendSet(_selectedHistIds, lassoHistIds);
+    emitSelectedHistsChanged();
+    update();
+}
+
+void HistVolumePhysicalOpenGLView::lassoDragEvent(const QPointF &localPos) {
+    _lasso.state = Lasso::Dragging;
+    _lasso.currLocalPos = localPos;
+    update();
+}
+
 void HistVolumePhysicalOpenGLView::mousePressEvent(QMouseEvent *event) {
     _mousePress = event->localPos();
     _mousePrev = event->localPos();
+    bool isLeftButton = (Qt::LeftButton & event->buttons()) == Qt::LeftButton;
+    bool isControlPressed =
+            (Qt::ControlModifier & event->modifiers()) == Qt::ControlModifier;
+    if (isLeftButton && isControlPressed) {
+        lassoBeginEvent(event->localPos());
+        return;
+    }
 }
 
 void HistVolumePhysicalOpenGLView::mouseReleaseEvent(QMouseEvent *event) {
@@ -568,11 +626,21 @@ void HistVolumePhysicalOpenGLView::mouseReleaseEvent(QMouseEvent *event) {
     QVector2D mouseDelta(mouseCurr - _mousePress);
     if (mouseDelta.length() < _clickDelta) {
         mouseClickEvent(event);
+        return;
+    }
+    bool isLeftButton = (Qt::LeftButton & event->buttons()) == Qt::LeftButton;
+    bool isControlPressed =
+            (Qt::ControlModifier & event->modifiers()) == Qt::ControlModifier;
+    if (isLeftButton && isControlPressed) {
+        lassoEndEvent(event->localPos());
+        return;
     }
 }
 
 void HistVolumePhysicalOpenGLView::mouseClickEvent(QMouseEvent *event) {
     auto histSliceIds = localPositionToHistSliceId(event->localPos());
+    bool isControlPressed =
+            (Qt::ControlModifier & event->modifiers()) == Qt::ControlModifier;
     if (Qt::NoModifier == event->modifiers()) {
         if (isHistSliceIdsValid(histSliceIds)) {
             if (filterByCurrSlice(_selectedHistIds).size() >= 2) {
@@ -594,8 +662,7 @@ void HistVolumePhysicalOpenGLView::mouseClickEvent(QMouseEvent *event) {
         }
         emitSelectedHistsChanged();
 
-    } else if (
-            (Qt::ControlModifier & event->modifiers()) == Qt::ControlModifier) {
+    } else if (isControlPressed) {
         if (isHistSliceIdsValid(histSliceIds)) {
             auto histIds = sliceIdsToHistIds(histSliceIds);
             auto itr = std::find(_selectedHistIds.begin(),
@@ -608,11 +675,6 @@ void HistVolumePhysicalOpenGLView::mouseClickEvent(QMouseEvent *event) {
             emitSelectedHistsChanged();
         }
     }
-//    // print for debug
-//    for (auto ids : _selectedHistSliceIds) {
-//        std::cout << "(" << ids[0] << "," << ids[1] << ") ";
-//    }
-//    std::cout << std::endl;
     // update
     update();
 }
@@ -622,9 +684,21 @@ void HistVolumePhysicalOpenGLView::mouseMoveEvent(QMouseEvent *event) {
         return;
     }
     auto mouseCurr = event->localPos();
-
+    // hovered histogram
     _hoveredHistSliceIds = localPositionToHistSliceId(mouseCurr);
-
+    // lasso
+    bool isLeftButton = (Qt::LeftButton & event->buttons()) == Qt::LeftButton;
+    bool isControlPressed =
+            (Qt::ControlModifier & event->modifiers()) == Qt::ControlModifier;
+    if (isLeftButton && isControlPressed) {
+        lassoDragEvent(mouseCurr);
+        return;
+    }
+    if (_lasso.ongoing() && (!isLeftButton || !isControlPressed)) {
+        lassoEndEvent(mouseCurr);
+        return;
+    }
+    // dragging the histogram volume slice
     auto mouseDirPixel = QVector2D(mouseCurr - _mousePrev);
     mouseDirPixel.setY(-mouseDirPixel.y());
 //    auto mouseDir =
@@ -669,6 +743,8 @@ void HistVolumePhysicalOpenGLView::leaveEvent(QEvent *) {
     update();
 }
 
+// call render() to render the histogram volume slice, call update() to update
+// the elements on top of the slice.
 void HistVolumePhysicalOpenGLView::render() {
     delayForInit([this]() {
         _histSliceFbo->bind();
@@ -1022,6 +1098,11 @@ QColor HistVolumePhysicalOpenGLView::quarterColor() const {
 QColor HistVolumePhysicalOpenGLView::fullColor() const {
     QColor color = _spacingColor;
     color.setAlphaF(0.75f * color.alphaF());
+    return color;
+}
+
+QColor HistVolumePhysicalOpenGLView::lassoColor() const {
+    static QColor color(200, 125, 255, 150);
     return color;
 }
 

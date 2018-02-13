@@ -86,6 +86,9 @@ protected:
     void resizeGL(int w, int h);
     void paintGL();
     bool event(QEvent* event);
+    void lassoBeginEvent(const QPointF& localPos);
+    void lassoEndEvent(const QPointF& localPos);
+    void lassoDragEvent(const QPointF& localPos);
     void mousePressEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
     void mouseClickEvent(QMouseEvent *event);
@@ -93,6 +96,14 @@ protected:
     void wheelEvent(QWheelEvent *event);
     void enterEvent(QEvent *);
     void leaveEvent(QEvent *);
+
+private:
+    struct Lasso {
+        enum State {Initiate, Idle, Dragging};
+        State state = Idle;
+        QPointF initLocalPos, endLocalPos, currLocalPos;
+        bool ongoing() const { return Initiate == state || Dragging == state; }
+    };
 
 private:
     void render();
@@ -124,6 +135,7 @@ private:
     bool isHistSliceIdsValid(std::array<int, 2> histSliceIds) const;
     QColor quarterColor() const;
     QColor fullColor() const;
+    QColor lassoColor() const;
     void emitCurrHistConfigDims();
     void emitSelectedHistsChanged();
     std::vector<std::array<int, 2>> filterByCurrSlice(
@@ -165,6 +177,7 @@ private:
     NormalizedPer _currHistNormPer = _defaultHistNormPer;
     std::vector<std::array<double, 2>> _currHistRanges
             = {{NAN, NAN}, {NAN, NAN}};
+    Lasso _lasso;
 
     //    std::vector<std::shared_ptr<yy::VolumeGL>> _avgVolumes;
     //    std::unique_ptr<yy::volren::VolRen> _volren;
