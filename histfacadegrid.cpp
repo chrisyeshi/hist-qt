@@ -324,20 +324,33 @@ int HistFacadeVolume::nDomains() const {
 }
 
 HistFacadeVolume::Stats HistFacadeVolume::stats() const {
+    if (_statsCached)
+        return _stats;
     std::vector<float> sums(_vars.size(), 0.f);
+    std::vector<float> mins(_vars.size(), std::numeric_limits<float>::max());
+    std::vector<float> maxs(_vars.size(), std::numeric_limits<float>::lowest());
+    int nonEmptyHistCount = 0;
     for (int iHist = 0; iHist < nHist(); ++iHist) {
         auto histAverages = hist(iHist)->hist()->means();
+        if (histAverages.empty()) continue;
+        ++nonEmptyHistCount;
         for (int iVar = 0; iVar < _vars.size(); ++iVar) {
-            sums[iVar] += histAverages[iVar];
+            auto average = histAverages[iVar];
+            sums[iVar] += average;
+            mins[iVar] = std::min(average, mins[iVar]);
+            maxs[iVar] = std::max(average, maxs[iVar]);
         }
     }
     std::vector<float> averages = yy::fp::map(sums, [&](float sum) {
-        return sum / nHist();
+        return sum / nonEmptyHistCount;
     });
     Stats stats;
     for (int iVar = 0; iVar < _vars.size(); ++iVar) {
         stats.means[_vars[iVar]] = averages[iVar];
+        stats.meanRanges[_vars[iVar]] = {mins[iVar], maxs[iVar]};
     }
+    _stats = stats;
+    _statsCached = true;
     return stats;
 }
 

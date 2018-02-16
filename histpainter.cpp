@@ -90,6 +90,7 @@ void Hist1DVBOPainter::paint() {
 
 void Hist1DVBOPainter::setNormalizedViewport(
         float x, float y, float w, float h) {
+    _viewport = glm::vec4(x, y, w, h);
     _barsRenderPass.setUniform("viewport", glm::vec4(x, y, w, h));
     _backgroundRenderPass.setUniform("viewport", glm::vec4(x, y, w, h));
     _bordersRenderPass.setUniform("viewport", glm::vec4(x, y, w, h));

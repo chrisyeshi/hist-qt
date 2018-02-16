@@ -9,7 +9,7 @@
 
 HistView::HistView(QWidget *parent)
   : OpenGLWidget(parent)
-  , _histCharter(IHistCharter::create(nullptr, {})){
+  , _histCharter(IHistCharter::create()){
     setMouseTracking(true);
     setMinimumSize(200, 200);
     QSizePolicy policy(sizePolicy());
@@ -26,7 +26,7 @@ void HistView::setHist(std::shared_ptr<const HistFacade> histFacade,
     delayForInit([this, histFacade, displayDims]() {
         _histCharter =
                 IHistCharter::create(
-                    histFacade, displayDims, this /*paintDevice*/,
+                    histFacade, displayDims,
                     [this](float x, float y, const std::string& label) {
             if (label.empty()) {
                 QToolTip::hideText();
@@ -43,6 +43,7 @@ void HistView::setHist(std::shared_ptr<const HistFacade> histFacade,
         if (!histFacade)
             return;
         auto hist2d = histFacade->hist(displayDims);
+        // frequency ranges
         float vMin = std::numeric_limits<float>::max();
         float vMax = std::numeric_limits<float>::lowest();
         for (auto iBin = 0; iBin < hist2d->nBins(); ++iBin) {
@@ -51,14 +52,22 @@ void HistView::setHist(std::shared_ptr<const HistFacade> histFacade,
             vMax = std::max(vMax, float(v));
         }
         float vRange = vMax - vMin;
-        _histCharter->setRange(0.f, vMax + 0.1f * vRange);
+        _histCharter->setFreqRange(0.f, vMax + 0.1f * vRange);
+        // variable ranges
+        std::vector<std::array<double, 2>> varRanges;
+        varRanges.reserve(displayDims.size());
+        for (auto displayDim : displayDims) {
+            auto dimRange = histFacade->dimRange(displayDim);
+            varRanges.push_back(dimRange);
+        }
+        _histCharter->setRanges(varRanges);
     });
 }
 
 void HistView::paintGL() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     _histCharter->setSize(width(), height(), 1);
-    _histCharter->chart();
+    _histCharter->chart(this);
 }
 
 void HistView::mousePressEvent(QMouseEvent *event) {

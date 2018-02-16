@@ -2,12 +2,13 @@
 #include <cassert>
 #include <histfacade.h>
 #include <histpainter.h>
+#include <histfacadepainter.h>
 #include <painter.h>
 #include <QMouseEvent>
 
 namespace {
 
-typedef PainterYYGLImpl UsePainterImpl;
+typedef PainterImpl UsePainterImpl;
 
 int clamp(int v, int a, int b) {
     return std::max(a, std::min(b, v));
@@ -23,7 +24,7 @@ int clamp(int v, int a, int b) {
  */
 std::shared_ptr<IHistCharter> IHistCharter::create(
         std::shared_ptr<const HistFacade> histFacade,
-        std::vector<int> displayDims, QPaintDevice *paintDevice,
+        std::vector<int> displayDims,
         std::function<void(float, float, const std::string &)> showLabel) {
     if (!histFacade || displayDims.empty()) {
         return std::make_shared<HistNullCharter>();
@@ -32,11 +33,11 @@ std::shared_ptr<IHistCharter> IHistCharter::create(
         return std::make_shared<Hist2DFacadeCharter>(
                 histFacade,
                 std::array<int, 2>{{ displayDims[0], displayDims[1] }},
-                paintDevice, showLabel);
+                showLabel);
     }
     if (1 == displayDims.size()) {
         return std::make_shared<Hist1DFacadeCharter>(
-                histFacade, displayDims[0], paintDevice, showLabel);
+                histFacade, displayDims[0], showLabel);
     }
     assert(false);
 }
@@ -48,11 +49,10 @@ std::shared_ptr<IHistCharter> IHistCharter::create(
  */
 Hist2DFacadeCharter::Hist2DFacadeCharter(
         std::shared_ptr<const HistFacade> histFacade,
-        std::array<int, 2> displayDims, QPaintDevice *paintDevice,
+        std::array<int, 2> displayDims,
         std::function<void(float, float, const std::string &)> showLabel)
   : _histFacade(histFacade)
   , _displayDims(displayDims)
-  , _paintDevice(paintDevice)
   , _showLabel(showLabel) {
     _histPainter = std::make_shared<Hist2DTexturePainter>();
     _histPainter->initialize();
@@ -67,11 +67,21 @@ void Hist2DFacadeCharter::setSize(int width, int height, int devicePixelRatio) {
     _devicePixelRatio = devicePixelRatio;
 }
 
-void Hist2DFacadeCharter::setRange(float vMin, float vMax)
+void Hist2DFacadeCharter::setNormalizedViewport(
+        float left, float top, float width, float height) {
+    _viewport.setRect(left, top, width, height);
+}
+
+void Hist2DFacadeCharter::setFreqRange(float vMin, float vMax)
 {
     _freqRange[0] = vMin;
     _freqRange[1] = vMax;
     _histPainter->setFreqRange(vMin, vMax);
+}
+
+void Hist2DFacadeCharter::setRanges(
+        std::vector<std::array<double, 2> > varRanges) {
+    /// TODO:
 }
 
 void Hist2DFacadeCharter::mousePressEvent(QMouseEvent *event) {
@@ -152,7 +162,7 @@ void Hist2DFacadeCharter::leaveEvent(QEvent *event) {
     _showLabel(0, 0, "");
 }
 
-void Hist2DFacadeCharter::chart() {
+void Hist2DFacadeCharter::chart(QPaintDevice *paintDevice) {
     // histogram
     if (_histPainter) {
         _histPainter->setNormalizedViewport(
@@ -161,7 +171,7 @@ void Hist2DFacadeCharter::chart() {
         _histPainter->paint();
     }
     // axes
-    Painter painter(std::make_shared<UsePainterImpl>(), _paintDevice);
+    Painter painter(std::make_shared<UsePainterImpl>(), paintDevice);
     painter.setPen(QPen(Qt::black, 0.25f));
     auto hist2d = hist();
     float dx = histWidth() / hist2d->dim()[0];
@@ -263,37 +273,40 @@ void Hist2DFacadeCharter::chart() {
             Qt::AlignBottom | Qt::AlignHCenter,
             QString::fromStdString(hist2d->var(1)));
     painter.restore();
-    // colormap
-    QLinearGradient colormap(colormapLeft(), colormapTop(),
-            colormapLeft() + colormapWidth(), colormapTop());
-    std::vector<glm::vec3> yellowBlue = ColormapPresets::yellowBlue();
-    for (auto iColor = 0; iColor < yellowBlue.size(); ++iColor) {
-        auto colorVector = yellowBlue[iColor];
-        QColor color(
-                colorVector.x * 255, colorVector.y * 255, colorVector.z * 255);
-        colormap.setColorAt(iColor / float(yellowBlue.size() - 1), color);
+    if (_drawColormap) {
+        // colormap
+        QLinearGradient colormap(colormapLeft(), colormapTop(),
+                colormapLeft() + colormapWidth(), colormapTop());
+        std::vector<glm::vec3> yellowBlue = ColormapPresets::yellowBlue();
+        for (auto iColor = 0; iColor < yellowBlue.size(); ++iColor) {
+            auto colorVector = yellowBlue[iColor];
+            QColor color(colorVector.x * 255, colorVector.y * 255,
+                    colorVector.z * 255);
+            colormap.setColorAt(iColor / float(yellowBlue.size() - 1), color);
+        }
+        painter.fillRect(colormapLeft(), colormapTop(), colormapWidth(),
+                colormapHeight(), colormap);
+        painter.drawRect(colormapLeft(), colormapTop(), colormapWidth(),
+                colormapHeight());
+        // colormap labels
+        painter.drawText(
+                colormapLeft(),
+                height() - colormapBottom() + colormapBottomPadding(),
+                colormapWidth(), fontMetrics.height(),
+                Qt::AlignTop | Qt::AlignHCenter, QString("frequency"));
+        painter.drawText(
+                colormapLeft(),
+                height() - colormapBottom() + colormapBottomPadding(),
+                colormapWidth(), fontMetrics.height(),
+                Qt::AlignTop | Qt::AlignLeft,
+                QString::number(_freqRange[0], 'g', 3));
+        painter.drawText(
+                colormapLeft(),
+                height() - colormapBottom() + colormapBottomPadding(),
+                colormapWidth(), fontMetrics.height(),
+                Qt::AlignTop | Qt::AlignRight,
+                QString::number(_freqRange[1], 'g', 3));
     }
-    painter.fillRect(colormapLeft(), colormapTop(), colormapWidth(),
-            colormapHeight(), colormap);
-    painter.drawRect(colormapLeft(), colormapTop(), colormapWidth(),
-            colormapHeight());
-    // colormap labels
-    painter.drawText(
-            colormapLeft(),
-            height() - colormapBottom() + colormapBottomPadding(),
-            colormapWidth(), fontMetrics.height(),
-            Qt::AlignTop | Qt::AlignHCenter, QString("frequency"));
-    painter.drawText(
-            colormapLeft(),
-            height() - colormapBottom() + colormapBottomPadding(),
-            colormapWidth(), fontMetrics.height(), Qt::AlignTop | Qt::AlignLeft,
-            QString::number(_freqRange[0], 'g', 3));
-    painter.drawText(
-            colormapLeft(),
-            height() - colormapBottom() + colormapBottomPadding(),
-            colormapWidth(), fontMetrics.height(),
-            Qt::AlignTop | Qt::AlignRight,
-            QString::number(_freqRange[1], 'g', 3));
 }
 
 std::shared_ptr<const Hist> Hist2DFacadeCharter::hist() const {
@@ -318,11 +331,9 @@ std::array<int, 2> Hist2DFacadeCharter::posToBinIds(float x, float y) const {
  */
 Hist1DFacadeCharter::Hist1DFacadeCharter(
         std::shared_ptr<const HistFacade> histFacade, int displayDim,
-        QPaintDevice* paintDevice,
         std::function<void(float, float, const std::string &)> showLabel)
   : _histFacade(histFacade)
   , _displayDim(displayDim)
-  , _paintDevice(paintDevice)
   , _showLabel(showLabel) {
     _histPainter = std::make_shared<Hist1DVBOPainter>();
     _histPainter->initialize();
@@ -332,18 +343,27 @@ Hist1DFacadeCharter::Hist1DFacadeCharter(
     _histPainter->setFreqRange(0.f, 1.f);
 }
 
-void Hist1DFacadeCharter::setSize(int width, int height, int devicePixelRatio)
-{
+void Hist1DFacadeCharter::setSize(int width, int height, int devicePixelRatio) {
     _width = width;
     _height = height;
     _devicePixelRatio = devicePixelRatio;
 }
 
-void Hist1DFacadeCharter::setRange(float vMin, float vMax)
+void Hist1DFacadeCharter::setNormalizedViewport(
+        float left, float top, float width, float height) {
+    _viewport.setRect(left, top, width, height);
+}
+
+void Hist1DFacadeCharter::setFreqRange(float vMin, float vMax)
 {
     _vMin = vMin;
     _vMax = vMax;
     _histPainter->setFreqRange(vMin, vMax);
+}
+
+void Hist1DFacadeCharter::setRanges(
+        std::vector<std::array<double, 2>> varRanges) {
+    _varRanges = varRanges;
 }
 
 void Hist1DFacadeCharter::mousePressEvent(QMouseEvent *event) {
@@ -409,33 +429,61 @@ int Hist1DFacadeCharter::posToBinId(float x) const {
     return ibx;
 }
 
-void Hist1DFacadeCharter::chart()
-{
-    const float vMaxRatio = 1.f / 1.1f;
-    const int nTicks = 6;
-    // ticks under the histogram
-    {
-        Painter painter(std::make_shared<UsePainterImpl>(), _paintDevice);
-        painter.setPen(QPen(Qt::black, 0.25f));
-        for (auto i = 0; i < nTicks - 1; ++i) {
-            float y = height() - histBottom()
-                    - (i + 1) * vMaxRatio * histHeight() / (nTicks - 1);
-            painter.drawLine(
-                    QLineF(histLeft(), y, histLeft() + histWidth(), y));
-        }
-    }
-    // histogram
+void Hist1DFacadeCharter::drawHist(
+        double left, double bottom, double width, double height) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     if (_histPainter) {
-        _histPainter->setNormalizedViewport(
-                histLeft() / width(), histBottom() / height(),
-                histWidth() / width(), histHeight() / height());
+        _histPainter->setNormalizedViewport(left, bottom, width, height);
+        auto box = normalizedBox();
+        _histPainter->setNormalizedBox(box[0], box[1], box[2], box[3]);
         _histPainter->paint();
     }
     glDisable(GL_BLEND);
+}
+
+std::array<double, 4> Hist1DFacadeCharter::normalizedBox() const {
+    std::array<double, 4> rect = {0.0, 0.0, 1.0, 1.0};
+    auto varRange = _varRanges[0];
+    auto dimRange = _histFacade->dimRange(_displayDim);
+    rect[0] = (varRange[0] - dimRange[0]) / (dimRange[1] - dimRange[0]);
+    rect[2] = (varRange[1] - varRange[0]) / (dimRange[1] - dimRange[0]);
+    return rect;
+}
+
+void Hist1DFacadeCharter::chart(QPaintDevice *paintDevice)
+{
+    const float vMaxRatio = 1.f / 1.1f;
+    const int nTicks = 6;
+    Painter painter(std::make_shared<UsePainterImpl>(), paintDevice);
+//    // if there isn't enough space for anything
+//    if (chartWidth() < 50.f) {
+//        painter.fillRect(
+//                QRectF(chartLeft(), chartTop(), chartWidth(), chartHeight()),
+//                Qt::red);
+//        return;
+//    }
+    // if there isn't enough space for labels
+    if (histWidth() / chartWidth() < 0.5f) {
+        drawHist(chartLeft() / width(), chartBottom() / height(),
+                chartWidth() / width(), chartHeight() / height());
+        return;
+    }
+    // draw all the labels
+    // ticks under the histogram
+    painter.save();
+    painter.setPen(QPen(Qt::black, 0.25f));
+    for (auto i = 0; i < nTicks - 1; ++i) {
+        float y = height() - histBottom()
+                - (i + 1) * vMaxRatio * histHeight() / (nTicks - 1);
+        painter.drawLine(
+                QLineF(histLeft(), y, histLeft() + histWidth(), y));
+    }
+    painter.restore();
+    // histogram
+    drawHist(histLeft() / width(), histBottom() / height(),
+            histWidth() / width(), histHeight() / height());
     // axes
-    Painter painter(std::make_shared<UsePainterImpl>(), _paintDevice);
     painter.setPen(QPen(Qt::black, 0.5f));
     auto hist = _histFacade->hist(_displayDim);
     painter.drawLine(
@@ -458,8 +506,10 @@ void Hist1DFacadeCharter::chart()
         painter.translate(histLeft() + ix * dx,
                 height() - (histBottom() - 2.f * devicePixelRatioF()));
         painter.rotate(tickAngleDegree());
-        double min = hist->dimMin(0);
-        double max = hist->dimMax(0);
+        double min = _varRanges[0][0];
+        double max = _varRanges[0][1];
+//        double min = hist->dimMin(0);
+//        double max = hist->dimMax(0);
         double number = float(ix) / hist->dim()[0] * (max - min) + min;
         painter.drawText(
                 -tickWidth(), 0, tickWidth(), tickHeight(),
@@ -516,4 +566,53 @@ void Hist1DFacadeCharter::chart()
     painter.drawText(histBottom(), 0, histHeight(), labelLeft(),
             Qt::AlignBottom | Qt::AlignHCenter, "frequency");
     painter.restore();
+}
+
+/**
+ * @brief HistFacadeCharter::HistFacadeCharter
+ */
+HistFacadeCharter::HistFacadeCharter() : _charter(IHistCharter::create()) {
+
+}
+
+void HistFacadeCharter::chart(QPaintDevice *paintDevice) {
+    if (_viewport[0] > 1.f || _viewport[1] > 1.f
+            || _viewport[0] + _viewport[2] < 0.f
+            || _viewport[1] + _viewport[3] < 0.f) {
+        return;
+    }
+    _charter->setSize(_width, _height, 1);
+    _charter->setFreqRange(_freqRange[0], _freqRange[1]);
+    _charter->setRanges(_varRanges);
+    _charter->setNormalizedViewport(
+            _viewport[0], _viewport[1], _viewport[2], _viewport[3]);
+    _charter->chart(paintDevice);
+}
+
+void HistFacadeCharter::setSize(float width, float height) {
+    _width = width;
+    _height = height;
+}
+
+void HistFacadeCharter::setNormalizedViewport(
+        float left, float top, float width, float height) {
+    _viewport[0] = left;
+    _viewport[1] = top;
+    _viewport[2] = width;
+    _viewport[3] = height;
+}
+
+void HistFacadeCharter::setFreqRange(float vMin, float vMax) {
+    _freqRange[0] = vMin;
+    _freqRange[1] = vMax;
+}
+
+void HistFacadeCharter::setRanges(std::vector<std::array<double, 2>> ranges) {
+    _varRanges = ranges;
+}
+
+void HistFacadeCharter::setHist(
+        std::shared_ptr<const HistFacade> histFacade,
+        std::vector<int> displayDims) {
+    _charter = IHistCharter::create(histFacade, displayDims);
 }

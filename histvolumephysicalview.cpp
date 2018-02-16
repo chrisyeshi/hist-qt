@@ -3,15 +3,19 @@
 #include <QLabel>
 #include <QGestureEvent>
 #include <QMouseEvent>
+#include <QOpenGLPaintDevice>
 #include <QPainter>
 #include <QShortcut>
 #include <QTimer>
 #include <histview.h>
 #include <lazyui.h>
 #include <histfacadepainter.h>
+#include <histcharter.h>
 #include <painter.h>
 
 namespace {
+
+const QColor bgColor = QColor(0.8f * 255, 0.8f * 255, 0.8f * 255, 0.8f * 255);
 
 float clamp(float val, float min, float max) {
     return std::min(max, std::max(min, val));
@@ -392,7 +396,9 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
     });
 
     delayForInit([this]() {
-        glClearColor(0.8f, 0.8f, 0.8f, 0.8f);
+        glClearColor(
+                bgColor.redF(), bgColor.greenF(), bgColor.blueF(),
+                bgColor.alphaF());
         _histSliceFbo = createWidgetSizeFbo();
 //        _volren =
 //                yy::volren::VolRenFactory::create(
@@ -748,10 +754,62 @@ void HistVolumePhysicalOpenGLView::leaveEvent(QEvent *) {
 void HistVolumePhysicalOpenGLView::render() {
     delayForInit([this]() {
         _histSliceFbo->bind();
+        QOpenGLPaintDevice device(
+                _histSliceFbo->width(), _histSliceFbo->height());
+        device.setDevicePixelRatio(devicePixelRatio());
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glViewport(0, 0, _histSliceFbo->width(), _histSliceFbo->height());
-        for (auto painter : _histPainters) {
-            painter->paint();
+        QRectF rect = calcSliceRect();
+        float dx = rect.width() / _currSlice->nHistX();
+        float dy = rect.height() / _currSlice->nHistY();
+        if (_currDims.size() != 1 || dx > _sizeThresholdToRenderSolidColor) {
+            // if there is space for plotting the histograms
+            {
+                Painter bgPainter(&device);
+                bgPainter.fillRect(rect, Qt::white);
+                bgPainter.setPen(QPen(bgColor, 0.75f));
+                // vertical grid lines separating the histograms
+                for (int iHistX = 0; iHistX <= _currSlice->nHistX(); ++iHistX) {
+                    float x = iHistX * dx + rect.left();
+                    bgPainter.drawLine(QLineF(x, rect.top(), x, rect.bottom()));
+                }
+                // horizontal grid lines separating the histograms
+                for (int iHistY = 0; iHistY <= _currSlice->nHistY(); ++iHistY) {
+                    float y = iHistY * dy + rect.top();
+                    bgPainter.drawLine(QLineF(rect.left(), y, rect.right(), y));
+                }
+            }
+//            if (_histPainters.size() > 138) {
+//                _histPainters[137]->paint(&device);
+//                _histPainters[138]->paint(&device);
+//            }
+            for (auto painter : _histPainters) {
+                painter->paint(&device);
+            }
+        } else {
+            // only draw a solid color based on the average values.
+            assert(1 == _currDims.size());
+            Painter painter(&device);
+            const HistFacadeVolume::Stats& stats = _histVolume->stats();
+            for (int iHistY = 0; iHistY < _currSlice->nHistY(); ++iHistY)
+            for (int iHistX = 0; iHistX < _currSlice->nHistX(); ++iHistX) {
+                QRectF histRect = calcHistRect({iHistX, iHistY});
+                auto hist = _currSlice->hist(iHistX, iHistY)->hist();
+                int dim = _currDims[0];
+                float average = hist->means()[dim];
+                const std::string& var = _histConfig.vars[dim];
+                const auto& range = stats.meanRanges.at(var);
+                float ratio = (average - range[0]) / (range[1] - range[0]);
+                glm::vec3 lower = {0.9f, 0.9f, 1.f};
+                glm::vec3 higher = {0.2f, 0.3f, 0.6f};
+                glm::vec3 color = ratio * (higher - lower) + lower;
+                painter.fillRect(
+                        histRect,
+                        QColor(
+                            color[0] * 255, color[1] * 255, color[2] * 255,
+                            255));
+            }
+            /// TODO: try drawing two triangles for 2d histograms.
         }
         _histSliceFbo->release();
     });
@@ -917,7 +975,7 @@ void HistVolumePhysicalOpenGLView::createHistPainters() {
 //    }
     _histPainters.resize(_currSlice->nHist());
     for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
-        _histPainters[iHist] = std::make_shared<HistFacadePainter>();
+        _histPainters[iHist] = std::make_shared<HistFacadeCharter>();
     }
 }
 
@@ -952,9 +1010,10 @@ void HistVolumePhysicalOpenGLView::setFreqRangesToHistPainters(
         const std::array<float, 2>& range) {
     for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
         auto hist = _currSlice->hist(iHist)->hist(_currDims);
-        auto r = std::isnan(range[0]) ? ::calcFreqRange(hist) : range;
-        r[0] = 0.f;
-        r[1] = r[1] + 0.1f * (r[1] - r[0]);
+        auto freqRange = ::calcFreqRange(hist);
+        std::array<float, 2> r;
+        r[0] = std::isnan(range[0]) ? freqRange[0] : range[0];
+        r[1] = std::isnan(range[1]) ? freqRange[1] : range[1];
         _histPainters[iHist]->setFreqRange(r[0], r[1]);
     }
 }
@@ -1027,11 +1086,12 @@ void HistVolumePhysicalOpenGLView::updateHistPainterRects() {
     for (auto y = 0; y < nHistY; ++y) {
         QRectF histRect = calcHistRect({{x, y}});
         float left = histRect.left() / swf();
-        float bottom = (shf() - histRect.bottom()) / shf();
+        float top = histRect.top() / shf();
         float histWidth = histRect.width() / swf();
         float histHeight = histRect.height() / shf();
+        _histPainters[x + nHistX * y]->setSize(swf(), shf());
         _histPainters[x + nHistX * y]->setNormalizedViewport(
-                left, bottom, histWidth, histHeight);
+                left, top, histWidth, histHeight);
     }
 }
 

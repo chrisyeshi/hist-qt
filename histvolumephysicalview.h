@@ -13,6 +13,7 @@
 class HistView;
 class HistVolumePhysicalOpenGLView;
 class HistFacadePainter;
+class HistFacadeCharter;
 class QGestureEvent;
 
 Q_DECLARE_METATYPE(std::string)
@@ -150,6 +151,7 @@ private:
     const float _defaultZoom = 1.f;
     const float _borderPixel = 10.0f;
     const float _histSpacing = 1.f;
+    const float _sizeThresholdToRenderSolidColor = 0.f; // 50.f;
     const QColor _spacingColor = QColor(255, 100, 100);
     const QVector2D _defaultTranslate = QVector2D(0.5f, 0.5f);
     const std::vector<int> _defaultDims = {0};
@@ -165,10 +167,10 @@ private:
     Orien _currOrien = _defaultOrien;
     int _currSliceId = _defaultSliceId;
     std::shared_ptr<HistFacadeRect> _currSlice;
-    float _currZoom = _defaultZoom;
+    float _currZoom = 1.f;
     QVector2D _currTranslate = _defaultTranslate;
     QPointF _mousePrev, _mousePress;
-    std::vector<std::shared_ptr<HistFacadePainter>> _histPainters;
+    std::vector<std::shared_ptr<HistFacadeCharter>> _histPainters;
     std::shared_ptr<QOpenGLFramebufferObject> _histSliceFbo;
     std::array<int, 2> _hoveredHistSliceIds = {{-1, -1}};
     std::vector<std::array<int, 3>> _selectedHistIds;

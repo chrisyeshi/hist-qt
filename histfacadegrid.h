@@ -114,6 +114,7 @@ public:
 public:
     struct Stats {
         std::map<std::string, float> means;
+        std::map<std::string, std::array<float, 2>> meanRanges;
     };
     Stats stats() const;
 
@@ -144,8 +145,10 @@ private:
     mutable std::map<int, std::shared_ptr<HistFacadeRect>> _cachedYZSlices;
 
 private:
-    mutable bool _helperCached;
+    mutable bool _helperCached = false;
     mutable HistHelper _helper;
+    mutable bool _statsCached = false;
+    mutable Stats _stats;
 };
 
 #endif // HISTFACADEGRID_H

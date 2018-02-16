@@ -93,6 +93,7 @@ private:
     yy::gl::render_pass _backgroundRenderPass;
     yy::gl::render_pass _barsRenderPass;
     yy::gl::render_pass _bordersRenderPass;
+    glm::vec4 _viewport, _rect, _box = glm::vec4(0.0, 0.0, 1.0, 1.0);
 
 private:
     static const glm::vec4 _yellowBlueBarColor;
