@@ -36,7 +36,8 @@ public:
                     out vec2 vf_texCoord;
                     void main() {
                         gl_Position = v_position;
-                        vf_texCoord = (v_position.xy + 1.0) * 0.5;
+                        vec2 texCoord = (v_position.xy + 1.0) * 0.5;
+                        vf_texCoord = vec2(texCoord.x, 1.0 - texCoord.y);
                     }
                 )GLSL",
                 yy::gl::shader::FRAGMENT_SHADER,
@@ -81,11 +82,10 @@ public:
         return true;
     }
     virtual bool end(QPainter* painter) {
-        auto image = _image->mirrored();
         _texture->texImage2D(
                 yy::gl::texture::TEXTURE_2D, yy::gl::texture::INTERNAL_RGBA8,
                 _image->width(), _image->height(), yy::gl::texture::FORMAT_RGBA,
-                yy::gl::texture::UNSIGNED_BYTE, image.bits());
+                yy::gl::texture::UNSIGNED_BYTE, _image->bits());
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         _renderPass.drawArrays();
@@ -165,6 +165,9 @@ public:
     }
     bool end() { return _impl->end(&_painter); }
     void resize(int w, int h) { _impl->resize(&_painter, w, h); }
+
+public:
+    Qt::BGMode backgroundMode() const { return _painter.backgroundMode(); }
 
 public:
     void save() { _painter.save(); }
