@@ -45,15 +45,9 @@ public:
     virtual void initialize() = 0;
     virtual void paint() = 0;
     virtual void setNormalizedViewport(float x, float y, float w, float h) = 0;
-    virtual void setNormalizedRect(float x, float y, float w, float h) = 0;
+    virtual void setNormalizedBox(float x, float y, float w, float h) = 0;
     virtual void setFreqRange(float min, float max) = 0;
     virtual void setColorMap(ColorMapOption option) = 0;
-
-public:
-    void setNormalizedViewportAndRect(float x, float y, float w, float h) {
-        setNormalizedViewport(x, y, w, h);
-        setNormalizedRect(x, y, w, h);
-    }
 };
 
 /**
@@ -65,7 +59,7 @@ public:
     virtual void paint() override {}
     virtual void setNormalizedViewport(
             float x, float y, float w, float h) override {}
-    virtual void setNormalizedRect(
+    virtual void setNormalizedBox(
             float x, float y, float w, float h) override {}
     virtual void setFreqRange(float min, float max) override {}
     virtual void setColorMap(ColorMapOption option) override {}
@@ -80,7 +74,7 @@ public:
     virtual void paint() override;
     virtual void setNormalizedViewport(
             float x, float y, float w, float h) override;
-    virtual void setNormalizedRect(float x, float y, float w, float h) override;
+    virtual void setNormalizedBox(float x, float y, float w, float h) override;
     virtual void setFreqRange(float min, float max) override;
     virtual void setColorMap(ColorMapOption option) override;
 
@@ -115,7 +109,7 @@ public:
     virtual void paint() override;
     virtual void setNormalizedViewport(
             float x, float y, float w, float h) override;
-    virtual void setNormalizedRect(float x, float y, float w, float h) override;
+    virtual void setNormalizedBox(float x, float y, float w, float h) override;
     virtual void setFreqRange(float min, float max) override;
     virtual void setColorMap(ColorMapOption option) override;
 
@@ -145,7 +139,7 @@ public:
     virtual void paint() override;
     virtual void setNormalizedViewport(
             float x, float y, float w, float h) override;
-    virtual void setNormalizedRect(float x, float y, float w, float h) override;
+    virtual void setNormalizedBox(float x, float y, float w, float h) override;
     virtual void setFreqRange(float min, float max) override;
     virtual void setColorMap(ColorMapOption option) override;
 

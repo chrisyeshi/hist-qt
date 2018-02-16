@@ -155,7 +155,7 @@ void Hist2DFacadeCharter::leaveEvent(QEvent *event) {
 void Hist2DFacadeCharter::chart() {
     // histogram
     if (_histPainter) {
-        _histPainter->setNormalizedViewportAndRect(
+        _histPainter->setNormalizedViewport(
                 histLeft() / width(), histBottom() / height(),
                 histWidth() / width(), histHeight() / height());
         _histPainter->paint();
@@ -428,7 +428,7 @@ void Hist1DFacadeCharter::chart()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     if (_histPainter) {
-        _histPainter->setNormalizedViewportAndRect(
+        _histPainter->setNormalizedViewport(
                 histLeft() / width(), histBottom() / height(),
                 histWidth() / width(), histHeight() / height());
         _histPainter->paint();

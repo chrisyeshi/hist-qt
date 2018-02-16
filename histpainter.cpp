@@ -62,7 +62,7 @@ void Hist1DVBOPainter::initialize()
     _backgroundRenderPass.setDrawMode(yy::gl::render_pass::TRIANGLE_STRIP);
     _backgroundRenderPass.setFirstVertexIndex(0);
     _backgroundRenderPass.setVertexCount(4);
-    _backgroundRenderPass.setUniforms("rect", glm::vec4(0.f, 0.f, 1.f, 1.f),
+    _backgroundRenderPass.setUniforms("box", glm::vec4(0.f, 0.f, 1.f, 1.f),
             "color", _yellowBlueBackgroundColor);
     // bars render pass
     _barsRenderPass.setProgram(sharedBarsShaderProgram());
@@ -70,7 +70,7 @@ void Hist1DVBOPainter::initialize()
     _barsRenderPass.setFirstVertexIndex(0);
     _barsRenderPass.setUniforms(
             "viewport", glm::vec4(0.f, 0.f, 1.f, 1.f),
-            "rect", glm::vec4(0.f, 0.f, 1.f, 1.f), "vMin", 0.f, "vMax", 1.f,
+            "box", glm::vec4(0.f, 0.f, 1.f, 1.f), "vMin", 0.f, "vMax", 1.f,
             "color", _yellowBlueBarColor);
     // borders render pass
     _bordersRenderPass.setProgram(sharedTriangleStripBordersShaderProgram());
@@ -78,12 +78,11 @@ void Hist1DVBOPainter::initialize()
     _bordersRenderPass.setFirstVertexIndex(0);
     _bordersRenderPass.setUniforms(
             "viewport", glm::vec4(0.f, 0.f, 1.f, 1.f),
-            "rect", glm::vec4(0.f, 0.f, 1.f, 1.f), "vMin", 0.f, "vMax", 1.f,
+            "box", glm::vec4(0.f, 0.f, 1.f, 1.f), "vMin", 0.f, "vMax", 1.f,
             "thickness", 0.1f);
 }
 
-void Hist1DVBOPainter::paint()
-{
+void Hist1DVBOPainter::paint() {
     _backgroundRenderPass.drawArrays();
     _barsRenderPass.drawArrays();
     _bordersRenderPass.drawArrays();
@@ -96,10 +95,9 @@ void Hist1DVBOPainter::setNormalizedViewport(
     _bordersRenderPass.setUniform("viewport", glm::vec4(x, y, w, h));
 }
 
-void Hist1DVBOPainter::setNormalizedRect(float x, float y, float w, float h) {
-    _barsRenderPass.setUniform("rect", glm::vec4(x, y, w, h));
-//    _backgroundRenderPass.setUniform("rect", glm::vec4(x, y, w, h));
-    _bordersRenderPass.setUniform("rect", glm::vec4(x, y, w, h));
+void Hist1DVBOPainter::setNormalizedBox(float x, float y, float w, float h) {
+    _barsRenderPass.setUniform("box", glm::vec4(x, y, w, h));
+    _bordersRenderPass.setUniform("box", glm::vec4(x, y, w, h));
 }
 
 void Hist1DVBOPainter::setFreqRange(float min, float max)
@@ -153,6 +151,8 @@ std::shared_ptr<yy::gl::program> Hist1DVBOPainter::sharedBarsShaderProgram()
             R"GLSL(
                 #version 330
                 uniform vec4 rect;
+                uniform vec4 box;
+                uniform vec4 viewport;
                 uniform float vMin, vMax;
                 uniform float nBins;
                 layout(points) in;
@@ -162,21 +162,31 @@ std::shared_ptr<yy::gl::program> Hist1DVBOPainter::sharedBarsShaderProgram()
                 out vec2 gf_position;
                 void main() {
                     float normValue = (vg_freq[0] - vMin) / (vMax - vMin);
-                    float w = rect.z * 2.0 / nBins;
-                    float h = rect.w * normValue * 2.0;
-                    float x = rect.x * 2.0 - 1.0 + vg_vertexID[0] * w;
-                    float y = rect.y * 2.0 - 1.0;
+                    float rectz = viewport.z / box.z;
+                    float rectw = viewport.w / box.w;
+                    float rectx = viewport.x - box.x * rectz;
+                    float recty = viewport.y - box.y * rectw;
+                    float w = viewport.z * 2.0 / (nBins * box.z);
+                    float h = rectw * normValue * 2.0;
+//                    float x = rectx * 2.0 - 1.0 + vg_vertexID[0] * w;
+                    float x1 = 2.0 * viewport.x - 1.0
+                            + 2.0 * viewport.z
+                            * (vg_vertexID[0] / nBins - box.x) / box.z;
+                    float x2 = 2.0 * viewport.x - 1.0
+                            + 2.0 * viewport.z
+                            * ((vg_vertexID[0] + 1) / nBins - box.x) / box.z;
+                    float y = recty * 2.0 - 1.0;
 
-                    gf_position = vec2(x, y);
+                    gf_position = vec2(x1, y);
                     gl_Position = vec4(gf_position, 0.0, 1.0);
                     EmitVertex();
-                    gf_position = vec2(x + w, y);
+                    gf_position = vec2(x2, y);
                     gl_Position = vec4(gf_position, 0.0, 1.0);
                     EmitVertex();
-                    gf_position = vec2(x, y + h);
+                    gf_position = vec2(x1, y + h);
                     gl_Position = vec4(gf_position, 0.0, 1.0);
                     EmitVertex();
-                    gf_position = vec2(x + w, y + h);
+                    gf_position = vec2(x2, y + h);
                     gl_Position = vec4(gf_position, 0.0, 1.0);
                     EmitVertex();
                     EndPrimitive();
@@ -227,6 +237,8 @@ std::shared_ptr<yy::gl::program>
                 in int vg_vertexID[];
                 out vec2 gf_position;
                 void main() {
+                    /// TODO: update this to use box instead, just copy the code
+                    /// from the other shaders.
                     float normValue = (vg_freq[0] - vMin) / (vMax - vMin);
                     float w = rect.z * 2.0 / nBins;
                     float h = rect.w * normValue * 2.0;
@@ -283,7 +295,7 @@ std::shared_ptr<yy::gl::program>
             yy::gl::shader::GEOMETRY_SHADER,
             R"GLSL(
                 #version 330
-                uniform vec4 rect;
+                uniform vec4 box;
                 uniform vec4 viewport;
                 uniform float vMin, vMax;
                 uniform float nBins;
@@ -295,29 +307,38 @@ std::shared_ptr<yy::gl::program>
                 out vec2 gf_position;
                 void main() {
                     float normValue = (vg_freq[0] - vMin) / (vMax - vMin);
+                    float rectz = viewport.z / box.z;
+                    float rectw = viewport.w / box.w;
+                    float rectx = viewport.x - box.x * rectz;
+                    float recty = viewport.y - box.y * rectw;
                     float t =
                             min(0.005 * viewport.z,
-                                0.5 * thickness / nBins * rect.z);
-                    float w = rect.z * 2.0 / nBins;
-                    float h = max(t, rect.w * normValue * 2.0);
-                    float x = rect.x * 2.0 - 1.0 + vg_vertexID[0] * w;
-                    float y = rect.y * 2.0 - 1.0;
+                                0.5 * thickness / nBins * rectz);
+                    float w = viewport.z * 2.0 / (nBins * box.z);
+                    float h = max(t, rectw * normValue * 2.0);
+                    float x1 = 2.0 * viewport.x - 1.0
+                            + 2.0 * viewport.z
+                            * (vg_vertexID[0] / nBins - box.x) / box.z;
+                    float x2 = 2.0 * viewport.x - 1.0
+                            + 2.0 * viewport.z
+                            * ((vg_vertexID[0] + 1) / nBins - box.x) / box.z;
+                    float y = recty * 2.0 - 1.0;
 
-                    gf_position = vec2(x-t, y);
+                    gf_position = vec2(x1-t, y);
                     gl_Position = vec4(gf_position, 0.0, 1.0); EmitVertex();
-                    gf_position = vec2(x+t, y);
+                    gf_position = vec2(x1+t, y);
                     gl_Position = vec4(gf_position, 0.0, 1.0); EmitVertex();
-                    gf_position = vec2(x-t, y+h+t);
+                    gf_position = vec2(x1-t, y+h+t);
                     gl_Position = vec4(gf_position, 0.0, 1.0); EmitVertex();
-                    gf_position = vec2(x+t, y+h-t);
+                    gf_position = vec2(x1+t, y+h-t);
                     gl_Position = vec4(gf_position, 0.0, 1.0); EmitVertex();
-                    gf_position = vec2(x+w+t, y+h+t);
+                    gf_position = vec2(x2+t, y+h+t);
                     gl_Position = vec4(gf_position, 0.0, 1.0); EmitVertex();
-                    gf_position = vec2(x+w-t, y+h-t);
+                    gf_position = vec2(x2-t, y+h-t);
                     gl_Position = vec4(gf_position, 0.0, 1.0); EmitVertex();
-                    gf_position = vec2(x+w+t, y);
+                    gf_position = vec2(x2+t, y);
                     gl_Position = vec4(gf_position, 0.0, 1.0); EmitVertex();
-                    gf_position = vec2(x+w-t, y);
+                    gf_position = vec2(x2-t, y);
                     gl_Position = vec4(gf_position, 0.0, 1.0); EmitVertex();
                     EndPrimitive();
                 }
@@ -356,7 +377,7 @@ void Hist2DTexturePainter::initialize()
     _backgroundRenderPass.setDrawMode(yy::gl::render_pass::TRIANGLE_STRIP);
     _backgroundRenderPass.setFirstVertexIndex(0);
     _backgroundRenderPass.setVertexCount(4);
-    _backgroundRenderPass.setUniforms("rect", glm::vec4(0.f, 0.f, 1.f, 1.f),
+    _backgroundRenderPass.setUniforms("box", glm::vec4(0.f, 0.f, 1.f, 1.f),
             "color", _yellowBlueBackgroundColor);
     // heatmap render pass
     _heatmapRenderPass.setProgram(sharedShaderProgram());
@@ -370,7 +391,7 @@ void Hist2DTexturePainter::initialize()
     _heatmapRenderPass.setFirstVertexIndex(0);
     _heatmapRenderPass.setVertexCount(4);
     _heatmapRenderPass.setUniforms(
-            "rect", glm::vec4(0.f, 0.f, 1.f, 1.f), "viewport",
+            "box", glm::vec4(0.f, 0.f, 1.f, 1.f), "viewport",
             glm::vec4(0.f, 0.f, 1.f, 1.f), "vMin", 0.f, "vMax", 1.f);
 }
 
@@ -387,9 +408,9 @@ void Hist2DTexturePainter::setNormalizedViewport(
     _heatmapRenderPass.setUniform("viewport", glm::vec4(x, y, w, h));
 }
 
-void Hist2DTexturePainter::setNormalizedRect(
+void Hist2DTexturePainter::setNormalizedBox(
         float x, float y, float w, float h) {
-    _heatmapRenderPass.setUniform("rect", glm::vec4(x, y, w, h));
+    _heatmapRenderPass.setUniform("box", glm::vec4(x, y, w, h));
 }
 
 void Hist2DTexturePainter::setFreqRange(float min, float max)
@@ -422,13 +443,19 @@ std::shared_ptr<yy::gl::program> Hist2DTexturePainter::sharedShaderProgram()
             yy::gl::shader::VERTEX_SHADER,
             R"GLSL(
                 #version 330
-                uniform vec4 rect;
+                uniform vec4 box;
+                uniform vec4 viewport;
                 in vec4 v_position;
                 out vec2 vf_texCoord;
                 out vec2 vf_position;
                 void main() {
                     vec2 np = v_position.xy * vec2(0.5) + vec2(0.5);
-                    vec2 pos = np * rect.zw + rect.xy;
+                    float rectz = viewport.z / box.z;
+                    float rectw = viewport.w / box.w;
+                    float rectx = viewport.x - box.x * rectz;
+                    float recty = viewport.y - box.y * rectw;
+                    vec2 pos =
+                            viewport.xy + viewport.zw * (np - box.xy) / box.zw;
                     vf_position = pos * vec2(2.0) - vec2(1.0);
                     gl_Position = vec4(vf_position, 0.0, 1.0);
                     vf_texCoord = v_position.xy * 0.5 + 0.5;
@@ -530,8 +557,8 @@ void Hist2DPainter::setNormalizedViewport(float x, float y, float w, float h) {
     _painter.setNormalizedViewport(x, y, w, h);
 }
 
-void Hist2DPainter::setNormalizedRect(float x, float y, float w, float h) {
-    _painter.setNormalizedRect(x, y, w, h);
+void Hist2DPainter::setNormalizedBox(float x, float y, float w, float h) {
+    _painter.setNormalizedBox(x, y, w, h);
 }
 
 void Hist2DPainter::setFreqRange(float min, float max)

@@ -9,7 +9,7 @@ void HistFacadePainter::paint()
         return;
     }
     _painter->setNormalizedViewport(_left, _bottom, _width, _height);
-    setPainterNormalizedRect(_painter, normalizedRect());
+    setPainterNormalizedBox(_painter, normalizedBox());
     _painter->setFreqRange(_min, _max);
     _painter->setColorMap(
             _histFacade->selected() ?
@@ -26,7 +26,7 @@ void HistFacadePainter::setNormalizedViewport(
     _height = h;
 }
 
-void HistFacadePainter::setNormalizedRect(float x, float y, float w, float h) {
+void HistFacadePainter::setNormalizedBox(float x, float y, float w, float h) {
 }
 
 void HistFacadePainter::setFreqRange(float min, float max)
@@ -60,38 +60,26 @@ void HistFacadePainter::setRanges(std::vector<std::array<double, 2>> ranges) {
     _ranges = ranges;
 }
 
-std::array<float, 4> HistFacadePainter::normalizedRect() const {
-    std::array<float, 4> rect = {_left, _bottom, _width, _height};
+std::array<float, 4> HistFacadePainter::normalizedBox() const {
+    std::array<float, 4> rect = {0.f, 0.f, 1.f, 1.f};
     if (_displayDims.size() > 0) {
-//    if (_ranges.size() > 0) {
+        auto varRange = _ranges[0];
         auto dimRange = _histFacade->dimRange(_displayDims[0]);
-        double lower =
-                (dimRange[0] - _ranges[0][0]) / (_ranges[0][1] - _ranges[0][0]);
-//                (_ranges[0][0] - dimRange[0]) / (dimRange[1] - dimRange[0]);
-        double upper =
-                (dimRange[1] - _ranges[0][0]) / (_ranges[0][1] - _ranges[0][0]);
-//                (_ranges[0][1] - dimRange[0]) / (dimRange[1] - dimRange[0]);
-        rect[0] = _left + lower * _width;
-        rect[2] = _width * (upper - lower);
+        rect[0] = (varRange[0] - dimRange[0]) / (dimRange[1] - dimRange[0]);
+        rect[2] = (varRange[1] - varRange[0]) / (dimRange[1] - dimRange[0]);
     }
     if (_displayDims.size() > 1) {
-//    if (_ranges.size() > 1) {
+        auto varRange = _ranges[1];
         auto dimRange = _histFacade->dimRange(_displayDims[1]);
-        double lower =
-                (dimRange[0] - _ranges[1][0]) / (_ranges[1][1] - _ranges[1][0]);
-//                (_ranges[1][0] - dimRange[0]) / (dimRange[1] - dimRange[0]);
-        double upper =
-                (dimRange[1] - _ranges[1][0]) / (_ranges[1][1] - _ranges[1][0]);
-//                (_ranges[1][1] - dimRange[0]) / (dimRange[1] - dimRange[0]);
-        rect[1] = _bottom + lower * _height;
-        rect[3] = (upper - lower) * _height;
+        rect[1] = (varRange[0] - dimRange[0]) / (dimRange[1] - dimRange[0]);
+        rect[3] = (varRange[1] - dimRange[0]) / (dimRange[1] - dimRange[0]);
     }
     return rect;
 }
 
-void HistFacadePainter::setPainterNormalizedRect(
+void HistFacadePainter::setPainterNormalizedBox(
         std::shared_ptr<IHistPainter> painter, std::array<float, 4> rect) {
-    painter->setNormalizedRect(rect[0], rect[1], rect[2], rect[3]);
+    painter->setNormalizedBox(rect[0], rect[1], rect[2], rect[3]);
 }
 
 //yy::vec4 HistFacadePainter::normlalizedViewport() const {

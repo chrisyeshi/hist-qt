@@ -1030,7 +1030,7 @@ void HistVolumePhysicalOpenGLView::updateHistPainterRects() {
         float bottom = (shf() - histRect.bottom()) / shf();
         float histWidth = histRect.width() / swf();
         float histHeight = histRect.height() / shf();
-        _histPainters[x + nHistX * y]->setNormalizedViewportAndRect(
+        _histPainters[x + nHistX * y]->setNormalizedViewport(
                 left, bottom, histWidth, histHeight);
     }
 }

@@ -16,7 +16,7 @@ public:
     virtual void paint() override;
     virtual void setNormalizedViewport(
             float x, float y, float w, float h) override;
-    virtual void setNormalizedRect(float x, float y, float w, float h) override;
+    virtual void setNormalizedBox(float x, float y, float w, float h) override;
     virtual void setFreqRange(float min, float max) override;
     virtual void setColorMap(ColorMapOption) override {}
 
@@ -26,8 +26,8 @@ public:
     void setRanges(std::vector<std::array<double, 2>> ranges);
 
 private:
-    std::array<float, 4> normalizedRect() const;
-    void setPainterNormalizedRect(
+    std::array<float, 4> normalizedBox() const;
+    void setPainterNormalizedBox(
             std::shared_ptr<IHistPainter> painter, std::array<float, 4> rect);
 
 private:
