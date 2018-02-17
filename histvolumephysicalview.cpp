@@ -964,18 +964,10 @@ void HistVolumePhysicalOpenGLView::updateCurrSlice() {
 }
 
 void HistVolumePhysicalOpenGLView::createHistPainters() {
-//    // remember not to use _histPainters.size();
-//    int oldSize = _histPainters.size();
-//    int newSize = _currSlice->nHist();
-//    if (newSize > oldSize) {
-//        _histPainters.resize(newSize);
-//        for (int iHist = oldSize; iHist < newSize; ++iHist) {
-//            _histPainters[iHist] = std::make_shared<HistFacadePainter>();
-//        }
-//    }
     _histPainters.resize(_currSlice->nHist());
     for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
         _histPainters[iHist] = std::make_shared<HistFacadeCharter>();
+        _histPainters[iHist]->setDrawColormap(false);
     }
 }
 

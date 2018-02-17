@@ -102,13 +102,11 @@ protected:
         auto tanAngle = std::abs(std::tan(tickAngleRadian()));
         auto extendedWidth = tickHeight() / tanAngle + tickWidth();
         return extendedWidth * tanAngle + labelLeft();
-//        return 44.f * devicePixelRatioF() + labelLeft();
     }
     virtual float histBottom() const {
         auto tanAngle = std::abs(std::tan(tickAngleRadian()));
         auto extendedWidth = tickHeight() / tanAngle + tickWidth();
         return extendedWidth * tanAngle + labelBottom();
-//        return 48.f * devicePixelRatioF() + labelBottom();
     }
     virtual float histTop() const {
         return (10.f + viewport().top() * height()) * devicePixelRatioF();
@@ -184,6 +182,9 @@ public:
     virtual void mouseMoveEvent(QMouseEvent* event) override;
     virtual void leaveEvent(QEvent *event) override;
 
+public:
+    void setDrawColormap(bool drawColormap) { _drawColormap = drawColormap; }
+
 protected:
     virtual int devicePixelRatio() const override { return _devicePixelRatio; }
     virtual float devicePixelRatioF() const override {
@@ -218,6 +219,12 @@ protected:
 private:
     std::shared_ptr<const Hist> hist() const;
     std::array<int, 2> posToBinIds(float x, float y) const;
+    std::array<double, 4> normalizedBox() const;
+    void drawHist(float top, float bottom, float width, float height) const;
+
+private:
+    const float thresholdBinSizeToDrawGrid = 2.5f;
+    const float thresholdRatioToDrawLabels = 0.5f;
 
 private:
     int _width = 0, _height = 0, _devicePixelRatio = 1;
@@ -233,6 +240,7 @@ private:
     std::array<int, 2> _selectedBinEnd = {{-1, -1}};
     RectF _viewport = RectF(0.f, 0.f, 1.f, 1.f);
     bool _drawColormap = true;
+    std::vector<std::array<double, 2>> _varRanges;
 };
 
 /**
@@ -272,6 +280,9 @@ private:
     std::array<double, 4> normalizedBox() const;
 
 private:
+    const float thresholdRatioToDrawLabels = 0.5f;
+
+private:
     int _width = 0, _height = 0, _devicePixelRatio = 1;
     float _vMin, _vMax;
     std::shared_ptr<const HistFacade> _histFacade;
@@ -305,6 +316,7 @@ public:
     void setRanges(std::vector<std::array<double, 2>> ranges);
     void setHist(std::shared_ptr<const HistFacade> histFacade,
             std::vector<int> displayDims);
+    void setDrawColormap(bool drawColormap);
 
 private:
     std::shared_ptr<IHistCharter> _charter;
@@ -312,6 +324,7 @@ private:
     std::array<float, 4> _viewport;
     std::array<float, 2> _freqRange;
     std::vector<std::array<double, 2>> _varRanges;
+    bool _drawColormap;
 };
 
 #endif // HISTCHARTER_H
