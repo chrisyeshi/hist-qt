@@ -152,9 +152,12 @@ HistVolumePhysicalView::HistVolumePhysicalView(QWidget *parent)
     hLayout->setSpacing(5);
     hLayout->addWidget(_histVolumeView, 3);
     connect(_histVolumeView,
-            SIGNAL(currHistConfigDimsChanged(std::string,std::vector<int>)),
+            &HistVolumePhysicalOpenGLView::currHistConfigDimsChanged,
             this,
-            SIGNAL(currHistConfigDimsChanged(std::string,std::vector<int>)));
+            [this](std::string name, std::vector<int> displayDims) {
+        _histDims = displayDims;
+        emit currHistConfigDimsChanged(name, displayDims);
+    });
     connect(_histVolumeView,
             SIGNAL(
                 selectedHistsChanged(std::vector<std::shared_ptr<const Hist>>)),

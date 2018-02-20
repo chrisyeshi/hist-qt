@@ -44,7 +44,8 @@ public:
             float left, float top, float width, float height) = 0;
     virtual void setFreqRange(float vMin, float vMax) = 0;
     virtual void setRanges(std::vector<std::array<double, 2>> varRanges) = 0;
-    virtual void setSelectedVarRanges(const HistRangesMap& selectedVarRanges) {}
+    virtual void setSelectedVarRanges(
+            const HistRangesMap& selectedVarRanges) = 0;
     virtual void mousePressEvent(QMouseEvent*) = 0;
     virtual void mouseReleaseEvent(QMouseEvent*) = 0;
     virtual void mouseMoveEvent(QMouseEvent*) = 0;
@@ -145,6 +146,7 @@ public:
     virtual void setNormalizedViewport(float, float, float, float) override {}
     virtual void setFreqRange(float, float) override {}
     virtual void setRanges(std::vector<std::array<double, 2>>) override {}
+    virtual void setSelectedVarRanges(const HistRangesMap&) override {}
     virtual void mousePressEvent(QMouseEvent*) override {}
     virtual void mouseReleaseEvent(QMouseEvent*) override {}
     virtual void mouseMoveEvent(QMouseEvent*) override {}
@@ -178,6 +180,8 @@ public:
     virtual void setFreqRange(float vMin, float vMax) override;
     virtual void setRanges(
             std::vector<std::array<double, 2> > varRanges) override;
+    virtual void setSelectedVarRanges(
+            const HistRangesMap& selectedVarRanges) override;
     virtual void mousePressEvent(QMouseEvent *event) override;
     virtual void mouseReleaseEvent(QMouseEvent* event) override;
     virtual void mouseMoveEvent(QMouseEvent* event) override;
@@ -222,6 +226,10 @@ private:
     std::array<int, 2> posToBinIds(float x, float y) const;
     std::array<double, 4> normalizedBox() const;
     void drawHist(float top, float bottom, float width, float height) const;
+    std::vector<std::array<double, 2>> binRangesToVarRanges(
+            const std::array<int, 2>& binBeg,
+            const std::array<int, 2>& binEnd) const;
+    bool isVarRangesSelected() const;
 
 private:
     const float thresholdBinSizeToDrawGrid = 2.5f;
@@ -242,6 +250,9 @@ private:
     RectF _viewport = RectF(0.f, 0.f, 1.f, 1.f);
     bool _drawColormap = true;
     std::vector<std::array<double, 2>> _varRanges;
+    std::vector<std::array<double, 2>> _selectedVarRanges = {
+        {NAN, NAN}, {NAN, NAN}
+    };
 };
 
 /**

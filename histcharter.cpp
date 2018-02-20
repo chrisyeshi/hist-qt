@@ -85,6 +85,16 @@ void Hist2DFacadeCharter::setRanges(
     _varRanges = varRanges;
 }
 
+void Hist2DFacadeCharter::setSelectedVarRanges(
+        const IHistCharter::HistRangesMap &selectedVarRanges) {
+    _selectedVarRanges.resize(2);
+    for (int i = 0; i < _displayDims.size(); ++i) {
+        _selectedVarRanges[i] = selectedVarRanges.at(_displayDims[i]);
+    }
+    _selectedBinBeg = {-1, -1};
+    _selectedBinEnd = {-1, -1};
+}
+
 void Hist2DFacadeCharter::mousePressEvent(QMouseEvent *event) {
     _isMousePressed = true;
     auto binIds = posToBinIds(event->localPos().x(), event->localPos().y());
@@ -95,35 +105,16 @@ void Hist2DFacadeCharter::mousePressEvent(QMouseEvent *event) {
     _isBinSelected = true;
     _selectedBinBeg = binIds;
     _selectedBinEnd = binIds;
+    _selectedVarRanges = binRangesToVarRanges(_selectedBinBeg, _selectedBinEnd);
 }
 
 void Hist2DFacadeCharter::mouseReleaseEvent(QMouseEvent *event) {
     _isMousePressed = false;
-    auto hist2d = hist();
-    std::array<int, 2> binLower, binUpper;
-    binLower[0] =
-            clamp(std::min(_selectedBinBeg[0], _selectedBinEnd[0]),
-                0, hist2d->dim()[0] - 1);
-    binLower[1] =
-            clamp(std::min(_selectedBinBeg[1], _selectedBinEnd[1]),
-                0, hist2d->dim()[1] - 1);
-    binUpper[0] =
-            clamp(std::max(_selectedBinBeg[0], _selectedBinEnd[0]),
-                0, hist2d->dim()[0] - 1);
-    binUpper[1] =
-            clamp(std::max(_selectedBinBeg[1], _selectedBinEnd[1]),
-                0, hist2d->dim()[1] - 1);
-    auto xFullRange = _histFacade->dimRange(0);
-    auto yFullRange = _histFacade->dimRange(1);
-    auto xBinWidth = (xFullRange[1] - xFullRange[0]) / hist()->dim()[0];
-    auto yBinWidth = (yFullRange[1] - yFullRange[0]) / hist()->dim()[1];
-    std::array<double, 2> xRange, yRange;
-    xRange[0] = xFullRange[0] + xBinWidth * binLower[0];
-    xRange[1] = xFullRange[0] + xBinWidth * (1 + binUpper[0]);
-    yRange[0] = yFullRange[0] + yBinWidth * binLower[1];
-    yRange[1] = yFullRange[0] + yBinWidth * (1 + binUpper[1]);
-    selectedHistRangesChanged(
-            {{_displayDims[0], xRange}, {_displayDims[1], yRange}});
+    _selectedVarRanges = binRangesToVarRanges(_selectedBinBeg, _selectedBinEnd);
+    selectedHistRangesChanged({
+        {_displayDims[0], _selectedVarRanges[0]},
+        {_displayDims[1], _selectedVarRanges[1]}
+    });
 }
 
 void Hist2DFacadeCharter::mouseMoveEvent(QMouseEvent *event) {
@@ -133,6 +124,8 @@ void Hist2DFacadeCharter::mouseMoveEvent(QMouseEvent *event) {
     auto binIds = posToBinIds(x, y);
     if (_isMousePressed && _isBinSelected) {
         _selectedBinEnd = binIds;
+        _selectedVarRanges =
+                binRangesToVarRanges(_selectedBinBeg, _selectedBinEnd);
     }
     if (binIds[0] < 0 || binIds[0] >= hist2d->dim()[0] ||
             binIds[1] < 0 || binIds[1] >= hist2d->dim()[1]) {
@@ -160,6 +153,7 @@ void Hist2DFacadeCharter::mouseMoveEvent(QMouseEvent *event) {
 }
 
 void Hist2DFacadeCharter::leaveEvent(QEvent *event) {
+    _hoveredBin = {-1, -1};
     _showLabel(0, 0, "");
 }
 
@@ -215,25 +209,22 @@ void Hist2DFacadeCharter::chart(QPaintDevice *paintDevice) {
         }
     }
     // selected bins
-    if (_isBinSelected) {
-        std::array<int, 2> binLower, binUpper;
-        binLower[0] =
-                clamp(std::min(_selectedBinBeg[0], _selectedBinEnd[0]),
-                    0, hist2d->dim()[0] - 1);
-        binLower[1] =
-                clamp(std::min(_selectedBinBeg[1], _selectedBinEnd[1]),
-                    0, hist2d->dim()[1] - 1);
-        binUpper[0] =
-                clamp(std::max(_selectedBinBeg[0], _selectedBinEnd[0]),
-                    0, hist2d->dim()[0] - 1);
-        binUpper[1] =
-                clamp(std::max(_selectedBinBeg[1], _selectedBinEnd[1]),
-                    0, hist2d->dim()[1] - 1);
+    if (isVarRangesSelected()) {
+        std::array<std::array<double, 2>, 2> drawRanges;
+        for (int iDim = 0; iDim < 2; ++iDim) {
+            auto varRange = _varRanges[iDim];
+            auto selVarRange = _selectedVarRanges[iDim];
+            auto vr = varRange[1] - varRange[0];
+            double lower = clamp((selVarRange[0] - varRange[0]) / vr, 0.0, 1.0);
+            double upper = clamp((selVarRange[1] - varRange[0]) / vr, 0.0, 1.0);
+            drawRanges[iDim] = {lower, upper};
+        }
         painter.fillRect(
-                histLeft() + binLower[0] * dx,
-                histTop() + histHeight() - (binUpper[1] + 1) * dy,
-                (binUpper[0] - binLower[0] + 1) * dx,
-                (binUpper[1] - binLower[1] + 1) * dy,
+                QRectF(
+                    histLeft() + drawRanges[0][0] * histWidth(),
+                    histTop() + (1.0 - drawRanges[1][1]) * histHeight(),
+                    (drawRanges[0][1] - drawRanges[0][0]) * histWidth(),
+                    (drawRanges[1][1] - drawRanges[1][0]) * histHeight()),
                 QColor(231, 76, 60, 100));
     }
     // hovered bin
@@ -372,6 +363,36 @@ void Hist2DFacadeCharter::drawHist(
     auto box = normalizedBox();
     _histPainter->setNormalizedBox(box[0], box[1], box[2], box[3]);
     _histPainter->paint();
+}
+
+std::vector<std::array<double, 2>> Hist2DFacadeCharter::binRangesToVarRanges(
+        const std::array<int, 2> &binBeg,
+        const std::array<int, 2> &binEnd) const {
+    auto hist2d = hist();
+    auto dims = hist2d->dim();
+    std::array<int, 2> binLower, binUpper;
+    binLower[0] = clamp(std::min(binBeg[0], binEnd[0]), 0, dims[0] - 1);
+    binLower[1] = clamp(std::min(binBeg[1], binEnd[1]), 0, dims[1] - 1);
+    binUpper[0] = clamp(std::max(binBeg[0], binEnd[0]), 0, dims[0] - 1);
+    binUpper[1] = clamp(std::max(binBeg[1], binEnd[1]), 0, dims[1] - 1);
+    auto xFullRange = _histFacade->dimRange(0);
+    auto yFullRange = _histFacade->dimRange(1);
+    auto xBinWidth = (xFullRange[1] - xFullRange[0]) / dims[0];
+    auto yBinWidth = (yFullRange[1] - yFullRange[0]) / dims[1];
+    std::vector<std::array<double, 2>> varRanges(2);
+    varRanges[0][0] = xFullRange[0] + xBinWidth * binLower[0];
+    varRanges[0][1] = xFullRange[0] + xBinWidth * (1 + binUpper[0]);
+    varRanges[1][0] = yFullRange[0] + yBinWidth * binLower[1];
+    varRanges[1][1] = yFullRange[0] + yBinWidth * (1 + binUpper[1]);
+    return varRanges;
+}
+
+bool Hist2DFacadeCharter::isVarRangesSelected() const {
+    return 2 == _selectedVarRanges.size()
+            && !std::isnan(_selectedVarRanges[0][0])
+            && !std::isnan(_selectedVarRanges[0][1])
+            && !std::isnan(_selectedVarRanges[1][0])
+            && !std::isnan(_selectedVarRanges[1][1]);
 }
 
 /**
