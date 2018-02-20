@@ -34,7 +34,7 @@ public:
                 [](float, float, const std::string&) {});
 
 public:
-    typedef std::map<int, std::array<float, 2>> HistRangesMap;
+    typedef std::map<int, std::array<double, 2>> HistRangesMap;
     std::function<void(HistRangesMap)> selectedHistRangesChanged;
 
 public:
@@ -44,6 +44,7 @@ public:
             float left, float top, float width, float height) = 0;
     virtual void setFreqRange(float vMin, float vMax) = 0;
     virtual void setRanges(std::vector<std::array<double, 2>> varRanges) = 0;
+    virtual void setSelectedVarRanges(const HistRangesMap& selectedVarRanges) {}
     virtual void mousePressEvent(QMouseEvent*) = 0;
     virtual void mouseReleaseEvent(QMouseEvent*) = 0;
     virtual void mouseMoveEvent(QMouseEvent*) = 0;
@@ -259,7 +260,9 @@ public:
             float left, float top, float width, float height) override;
     virtual void setFreqRange(float vMin, float vMax) override;
     virtual void setRanges(
-            std::vector<std::array<double, 2> > varRanges) override;
+            std::vector<std::array<double, 2>> varRanges) override;
+    virtual void setSelectedVarRanges(
+            const HistRangesMap &varRangesMap) override;
     virtual void mousePressEvent(QMouseEvent *event) override;
     virtual void mouseReleaseEvent(QMouseEvent* event) override;
     virtual void mouseMoveEvent(QMouseEvent* event) override;
@@ -278,6 +281,9 @@ private:
     int posToBinId(float x) const;
     void drawHist(double left, double bottom, double width, double height);
     std::array<double, 4> normalizedBox() const;
+    std::array<double, 2> binRangeToVarRange(
+            const std::array<int, 2>& binRange);
+    bool isVarRangeSelected() const;
 
 private:
     const float thresholdRatioToDrawLabels = 0.5f;
@@ -293,10 +299,10 @@ private:
     int _hoveredBin = -1;
     bool _isMousePressed = false;
     bool _isBinSelected = false;
-    int _selectedBinBeg = -1;
-    int _selectedBinEnd = -1;
+    std::array<int, 2> _selectedBinRange = {-1, -1};
+    std::array<double, 2> _selectedVarRange = {NAN, NAN};
+    std::array<double, 2> _varRange = {NAN, NAN};
     RectF _viewport = RectF(0.f, 0.f, 1.f, 1.f);
-    std::vector<std::array<double, 2>> _varRanges;
 };
 
 /**

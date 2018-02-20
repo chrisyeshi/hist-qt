@@ -101,6 +101,10 @@ void HistViewHolder::setHist(std::shared_ptr<const HistFacade> histFacade,
     showHist();
 }
 
+void HistViewHolder::setCustomVarRanges(const HistRangesMap& varRangesMap) {
+    _histView->setCustomVarRanges(varRangesMap);
+}
+
 void HistViewHolder::setText(const QString &text) {
     _label->setText(text);
     showText();
@@ -267,6 +271,12 @@ void MainWindow::createSimpleLayout() {
         }
         _histView->update();
     }, Qt::QueuedConnection);
+    connect(physicalView, &HistVolumePhysicalView::customVarRangesChanged,
+            this,
+            [this](const HistVolumePhysicalView::HistRangesMap& varRangesMap) {
+        _histView->setCustomVarRanges(varRangesMap);
+        _histView->update();
+    });
     _histVolumeView = physicalView;
     _histCompareView->hide();
     _particleView->hide();

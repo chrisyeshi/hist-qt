@@ -26,19 +26,21 @@ class HistVolumePhysicalView : public HistVolumeView {
 public:
     HistVolumePhysicalView(QWidget* parent = nullptr);
 
+public:
+    virtual void update() override;
+    virtual void setHistConfigs(std::vector<HistConfig> configs) override;
+    virtual void setDataStep(std::shared_ptr<DataStep> dataStep) override;
+    typedef std::map<int, std::array<double, 2>> HistRangesMap;
+    virtual void setCustomHistRanges(
+            const HistRangesMap& histRangesMap) override;
+    virtual void setCurrHistVolume(const QString& histVolumeName) override;
+
 signals:
     void currHistConfigDimsChanged(std::string name, std::vector<int> dims);
     void selectedHistsChanged(std::vector<std::shared_ptr<const Hist>>);
     void selectedHistIdsChanged(
             std::string, std::vector<int>, std::vector<int>);
-
-public:
-    virtual void update() override;
-    virtual void setHistConfigs(std::vector<HistConfig> configs) override;
-    virtual void setDataStep(std::shared_ptr<DataStep> dataStep) override;
-    virtual void setCustomHistRanges(
-            const HistRangesMap& histRangesMap) override;
-    virtual void setCurrHistVolume(const QString& histVolumeName) override;
+    void customVarRangesChanged(const HistRangesMap& varRangesMap);
 
 public:
     void reset(std::vector<int> displayDims = {0});
@@ -75,11 +77,12 @@ signals:
     void currHistConfigDimsChanged(std::string name, std::vector<int> dims);
     void selectedHistsChanged(std::vector<std::shared_ptr<const Hist>>);
     void selectedHistIdsChanged(std::vector<int>, std::vector<int>);
+    void customVarRangesChanged(const std::vector<std::array<double, 2>>&);
 
 public:
     void setHistVolume(HistConfig histConfig,
             std::shared_ptr<HistFacadeVolume> histVolume);
-    typedef std::map<int, std::array<float, 2>> HistRangesMap;
+    typedef std::map<int, std::array<double, 2>> HistRangesMap;
     void setCustomHistRanges(const HistRangesMap& histRangesMap);
     void reset(std::vector<int> displayDims = {0});
 

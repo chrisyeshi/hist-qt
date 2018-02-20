@@ -168,6 +168,16 @@ HistVolumePhysicalView::HistVolumePhysicalView(QWidget *parent)
             [this](std::vector<int> flatIds, std::vector<int> displayDims) {
         emit selectedHistIdsChanged(currHistName(), flatIds, displayDims);
     });
+    connect(_histVolumeView,
+            &HistVolumePhysicalOpenGLView::customVarRangesChanged,
+            this,
+            [this](const std::vector<std::array<double, 2>>& varRanges) {
+        HistRangesMap varRangesMap;
+        for (int i = 0; i < _histDims.size(); ++i) {
+            varRangesMap[_histDims[i]] = varRanges[i];
+        }
+        emit customVarRangesChanged(varRangesMap);
+    });
 }
 
 void HistVolumePhysicalView::update() {
@@ -354,6 +364,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
             _currHistRanges[0][0] = text.toDouble();
             setHistRangesToHistPainters(_currHistRanges);
+            emit customVarRangesChanged(_currHistRanges);
             render();
             update();
         });
@@ -366,6 +377,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
             _currHistRanges[0][1] = text.toDouble();
             setHistRangesToHistPainters(_currHistRanges);
+            emit customVarRangesChanged(_currHistRanges);
             render();
             update();
         });
@@ -378,6 +390,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
             _currHistRanges[1][0] = text.toDouble();
             setHistRangesToHistPainters(_currHistRanges);
+            emit customVarRangesChanged(_currHistRanges);
             render();
             update();
         });
@@ -390,6 +403,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
             _currHistRanges[1][1] = text.toDouble();
             setHistRangesToHistPainters(_currHistRanges);
+            emit customVarRangesChanged(_currHistRanges);
             render();
             update();
         });
@@ -1057,12 +1071,16 @@ std::vector<std::array<double, 2>>
 void HistVolumePhysicalOpenGLView::setHistRangesToHistPainters(
         const std::vector<std::array<double, 2> > &ranges) {
     for (int iHist = 0; iHist < _currSlice->nHist(); ++iHist) {
-        auto minmaxs =
-                std::isnan(ranges[0][0])
-                ? yy::fp::map(_currDims, [=](int iDim) {
-                    return _currSlice->hist(iHist)->dimRange(iDim);
-                })
-                : ranges;
+        auto hist = _currSlice->hist(iHist);
+        std::vector<std::array<double, 2>> minmaxs(_currDims.size());
+        for (int i = 0; i < _currDims.size(); ++i) {
+            minmaxs[i][0] = std::isnan(ranges[i][0])
+                    ? hist->dimRange(_currDims[i])[0]
+                    : ranges[i][0];
+            minmaxs[i][1] = std::isnan(ranges[i][1])
+                    ? hist->dimRange(_currDims[i])[1]
+                    : ranges[i][1];
+        }
         _histPainters[iHist]->setRanges(minmaxs);
     }
 }

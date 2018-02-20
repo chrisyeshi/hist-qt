@@ -14,7 +14,7 @@ public:
     virtual void update() = 0;
     virtual void setHistConfigs(std::vector<HistConfig> configs) = 0;
     virtual void setDataStep(std::shared_ptr<DataStep> dataStep) = 0;
-    typedef std::map<int, std::array<float, 2>> HistRangesMap;
+    typedef std::map<int, std::array<double, 2>> HistRangesMap;
     virtual void setCustomHistRanges(const HistRangesMap& histRangesMap) = 0;
     virtual void setCurrHistVolume(const QString& histVolumeName) = 0;
 };

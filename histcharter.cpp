@@ -10,7 +10,8 @@ namespace {
 
 typedef PainterImpl UsePainterImpl;
 
-int clamp(int v, int a, int b) {
+template <typename T>
+T clamp(const T& v, const T& a, const T& b) {
     return std::max(a, std::min(b, v));
 }
 
@@ -116,7 +117,7 @@ void Hist2DFacadeCharter::mouseReleaseEvent(QMouseEvent *event) {
     auto yFullRange = _histFacade->dimRange(1);
     auto xBinWidth = (xFullRange[1] - xFullRange[0]) / hist()->dim()[0];
     auto yBinWidth = (yFullRange[1] - yFullRange[0]) / hist()->dim()[1];
-    std::array<float, 2> xRange, yRange;
+    std::array<double, 2> xRange, yRange;
     xRange[0] = xFullRange[0] + xBinWidth * binLower[0];
     xRange[1] = xFullRange[0] + xBinWidth * (1 + binUpper[0]);
     yRange[0] = yFullRange[0] + yBinWidth * binLower[1];
@@ -259,8 +260,6 @@ void Hist2DFacadeCharter::chart(QPaintDevice *paintDevice) {
         painter.rotate(tickAngleDegree());
         double min = _varRanges[0][0];
         double max = _varRanges[0][1];
-//        double min = hist2d->dimMin(0);
-//        double max = hist2d->dimMax(0);
         double number = float(ix) / xNBins * (max - min) + min;
         painter.drawText(
                 -tickWidth(), 0, tickWidth(), tickHeight(),
@@ -278,8 +277,6 @@ void Hist2DFacadeCharter::chart(QPaintDevice *paintDevice) {
         painter.rotate(tickAngleDegree());
         double min = _varRanges[1][0];
         double max = _varRanges[1][1];
-//        double min = hist2d->dimMin(1);
-//        double max = hist2d->dimMax(1);
         double number = float(iy) / yNBins * (max - min) + min;
         painter.drawText(
                 -tickWidth(), -tickHeight(), tickWidth(), tickHeight(),
@@ -416,7 +413,13 @@ void Hist1DFacadeCharter::setFreqRange(float vMin, float vMax)
 
 void Hist1DFacadeCharter::setRanges(
         std::vector<std::array<double, 2>> varRanges) {
-    _varRanges = varRanges;
+    _varRange = varRanges[0];
+}
+
+void Hist1DFacadeCharter::setSelectedVarRanges(
+        const HistRangesMap& varRangesMap) {
+    _selectedVarRange = varRangesMap.at(_displayDim);
+    _selectedBinRange = {-1, -1};
 }
 
 void Hist1DFacadeCharter::mousePressEvent(QMouseEvent *event) {
@@ -428,20 +431,18 @@ void Hist1DFacadeCharter::mousePressEvent(QMouseEvent *event) {
         return;
     }
     _isBinSelected = true;
-    _selectedBinBeg = ibx;
-    _selectedBinEnd = ibx;
+    _selectedBinRange[0] = ibx;
+    _selectedBinRange[1] = ibx;
+    _selectedVarRange = binRangeToVarRange(_selectedBinRange);
 }
 
 void Hist1DFacadeCharter::mouseReleaseEvent(QMouseEvent *event) {
     _isMousePressed = false;
-    auto dimRange = _histFacade->dimRange(0);
-    auto nBins = _histFacade->hist(_displayDim)->dim()[0];
-    auto binWidth = (dimRange[1] - dimRange[0]) / nBins;
-    int binLower = std::min(_selectedBinBeg, _selectedBinEnd);
-    int binUpper = std::max(_selectedBinBeg, _selectedBinEnd);
-    float xMin = dimRange[0] + binWidth * binLower;
-    float xMax = dimRange[0] + binWidth * (1 + binUpper);
-    selectedHistRangesChanged({{_displayDim, {xMin, xMax}}});
+    int ibx = posToBinId(event->localPos().x());
+    _selectedBinRange[1] =
+            clamp(ibx, 0, _histFacade->hist(_displayDim)->nBins() - 1);
+    _selectedVarRange = binRangeToVarRange(_selectedBinRange);
+    selectedHistRangesChanged({{_displayDim, _selectedVarRange}});
 }
 
 void Hist1DFacadeCharter::mouseMoveEvent(QMouseEvent *event) {
@@ -451,7 +452,8 @@ void Hist1DFacadeCharter::mouseMoveEvent(QMouseEvent *event) {
     int ibx = posToBinId(x);
     _hoveredBin = ibx;
     if (_isMousePressed && _isBinSelected) {
-        _selectedBinEnd = clamp(ibx, 0, hist->nBins() - 1);
+        _selectedBinRange[1] = clamp(ibx, 0, hist->nBins() - 1);
+        _selectedVarRange = binRangeToVarRange(_selectedBinRange);
     }
     if (ibx < 0 || ibx >= hist->nBins()) {
         _showLabel(x, y, "");
@@ -459,7 +461,7 @@ void Hist1DFacadeCharter::mouseMoveEvent(QMouseEvent *event) {
     }
     double binFreq = hist->binFreq(ibx);
     float binPercent = hist->binPercent(ibx);
-    std::vector<std::array<double, 2>> binRanges = hist->binRanges({ibx});
+    std::vector<std::array<double, 2>> binRanges = hist->binRanges(ibx);
     QString label =
             QString("frequency: %1 (%2\%)\n%3: [%4, %5]")
                 .arg(QString::number(binFreq, 'g', 5))
@@ -497,11 +499,29 @@ void Hist1DFacadeCharter::drawHist(
 
 std::array<double, 4> Hist1DFacadeCharter::normalizedBox() const {
     std::array<double, 4> rect = {0.0, 0.0, 1.0, 1.0};
-    auto varRange = _varRanges[0];
+    auto varRange = _varRange;
     auto dimRange = _histFacade->dimRange(_displayDim);
     rect[0] = (varRange[0] - dimRange[0]) / (dimRange[1] - dimRange[0]);
     rect[2] = (varRange[1] - varRange[0]) / (dimRange[1] - dimRange[0]);
     return rect;
+}
+
+std::array<double, 2> Hist1DFacadeCharter::binRangeToVarRange(
+        const std::array<int, 2> &binRange) {
+    auto dimRange = _histFacade->dimRange(0);
+    auto nBins = _histFacade->hist(_displayDim)->dim()[0];
+    auto binWidth = (dimRange[1] - dimRange[0]) / nBins;
+    int binLower = std::min(binRange[0], binRange[1]);
+    int binUpper = std::max(binRange[0], binRange[1]);
+    return {
+        dimRange[0] + binWidth * binLower,
+        dimRange[0] + binWidth * (1 + binUpper)
+    };
+}
+
+bool Hist1DFacadeCharter::isVarRangeSelected() const {
+    return !std::isnan(_selectedVarRange[0])
+            && !std::isnan(_selectedVarRange[1]);
 }
 
 void Hist1DFacadeCharter::chart(QPaintDevice *paintDevice)
@@ -552,8 +572,8 @@ void Hist1DFacadeCharter::chart(QPaintDevice *paintDevice)
         painter.translate(histLeft() + ix * dx,
                 height() - (histBottom() - 2.f * devicePixelRatioF()));
         painter.rotate(tickAngleDegree());
-        double min = _varRanges[0][0];
-        double max = _varRanges[0][1];
+        double min = _varRange[0];
+        double max = _varRange[1];
         double number = float(ix) / hist->dim()[0] * (max - min) + min;
         painter.drawText(
                 -tickWidth(), 0, tickWidth(), tickHeight(),
@@ -579,12 +599,16 @@ void Hist1DFacadeCharter::chart(QPaintDevice *paintDevice)
         painter.restore();
     }
     // selected bin
-    if (_isBinSelected) {
-        int binLower = std::min(_selectedBinBeg, _selectedBinEnd);
-        int binUpper = std::max(_selectedBinBeg, _selectedBinEnd);
+    if (isVarRangeSelected()) {
+        double vr = _varRange[1] - _varRange[0];
+        double lower =
+                clamp((_selectedVarRange[0] - _varRange[0]) / vr, 0.0, 1.0);
+        double upper =
+                clamp((_selectedVarRange[1] - _varRange[0]) / vr, 0.0, 1.0);
         painter.fillRect(
-                QRectF(histLeft() + binLower * dx, histTop(),
-                    (binUpper - binLower + 1) * dx, histHeight()),
+                QRectF(
+                    histLeft() + lower * histWidth(), histTop(),
+                    (upper - lower) * histWidth(), histHeight()),
                 QColor(231, 76, 60, 100));
     }
     // hovered bin

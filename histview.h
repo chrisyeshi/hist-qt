@@ -2,6 +2,8 @@
 #define HISTVIEW_H
 
 #include <openglwidget.h>
+#include <array>
+#include <vector>
 #include <yygl/glrenderpass.h>
 
 class Hist;
@@ -13,7 +15,7 @@ class HistView : public OpenGLWidget {
     Q_OBJECT
 public:
     explicit HistView(QWidget* parent = 0);
-    typedef std::map<int, std::array<float, 2>> HistRangesMap;
+    typedef std::map<int, std::array<double, 2>> HistRangesMap;
 
 signals:
     void selectedHistRangesChanged(HistRangesMap histRanges);
@@ -21,6 +23,7 @@ signals:
 public:
     void setHist(std::shared_ptr<const HistFacade> histFacade,
             std::vector<int> displayDims);
+    void setCustomVarRanges(const HistRangesMap& varRangesMap);
 
 public:
     virtual int heightForWidth(int w) const override { return w; }
@@ -35,6 +38,7 @@ protected:
 
 private:
     std::shared_ptr<IHistCharter> _histCharter;
+    HistRangesMap _selectedVarRangesMap;
 };
 
 #endif // HISTVIEW_H

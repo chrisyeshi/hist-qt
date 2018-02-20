@@ -20,7 +20,7 @@ class HistViewHolder : public QWidget {
     Q_OBJECT
 public:
     HistViewHolder(QWidget* parent = nullptr);
-    typedef std::map<int, std::array<float, 2>> HistRangesMap;
+    typedef std::map<int, std::array<double, 2>> HistRangesMap;
 
 signals:
     void selectedHistRangesChanged(HistRangesMap histRangesMap);
@@ -29,6 +29,7 @@ public:
     void update();
     void setHist(std::shared_ptr<const HistFacade> histFacade,
             std::vector<int> displayDims);
+    void setCustomVarRanges(const HistRangesMap &varRangesMap);
     void setText(const QString& text);
     void showText();
     void showHist();

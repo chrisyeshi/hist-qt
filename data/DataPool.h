@@ -191,7 +191,6 @@ public:
         _abort = true;
         _condition.wakeOne();
         _mutex.unlock();
-        qDebug() << "destructing";
         wait();
     }
 

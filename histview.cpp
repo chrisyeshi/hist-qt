@@ -38,6 +38,7 @@ void HistView::setHist(std::shared_ptr<const HistFacade> histFacade,
         });
         _histCharter->selectedHistRangesChanged =
                 [this](IHistCharter::HistRangesMap histRangesMap) {
+            _selectedVarRangesMap = histRangesMap;
             emit selectedHistRangesChanged(histRangesMap);
         };
         if (!histFacade)
@@ -55,13 +56,28 @@ void HistView::setHist(std::shared_ptr<const HistFacade> histFacade,
         _histCharter->setFreqRange(0.f, vMax + 0.1f * vRange);
         // variable ranges
         std::vector<std::array<double, 2>> varRanges;
+        HistRangesMap selectedVarRangesMap;
         varRanges.reserve(displayDims.size());
         for (auto displayDim : displayDims) {
             auto dimRange = histFacade->dimRange(displayDim);
             varRanges.push_back(dimRange);
+            selectedVarRangesMap[displayDim] = {NAN, NAN};
+            auto itr = _selectedVarRangesMap.find(displayDim);
+            if (_selectedVarRangesMap.end() != itr) {
+                selectedVarRangesMap[displayDim] =
+                        _selectedVarRangesMap.at(displayDim);
+            }
         }
         _histCharter->setRanges(varRanges);
+        // selected variable ranges
+        _selectedVarRangesMap = selectedVarRangesMap;
+        _histCharter->setSelectedVarRanges(_selectedVarRangesMap);
     });
+}
+
+void HistView::setCustomVarRanges(const HistRangesMap &varRangesMap) {
+    _selectedVarRangesMap = varRangesMap;
+    _histCharter->setSelectedVarRanges(varRangesMap);
 }
 
 void HistView::paintGL() {
