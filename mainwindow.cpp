@@ -328,10 +328,10 @@ void MainWindow::createSimpleLayout() {
         qInfo() << "openButton";
         open();
     });
-    LazyUI::instance().sectionHeader("histConfigHeader", "Histogram Configs");
+    LazyUI::instance().divider("histConfigHeader");
     LazyUI::instance().labeledCombo(tr("histVolume"), tr("Histogram Volumes"),
             FluidLayout::Item::Large);
-    LazyUI::instance().labeledCombo(tr("histVar"), tr("Histogram Variables"),
+    LazyUI::instance().labeledCombo(tr("histVar"), tr("Display Variables"),
             FluidLayout::Item::Large);
     readSettings();
 }

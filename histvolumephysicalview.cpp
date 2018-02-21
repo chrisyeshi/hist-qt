@@ -258,8 +258,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
     grabGesture(Qt::PanGesture);
     grabGesture(Qt::PinchGesture);
     QTimer::singleShot(0, this, [=]() {
-        LazyUI::instance().sectionHeader(
-                "histSliceOrientation", "Histogram Slice Orientation");
+        LazyUI::instance().divider("histSliceOrientation");
         LazyUI::instance().labeledCombo(
                 tr("sliceDirections"), tr("Slicing Direction"),
                 {tr("XY"), tr("XZ"), tr("YZ")}, this,
@@ -280,9 +279,9 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
         });
         LazyUI::instance().labeledScrollBar(
                 tr("sliceId"), tr("Slice Index"), FluidLayout::Item::FullLine);
-        LazyUI::instance().sectionHeader("freqHeader", "Frequency Range");
+        LazyUI::instance().divider("freqHeader");
         LazyUI::instance().labeledCombo(
-                "freqRangeMethod", "Per",
+                "freqRangeMethod", "Show frequency percentage range per",
                 {"Histogram", "Histogram Volume", "Histogram Slice", "Custom"},
                 FluidLayout::Item::Large, this, [=](const QString& text) {
             qInfo() << "freqRangeMethodCombo" << text;
@@ -300,13 +299,15 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             _currFreqRange = calcFreqRange();
             setFreqRangesToHistPainters(_currFreqRange);
             LazyUI::instance().labeledLineEdit(
-                    "freqRangeMin", QString::number(_currFreqRange[0]));
+                    "freqRangeMin", "Minimum (%)",
+                    QString::number(_currFreqRange[0]));
             LazyUI::instance().labeledLineEdit(
-                    "freqRangeMax", QString::number(_currFreqRange[1]));
+                    "freqRangeMax", "Maximum (%)",
+                    QString::number(_currFreqRange[1]));
             render();
             update();
         });
-        LazyUI::instance().labeledLineEdit("freqRangeMin", "Minimum",
+        LazyUI::instance().labeledLineEdit("freqRangeMin", "Minimum (%)",
                 "nan", FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
             qInfo() << "freqRangeMinLineEdit" << text;
@@ -317,7 +318,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             render();
             update();
         });
-        LazyUI::instance().labeledLineEdit("freqRangeMax", "Maximum",
+        LazyUI::instance().labeledLineEdit("freqRangeMax", "Maximum (%)",
                 "nan", FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
             qInfo() << "freqRangeMaxLineEdit" << text;
@@ -328,9 +329,9 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             render();
             update();
         });
-        LazyUI::instance().sectionHeader("histHeader", "Histogram Ranges");
+        LazyUI::instance().divider("histHeader");
         LazyUI::instance().labeledCombo(
-                "histRangeMethod", "Per",
+                "histRangeMethod", "Show variable ranges per",
                 {"Histogram", "Histogram Volume", "Histogram Slice", "Custom"},
                 FluidLayout::Item::Large, this, [=](const QString& text) {
             qInfo() << "histRangeMethodCombo" << text;
@@ -348,18 +349,22 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             _currHistRanges = calcHistRanges();
             setHistRangesToHistPainters(_currHistRanges);
             LazyUI::instance().labeledLineEdit(
-                    "histRange1Min", QString::number(_currHistRanges[0][0]));
+                    "histRange1Min", varRangeLabel(0) + " min",
+                    QString::number(_currHistRanges[0][MIN]));
             LazyUI::instance().labeledLineEdit(
-                    "histRange1Max", QString::number(_currHistRanges[0][1]));
+                    "histRange1Max", varRangeLabel(0) + " max",
+                    QString::number(_currHistRanges[0][MAX]));
             LazyUI::instance().labeledLineEdit(
-                    "histRange2Min", QString::number(_currHistRanges[1][0]));
+                    "histRange2Min", varRangeLabel(1) + " min",
+                    QString::number(_currHistRanges[1][MIN]));
             LazyUI::instance().labeledLineEdit(
-                    "histRange2Max", QString::number(_currHistRanges[1][1]));
+                    "histRange2Max", varRangeLabel(1) + " max",
+                    QString::number(_currHistRanges[1][MAX]));
             render();
             update();
         });
         LazyUI::instance().labeledLineEdit(
-                "histRange1Min", "X Minimum",
+                "histRange1Min", varRangeLabel(0) + " min",
                 tr("nan"), FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
             qInfo() << "histRange1MinLineEdit" << text;
@@ -372,7 +377,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             update();
         });
         LazyUI::instance().labeledLineEdit(
-                "histRange1Max", "X Maximum",
+                "histRange1Max", varRangeLabel(0) + " max",
                 tr("nan"), FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
             qInfo() << "histRange1MaxLineEdit" << text;
@@ -385,7 +390,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             update();
         });
         LazyUI::instance().labeledLineEdit(
-                "histRange2Min", "Y Minimum",
+                "histRange2Min", varRangeLabel(1) + " min",
                 tr("nan"), FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
             qInfo() << "histRange2MinLineEdit" << text;
@@ -398,7 +403,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             update();
         });
         LazyUI::instance().labeledLineEdit(
-                "histRange2Max", "Y Maximum",
+                "histRange2Max", varRangeLabel(1) + " max",
                 tr("nan"), FluidLayout::Item::Medium, this,
                 [=](const QString& text) {
             qInfo() << "histRange2MaxLineEdit" << text;
@@ -429,19 +434,20 @@ void HistVolumePhysicalOpenGLView::setHistVolume(
         std::shared_ptr<HistFacadeVolume> histVolume) {
     if (_histConfig != histConfig) {
         _histConfig = histConfig;
+        setCurrDimsAndUpdateUI(_defaultDims);
         _currDims = _defaultDims;
         _currSliceId = _defaultSliceId;
     }
     _histVolume = histVolume;
     LazyUI::instance().labeledCombo(
-            tr("histVar"), tr("Histogram Variables"),
+            tr("histVar"), tr("Display Variables"),
             getHistDimVars(histConfig), getDimsToVars(_histConfig)[_currDims],
             FluidLayout::Item::Large, this, [=](const QString& text) {
         qInfo() << "histVarCombo" << text;
         auto varsToDims = getVarsToDims(histConfig);
         std::vector<int> dims = varsToDims[text];
         assert(!dims.empty());
-        _currDims = dims;
+        setCurrDimsAndUpdateUI(dims);
         emitCurrHistConfigDims();
         emitSelectedHistsChanged();
         updateSliceIdScrollBar();
@@ -467,19 +473,23 @@ void HistVolumePhysicalOpenGLView::setCustomHistRanges(
     }
     LazyUI::instance().labeledCombo("histRangeMethod", "Custom");
     LazyUI::instance().labeledLineEdit(
-            "histRange1Min", QString::number(_currHistRanges[0][0]));
+            "histRange1Min", varRangeLabel(0) + " min",
+            QString::number(_currHistRanges[0][MIN]));
     LazyUI::instance().labeledLineEdit(
-            "histRange1Max", QString::number(_currHistRanges[0][1]));
+            "histRange1Max", varRangeLabel(0) + " max",
+            QString::number(_currHistRanges[0][MAX]));
     LazyUI::instance().labeledLineEdit(
-            "histRange2Min", QString::number(_currHistRanges[1][0]));
+            "histRange2Min", varRangeLabel(1) + " min",
+            QString::number(_currHistRanges[1][MIN]));
     LazyUI::instance().labeledLineEdit(
-            "histRange2Max", QString::number(_currHistRanges[1][1]));
+            "histRange2Max", varRangeLabel(1) + " max",
+            QString::number(_currHistRanges[1][MAX]));
     setHistRangesToHistPainters(_currHistRanges);
     render();
 }
 
 void HistVolumePhysicalOpenGLView::reset(std::vector<int> displayDims) {
-    _currDims = displayDims;
+    setCurrDimsAndUpdateUI(displayDims);
     _currOrien = _defaultOrien;
     _currSliceId = _defaultSliceId;
     _currFreqNormPer = _defaultFreqNormPer;
@@ -508,18 +518,22 @@ void HistVolumePhysicalOpenGLView::reset(std::vector<int> displayDims) {
     }
     LazyUI::instance().labeledCombo("freqRangeMethod", "Histogram");
     LazyUI::instance().labeledLineEdit(
-            "freqRangeMin", QString::number(_currFreqRange[0]));
+            "freqRangeMin", "Minimum (%)", QString::number(_currFreqRange[0]));
     LazyUI::instance().labeledLineEdit(
-            "freqRangeMax", QString::number(_currFreqRange[1]));
+            "freqRangeMax", "Maximum (%)", QString::number(_currFreqRange[1]));
     LazyUI::instance().labeledCombo("histRangeMethod", "Histogram");
     LazyUI::instance().labeledLineEdit(
-            "histRange1Min", QString::number(_currHistRanges[0][0]));
+            "histRange1Min", varRangeLabel(0) + " min",
+            QString::number(_currHistRanges[0][MIN]));
     LazyUI::instance().labeledLineEdit(
-            "histRange1Max", QString::number(_currHistRanges[0][1]));
+            "histRange1Max", varRangeLabel(0) + " max",
+            QString::number(_currHistRanges[0][MAX]));
     LazyUI::instance().labeledLineEdit(
-            "histRange2Min", QString::number(_currHistRanges[1][0]));
+            "histRange2Min", varRangeLabel(1) + " min",
+            QString::number(_currHistRanges[1][MIN]));
     LazyUI::instance().labeledLineEdit(
-            "histRange2Max", QString::number(_currHistRanges[1][1]));
+            "histRange2Max", varRangeLabel(1) + " max",
+            QString::number(_currHistRanges[1][MAX]));
 }
 
 void HistVolumePhysicalOpenGLView::resizeGL(int w, int h) {
@@ -1506,6 +1520,27 @@ void HistVolumePhysicalOpenGLView::drawOrienView(Painter &painter) {
             Qt::AlignBottom | Qt::AlignLeft,
             tr("z"));
     painter.restore();
+}
+
+void HistVolumePhysicalOpenGLView::setCurrDimsAndUpdateUI(
+        std::vector<int> displayDims) {
+    _currDims = displayDims;
+    LazyUI::instance().labeledLineEdit(
+            "histRange1Min", varRangeLabel(0) + " min");
+    LazyUI::instance().labeledLineEdit(
+            "histRange1Max", varRangeLabel(0) + " max");
+    LazyUI::instance().labeledLineEdit(
+            "histRange2Min", varRangeLabel(1) + " min");
+    LazyUI::instance().labeledLineEdit(
+            "histRange2Max", varRangeLabel(1) + " max");
+}
+
+QString HistVolumePhysicalOpenGLView::varRangeLabel(int iDim) const {
+    if (_currDims.size() <= iDim
+            || _histConfig.vars.size() <= _currDims.at(iDim)) {
+        return "--";
+    }
+    return QString::fromStdString(_histConfig.vars.at(_currDims.at(iDim)));
 }
 
 std::vector<std::array<int, 2>> HistVolumePhysicalOpenGLView::filterByCurrSlice(

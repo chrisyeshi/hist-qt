@@ -67,6 +67,7 @@ class HistVolumePhysicalOpenGLView : public OpenGLWidget {
     Q_OBJECT
 public:
     enum Orien : int {YZ = 0, XZ = 1, XY = 2};
+    enum MinMax : int {MIN = 0, MAX = 1};
     enum NormalizedPer : int {
         NormPer_Histogram, NormPer_HistSlice, NormPer_HistVolume, NormPer_Custom
     };
@@ -150,6 +151,8 @@ private:
     void zoomEvent(float scale, const QVector2D& pos);
     std::shared_ptr<QOpenGLFramebufferObject> createWidgetSizeFbo() const;
     void drawOrienView(Painter& painter);
+    void setCurrDimsAndUpdateUI(std::vector<int> displayDims);
+    QString varRangeLabel(int iDim) const;
 
 private:
     const float _clickDelta = 5.f;

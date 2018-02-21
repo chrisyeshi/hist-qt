@@ -195,10 +195,10 @@ public:
         QVBoxLayout* layout = new QVBoxLayout(this);
         layout->setMargin(0);
         layout->setSpacing(5);
-        QLabel* label = new QLabel(text, this);
-        setWidgetWindowTextColor(label, QColor(40, 40, 40));
-        label->setAlignment(Qt::AlignBottom | Qt::AlignLeft);
-        layout->addWidget(label);
+        _label = new QLabel(text, this);
+        setWidgetWindowTextColor(_label, QColor(40, 40, 40));
+        _label->setAlignment(Qt::AlignBottom | Qt::AlignLeft);
+        layout->addWidget(_label);
         _widget = new T(this);
         setWidgetWindowTextColor(_widget, QColor(80, 80, 80));
         layout->addWidget(_widget);
@@ -206,9 +206,11 @@ public:
 
 public:
     T* widget() const { return _widget; }
+    void setLabel(const QString& text) { _label->setText(text); }
 
 private:
     T* _widget = nullptr;
+    QLabel* _label = nullptr;
 };
 
 /**
@@ -385,9 +387,16 @@ public:
         connect(scrollBar, &QScrollBar::valueChanged, context, func);
     }
 
-    void labeledLineEdit(QString key, const QString& text) {
+    void labeledLineEdit(QString key, const QString& label) {
         auto labeledLineEdit =
                 static_cast<LabeledWidget<QLineEdit>*>(_widgets[key]);
+        labeledLineEdit->setLabel(label);
+    }
+    void labeledLineEdit(
+            QString key, const QString& label, const QString& text) {
+        auto labeledLineEdit =
+                static_cast<LabeledWidget<QLineEdit>*>(_widgets[key]);
+        labeledLineEdit->setLabel(label);
         QLineEdit* lineEdit = labeledLineEdit->widget();
         lineEdit->blockSignals(true);
         lineEdit->setText(text);
@@ -401,7 +410,7 @@ public:
             _panel->addWidget(labeledLineEdit, size);
             _widgets[key] = labeledLineEdit;
         }
-        labeledLineEdit(key, text);
+        labeledLineEdit(key, label, text);
         auto labeledLineEdit =
                 static_cast<LabeledWidget<QLineEdit>*>(_widgets[key]);
         QLineEdit* lineEdit = labeledLineEdit->widget();
@@ -409,7 +418,7 @@ public:
         connect(lineEdit, &QLineEdit::textEdited, context, func);
     }
 
-    void sectionHeader(QString key, const QString& text) {
+    void labeledDivider(QString key, const QString& text) {
         if (!_widgets.contains(key)) {
             auto header = new LabeledWidget<QFrame>(text);
             QFrame* divider = header->widget();
@@ -418,6 +427,16 @@ public:
             divider->setFrameShadow(QFrame::Plain);
             _panel->addWidget(header, FluidLayout::Item::FullLine);
             _widgets[key] = header;
+        }
+    }
+    void divider(QString key) {
+        if (!_widgets.contains(key)) {
+            QFrame* divider = new QFrame();
+            divider->setFrameShape(QFrame::HLine);
+            divider->setLineWidth(2);
+            divider->setFrameShadow(QFrame::Plain);
+            _panel->addWidget(divider, FluidLayout::Item::FullLine);
+            _widgets[key] = divider;
         }
     }
 
