@@ -224,6 +224,7 @@ protected:
 private:
     std::shared_ptr<const Hist> hist() const;
     std::array<int, 2> posToBinIds(float x, float y) const;
+    std::array<double, 2> posToValues(float x, float y) const;
     std::array<double, 4> normalizedBox() const;
     void drawHist(float top, float bottom, float width, float height) const;
     std::vector<std::array<double, 2>> binRangesToVarRanges(
@@ -290,6 +291,7 @@ protected:
 
 private:
     int posToBinId(float x) const;
+    double posToValue(float x) const;
     void drawHist(double left, double bottom, double width, double height);
     std::array<double, 4> normalizedBox() const;
     std::array<double, 2> binRangeToVarRange(
@@ -309,10 +311,9 @@ private:
     std::function<void(float, float, const std::string&)> _showLabel;
     int _hoveredBin = -1;
     bool _isMousePressed = false;
-    bool _isBinSelected = false;
-    std::array<int, 2> _selectedBinRange = {-1, -1};
-    std::array<double, 2> _selectedVarRange = {NAN, NAN};
-    std::array<double, 2> _varRange = {NAN, NAN};
+    std::array<int, 2> _selectedBinRange = {{-1, -1}};
+    std::array<double, 2> _selectedVarRange = {{NAN, NAN}};
+    std::array<double, 2> _varRange = {{NAN, NAN}};
     RectF _viewport = RectF(0.f, 0.f, 1.f, 1.f);
 };
 

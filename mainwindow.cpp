@@ -274,7 +274,12 @@ void MainWindow::createSimpleLayout() {
     connect(physicalView, &HistVolumePhysicalView::customVarRangesChanged,
             this,
             [this](const HistVolumePhysicalView::HistRangesMap& varRangesMap) {
-        _histView->setCustomVarRanges(varRangesMap);
+        HistView::HistRangesMap rangesMap;
+        int counter = 0;
+        for (auto keyValue : varRangesMap) {
+            rangesMap[counter++] = keyValue.second;
+        }
+        _histView->setCustomVarRanges(rangesMap);
         _histView->update();
     });
     _histVolumeView = physicalView;

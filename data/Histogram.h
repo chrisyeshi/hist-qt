@@ -69,15 +69,6 @@ public:
     virtual std::shared_ptr<Hist> toSparse() = 0;
     /// TODO: change toFull to toDense as it goes better with the terminology
     virtual std::shared_ptr<Hist> toFull() = 0;
-//    virtual HistBin bin(const int flatId) const = 0;
-//    virtual HistBin bin(const std::vector<int>& ids) const {
-//        return bin(Extent(m_dim).idstoflat(ids));
-//    }
-//    template<typename... Targs> HistBin bin(int currId, Targs... ids) const {
-//        return bin(Extent(m_dim).idstoflat(currId, ids...));
-//    }
-
-
     virtual float binFreq(const int flatId) const = 0;
     virtual float binFreq(const std::vector<int>& ids) const {
         return binFreq(m_dim.idstoflat(ids));
@@ -118,6 +109,9 @@ public:
             int currId, Targs... ids) const {
         return binRanges(m_dim.idstoflat(currId, ids...));
     }
+    virtual HistBin varRangesValue(
+            const std::vector<std::array<double, 2>>& varRanges) const {}
+    std::vector<float> idsOfValuesF(std::vector<double> valueTuple) const;
 
     virtual const std::vector<float>& values() const {
         std::cout << "Are you sure the histogram is in dense representation?"
@@ -215,11 +209,6 @@ public:
     virtual std::shared_ptr<Hist> toSparse() { return shared_from_this(); }
     virtual std::shared_ptr<Hist> toFull() { return shared_from_this(); }
 
-//    virtual HistBin bin(const int flatId) const {
-//        return HistBin(m_values[flatId], m_values[flatId] / m_sum);
-//    }
-//    using Hist::bin;
-
     virtual float binFreq(const int flatId) const override {
         return m_values[flatId];
     }
@@ -228,6 +217,8 @@ public:
         return m_values[flatId] / m_sum;
     }
     using Hist::binPercent;
+    virtual HistBin varRangesValue(
+            const std::vector<std::array<double, 2>>& varRanges) const override;
 
     virtual const std::vector<float>& values() const { return m_values; }
     virtual std::vector<float> means() const override;
@@ -263,11 +254,6 @@ public:
     virtual std::shared_ptr<Hist> toSparse() { return shared_from_this(); }
     virtual std::shared_ptr<Hist> toFull() { return shared_from_this(); }
 
-//    virtual HistBin bin(const int flatId) const {
-//        return HistBin(m_values[flatId], m_values[flatId] / m_sum);
-//    }
-//    using Hist::bin;
-
     virtual float binFreq(const int flatId) const override {
         return m_values[flatId];
     }
@@ -276,6 +262,9 @@ public:
         return m_values[flatId] / m_sum;
     }
     using Hist::binPercent;
+
+    virtual HistBin varRangesValue(
+            const std::vector<std::array<double, 2>>& varRanges) const override;
 
     virtual const std::vector<float>& values() const { return m_values; }
     virtual bool checkRange(std::vector<std::pair<int32_t, int32_t>> binRanges,

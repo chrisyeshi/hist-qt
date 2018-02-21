@@ -96,6 +96,16 @@ Hist *Hist::fromBuffer(bool isSparse, int ndim, const std::vector<int> &nbins,
     return fromDenseValues(ndim, nbins, mins, maxs, logBases, vars, values);
 }
 
+std::vector<float> Hist::idsOfValuesF(std::vector<double> valueTuple) const {
+    assert(nDim() == valueTuple.size());
+    std::vector<float> idsF(nDim());
+    for (int iDim = 0; iDim < nDim(); ++iDim) {
+        double binRange = (m_maxs[iDim] - m_mins[iDim]) / dim()[iDim];
+        idsF[iDim] = (valueTuple[iDim] - m_mins[iDim]) / binRange;
+    }
+    return idsF;
+}
+
 HistBin Hist::binSum() const
 {
     float value = 0.0;
@@ -212,27 +222,42 @@ Hist1D::Hist1D(int dim, double min, double max, double logBase,
     }
 }
 
+HistBin Hist1D::varRangesValue(
+        const std::vector<std::array<double, 2>> &varRanges) const {
+    std::array<double, 2> varRange = varRanges.at(0);
+    float lowerIdF = idsOfValuesF({varRange[0]}).at(0);
+    float upperIdF = idsOfValuesF({varRange[1]}).at(0);
+    int lowerId = int(lowerIdF);
+    int upperId = int(upperIdF);
+    // lower bin
+    float lowerFreq = (std::ceil(lowerIdF) - lowerIdF) * binFreq(lowerId);
+    // upper bin
+    float upperFreq = (upperIdF - std::floor(upperIdF)) * binFreq(upperId);
+    // middle bins
+    float midFreq = 0.f;
+    for (int iBin = int(std::ceil(lowerIdF)); iBin < upperId; ++iBin) {
+        midFreq += binFreq(iBin);
+    }
+    // hist bin
+    float freq = lowerFreq + upperFreq + midFreq;
+    float percent = freq / m_sum;
+    return HistBin(freq, percent);
+}
+
 std::vector<float> Hist1D::means() const {
     std::vector<float> binCenters(m_dim[0]);
-//    std::cout << var(0) << std::endl;
-//    std::cout << "binCenters = [";
     for (unsigned int iBin = 0; iBin < m_dim[0]; ++iBin) {
         float valRange = m_maxs[0] - m_mins[0];
         float binLower = valRange / m_dim[0] * (iBin + 0) + m_mins[0];
         float binUpper = valRange / m_dim[0] * (iBin + 1) + m_mins[0];
         binCenters[iBin] = 0.5f * (binLower + binUpper);
-//        std::cout << binCenters[iBin] << ",";
     }
-//    std::cout << "]" << std::endl;
-//    std::cout << "average = [";
     float average = 0.f;
     for (unsigned int iBin = 0; iBin < m_dim[0]; ++iBin) {
         float percent = binPercent(iBin);
         float center = binCenters[iBin];
         average += percent * center;
-//        std::cout << average << ",";
     }
-//    std::cout << "]" << std::endl;
     return {average};
 }
 
@@ -305,6 +330,61 @@ Hist1D Hist2D::to1D(int dimidx) const
 std::shared_ptr<Hist1D> Hist2D::to1DPtr(int dimidx) const
 {
     return std::make_shared<Hist1D>(to1D(dimidx));
+}
+
+HistBin Hist2D::varRangesValue(
+        const std::vector<std::array<double, 2>> &varRanges) const {
+    std::vector<float> lowerIdsF =
+            idsOfValuesF({varRanges.at(0)[0], varRanges.at(1)[0]});
+    std::vector<float> upperIdsF =
+            idsOfValuesF({varRanges.at(0)[1], varRanges.at(1)[1]});
+    std::vector<int> lowerIds = {int(lowerIdsF[0]), int(lowerIdsF[1])};
+    std::vector<int> upperIds = {int(upperIdsF[0]), int(upperIdsF[1])};
+    float freq = 0.f;
+    // (lower, lower)
+    freq += (std::ceil(lowerIdsF[0]) - lowerIdsF[0])
+            * (std::ceil(lowerIdsF[1]) - lowerIdsF[1])
+            * binFreq({lowerIds[0], lowerIds[1]});
+    // (lower, upper)
+    freq += (std::ceil(lowerIdsF[0]) - lowerIdsF[0])
+            * (upperIdsF[1] - std::floor(upperIdsF[1]))
+            * binFreq({lowerIds[0], upperIds[1]});
+    // (upper, lower)
+    freq += (upperIdsF[0] - std::floor(upperIdsF[0]))
+            * (std::ceil(lowerIdsF[1]) - lowerIdsF[1])
+            * binFreq({upperIds[0], lowerIds[1]});
+    // (upper, upper)
+    freq += (upperIdsF[0] - std::floor(upperIdsF[0]))
+            * (upperIdsF[1] - std::floor(upperIdsF[1]))
+            * binFreq({upperIds[0], upperIds[1]});
+    // (lower, -)
+    for (int yBin = int(std::ceil(lowerIdsF[1])); yBin < upperIds[1]; ++yBin) {
+        freq += (std::ceil(lowerIdsF[0]) - lowerIdsF[0])
+                * binFreq({lowerIds[0], yBin});
+    }
+    // (upper, -)
+    for (int yBin = int(std::ceil(lowerIdsF[1])); yBin < upperIds[1]; ++yBin) {
+        freq += (upperIdsF[0] - std::floor(upperIdsF[0]))
+                * binFreq({upperIds[0], yBin});
+    }
+    // (-, lower)
+    for (int xBin = int(std::ceil(lowerIdsF[0])); xBin < upperIds[0]; ++xBin) {
+        freq += (std::ceil(lowerIdsF[1]) - lowerIdsF[1])
+                * binFreq({xBin, lowerIds[1]});
+    }
+    // (-, upper)
+    for (int xBin = int(std::ceil(lowerIdsF[0])); xBin < upperIds[0]; ++xBin) {
+        freq += (upperIdsF[1] - std::floor(upperIdsF[1]))
+                * binFreq({xBin, upperIds[1]});
+    }
+    // mid frequencies
+    for (int xBin = int(std::ceil(lowerIdsF[0])); xBin < upperIds[0]; ++xBin)
+    for (int yBin = int(std::ceil(lowerIdsF[1])); yBin < upperIds[1]; ++yBin) {
+        freq += binFreq(xBin, yBin);
+    }
+    // return
+    float percent = freq / m_sum;
+    return HistBin(freq, percent);
 }
 
 bool Hist2D::checkRange(std::vector<std::pair<int32_t, int32_t>> binRanges,
