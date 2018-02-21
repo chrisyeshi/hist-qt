@@ -1301,10 +1301,10 @@ void HistVolumePhysicalOpenGLView::drawOrienView(Painter &painter) {
     const float arrowWidth = 5.f;
     const float orienWidth = 150.f;
     const float orienHeight = 150.f;
-    const float orienBottomMargin = 10.f;
-    const float orienRightMargin = 10.f;
-    const float orienLeft = width() - orienRightMargin - orienWidth;
-    const float orienTop = height() - orienBottomMargin - orienHeight;
+    const float orienLeftMargin = 10.f;
+    const float orienTopMargin = 10.f;
+    const float orienLeft = orienLeftMargin;
+    const float orienTop = orienTopMargin;
     const float backFaceLeftMargin = 10.f;
     const float backFaceTopMargin = 65.f;
     const float backFaceWidth = 75.f;
