@@ -551,30 +551,36 @@ void HistVolumePhysicalOpenGLView::paintGL() {
     }
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     QOpenGLFramebufferObject::blitFramebuffer(nullptr, _histSliceFbo.get());
+    Painter painter(this);
     // hovered histogram
     if (isHistSliceIdsValid(_hoveredHistSliceIds)) {
-        Painter painter(this);
+        painter.save();
         painter.setPen(
                 QPen(quarterColor(), 6.f * _histSpacing / devicePixelRatioF()));
         painter.drawRect(calcHistRect(_hoveredHistSliceIds));
+        painter.restore();
     }
     // selected histograms
     auto selectedHistSliceIds = filterByCurrSlice(_selectedHistIds);
     if (!selectedHistSliceIds.empty()) {
-        Painter painter(this);
+        painter.save();
         painter.setPen(
                 QPen(fullColor(), 6.f * _histSpacing / devicePixelRatioF()));
         for (auto histSliceIds : selectedHistSliceIds) {
             painter.drawRect(calcHistRect(histSliceIds));
         }
+        painter.restore();
     }
     // lasso
     if (_lasso.ongoing()) {
-        Painter painter(this);
+        painter.save();
         painter.fillRect(
                 QRectF(_lasso.initLocalPos, _lasso.currLocalPos),
                 quarterColor());
+        painter.restore();
     }
+    // volume orientation view
+    drawOrienView(painter);
 //    _volren->setMatVP(_camera->matView(), _camera->matProj());
 //    _volren->render();
 //    glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject());
@@ -1272,7 +1278,234 @@ std::shared_ptr<QOpenGLFramebufferObject>
     QOpenGLFramebufferObjectFormat format;
     format.setSamples(4);
     return std::make_shared<QOpenGLFramebufferObject>(
-        this->size() * this->devicePixelRatio(), format);
+                this->size() * this->devicePixelRatio(), format);
+}
+
+/// TODO: extract this into its own class
+void HistVolumePhysicalOpenGLView::drawOrienView(Painter &painter) {
+    const float arrowHeight = 8.f;
+    const float arrowWidth = 5.f;
+    const float orienWidth = 150.f;
+    const float orienHeight = 150.f;
+    const float orienBottomMargin = 10.f;
+    const float orienRightMargin = 10.f;
+    const float orienLeft = width() - orienRightMargin - orienWidth;
+    const float orienTop = height() - orienBottomMargin - orienHeight;
+    const float backFaceLeftMargin = 10.f;
+    const float backFaceTopMargin = 65.f;
+    const float backFaceWidth = 75.f;
+    const float backFaceHeight = 75.f;
+    const float backFaceLeft = orienLeft + backFaceLeftMargin;
+    const float backFaceTop = orienTop + backFaceTopMargin;
+    const float backFaceRight = backFaceLeft + backFaceWidth;
+    const float backFaceBottom = backFaceTop + backFaceHeight;
+    const float frontFaceLeftMargin = 40.f;
+    const float frontFaceTopMargin = 10.f;
+    const float frontFaceWidth = 100.f;
+    const float frontFaceHeight = 100.f;
+    const float frontFaceLeft = orienLeft + frontFaceLeftMargin;
+    const float frontFaceTop = orienTop + frontFaceTopMargin;
+    const float frontFaceRight = frontFaceLeft + frontFaceWidth;
+    const float frontFaceBottom = frontFaceTop + frontFaceHeight;
+    float frontSlabWidth = frontFaceWidth;
+    float frontSlabHeight = frontFaceHeight;
+    float frontSlabLeft = frontFaceLeft;
+    float frontSlabTop = frontFaceTop;
+    float frontSlabRight = frontFaceRight;
+    float frontSlabBottom = frontFaceBottom;
+    float backSlabWidth = backFaceWidth;
+    float backSlabHeight = backFaceHeight;
+    float backSlabLeft = backFaceLeft;
+    float backSlabTop = backFaceTop;
+    float backSlabRight = backFaceRight;
+    float backSlabBottom = backFaceBottom;
+    QColor slabColor(255, 255, 255, 255);
+    painter.save();
+    // volume orientation background
+    painter.fillRect(
+            QRectF(orienLeft, orienTop, orienWidth, orienHeight),
+            QColor(255, 255, 255, 200));
+    painter.setPen(QPen(Qt::gray, 1.f));
+    painter.drawRect(QRectF(orienLeft, orienTop, orienWidth, orienHeight));
+    // volume orientation back face
+    painter.save();
+    painter.setPen(QPen(Qt::lightGray, 1.f, Qt::DashLine));
+    painter.drawLine(
+            QLineF(backFaceLeft, backFaceTop, backFaceRight, backFaceTop));
+    painter.drawLine(
+            QLineF(backFaceRight, backFaceTop, frontFaceRight, frontFaceTop));
+    painter.drawLine(
+            QLineF(backFaceRight, backFaceTop, backFaceRight, backFaceBottom));
+    painter.restore();
+    // volume orientation slab
+    int nSlices = getSliceCountInDirection(_histVolume->dimHists(), _currOrien);
+    if (YZ == _currOrien) {
+        frontSlabWidth = frontFaceWidth / nSlices;
+        frontSlabHeight = frontFaceHeight;
+        frontSlabLeft = frontFaceLeft + _currSliceId * frontSlabWidth;
+        frontSlabTop = frontFaceTop;
+        frontSlabRight = frontSlabLeft + frontSlabWidth;
+        frontSlabBottom = frontSlabTop + frontSlabHeight;
+        backSlabWidth = backFaceWidth / nSlices;
+        backSlabHeight = backFaceHeight;
+        backSlabLeft = backFaceLeft + _currSliceId * backSlabWidth;
+        backSlabTop = backFaceTop;
+        backSlabRight = backSlabLeft + backSlabWidth;
+        backSlabBottom = backSlabTop + backSlabHeight;
+        slabColor = QColor(200, 50, 50, 150);
+    } else if (XZ == _currOrien) {
+        frontSlabWidth = frontFaceWidth;
+        frontSlabHeight = frontFaceHeight / nSlices;
+        frontSlabLeft = frontFaceLeft;
+        frontSlabBottom = frontFaceBottom - _currSliceId * frontSlabHeight;
+        frontSlabTop = frontSlabBottom - frontSlabHeight;
+        frontSlabRight = frontSlabLeft + frontSlabWidth;
+        backSlabWidth = backFaceWidth;
+        backSlabHeight = backFaceHeight / nSlices;
+        backSlabLeft = backFaceLeft;
+        backSlabBottom = backFaceBottom - _currSliceId * backSlabHeight;
+        backSlabTop = backSlabBottom - backSlabHeight;
+        backSlabRight = backSlabLeft + backSlabWidth;
+        slabColor = QColor(50, 200, 50, 150);
+    } else if (XY == _currOrien) {
+        auto interpolate = [](float a, float b, float r) {
+            return (1.f - r) * a + r * b;
+        };
+        float backSlabRatio = float(_currSliceId) / nSlices;
+        float frontSlabRatio = float(_currSliceId + 1) / nSlices;
+        frontSlabWidth =
+                interpolate(backFaceWidth, frontFaceWidth, frontSlabRatio);
+        frontSlabHeight =
+                interpolate(backFaceHeight, frontFaceHeight, frontSlabRatio);
+        frontSlabLeft =
+                interpolate(backFaceLeft, frontFaceLeft, frontSlabRatio);
+        frontSlabTop =
+                interpolate(backFaceTop, frontFaceTop, frontSlabRatio);
+        frontSlabRight = frontSlabLeft + frontSlabWidth;
+        frontSlabBottom = frontSlabTop + frontSlabHeight;
+        backSlabWidth =
+                interpolate(backFaceWidth, frontFaceWidth, backSlabRatio);
+        backSlabHeight =
+                interpolate(backFaceHeight, frontFaceHeight, backSlabRatio);
+        backSlabLeft =
+                interpolate(backFaceLeft, frontFaceLeft, backSlabRatio);
+        backSlabTop =
+                interpolate(backFaceTop, frontFaceTop, backSlabRatio);
+        backSlabRight = backSlabLeft + backSlabWidth;
+        backSlabBottom = backSlabTop + backSlabHeight;
+        slabColor = QColor(50, 50, 200, 150);
+    }
+    painter.save();
+    painter.setPen(QPen(Qt::gray, 1.f));
+    // volume orientation slab back face
+    painter.save();
+    painter.setPen(QPen(Qt::lightGray, 1.f, Qt::DashLine));
+    painter.drawLine(
+            QLineF(backSlabLeft, backSlabTop, backSlabRight, backSlabTop));
+    painter.drawLine(
+            QLineF(
+                backSlabRight, backSlabTop, frontSlabRight, frontSlabTop));
+    painter.drawLine(
+            QLineF(
+                backSlabRight, backSlabTop, backSlabRight, backSlabBottom));
+    painter.restore();
+    // volume orientation slab sides
+    painter.setBrush(slabColor);
+    painter.drawPolygon(QPolygonF({
+        {backSlabLeft, backSlabTop}, {backSlabLeft, backSlabBottom},
+        {frontSlabLeft, frontSlabBottom}, {frontSlabLeft, frontSlabTop}
+    }));
+    painter.drawPolygon(QPolygonF({
+        {backSlabLeft, backSlabBottom}, {backSlabRight, backSlabBottom},
+        {frontSlabRight, frontSlabBottom}, {frontSlabLeft, frontSlabBottom}
+    }));
+    // volume orientation slab front face
+    painter.drawRect(
+            QRectF(
+                frontSlabLeft, frontSlabTop, frontSlabWidth,
+                frontSlabHeight));
+    painter.restore();
+    // volume orientation side faces
+    painter.setBrush(QColor(255, 255, 255, 100));
+    painter.drawPolygon(QPolygonF({
+        {backFaceLeft, backFaceTop}, {backFaceLeft, backFaceBottom},
+        {frontFaceLeft, frontFaceBottom}, {frontFaceLeft, frontFaceTop}
+    }));
+    painter.drawPolygon(QPolygonF({
+        {backFaceLeft, backFaceBottom}, {backFaceRight, backFaceBottom},
+        {frontFaceRight, frontFaceBottom}, {frontFaceLeft, frontFaceBottom}
+    }));
+    // volume orientation front face
+    painter.drawRect(
+            QRectF(
+                frontFaceLeft, frontFaceTop, frontFaceWidth, frontFaceHeight));
+    painter.restore();
+    // volume orientation x arrow
+    painter.save();
+    float charHeight = painter.fontMetrics().height();
+    float charWidth = painter.fontMetrics().width('x');
+    painter.setPen(QPen(QColor(200, 50, 50, 150), 1.f));
+    painter.setBrush(QColor(200, 50, 50, 150));
+    painter.drawLine(
+            QLineF(
+                backFaceLeft, backFaceBottom, backFaceRight, backFaceBottom));
+    painter.drawPolygon(QPolygonF({
+        {backFaceRight, backFaceBottom},
+        {backFaceRight - arrowHeight, backFaceBottom - 0.5f * arrowWidth},
+        {backFaceRight - arrowHeight, backFaceBottom + 0.5f * arrowWidth}
+    }));
+    painter.drawText(
+            QRectF(
+                backFaceRight + 2.f * charWidth,
+                backFaceBottom - 0.5f * charHeight,
+                charWidth, charHeight),
+            Qt::AlignVCenter | Qt::AlignLeft,
+            tr("x"));
+    // volume orientation y arrow
+    painter.setPen(QPen(QColor(50, 200, 50, 150), 1.f));
+    painter.setBrush(QColor(50, 200, 50, 150));
+    painter.drawLine(
+            QLineF(backFaceLeft, backFaceBottom, backFaceLeft, backFaceTop));
+    painter.drawPolygon(QPolygonF({
+        {backFaceLeft, backFaceTop},
+        {backFaceLeft - 0.5f * arrowWidth, backFaceTop + arrowHeight},
+        {backFaceLeft + 0.5f * arrowWidth, backFaceTop + arrowHeight}
+    }));
+    painter.drawText(
+            QRectF(
+                backFaceLeft - 0.5f * charWidth,
+                backFaceTop - 2.f * charWidth - charHeight,
+                charWidth, charHeight),
+            Qt::AlignBottom | Qt::AlignHCenter,
+            tr("y"));
+    // volume orientation z arrow
+    painter.setPen(QPen(QColor(50, 50, 200, 150), 1.f));
+    painter.setBrush(QColor(50, 50, 200, 150));
+    painter.drawLine(
+            QLineF(
+                backFaceLeft, backFaceBottom, frontFaceLeft, frontFaceBottom));
+    QPointF zArrowBaseMid =
+            QLineF(frontFaceLeft, frontFaceBottom, backFaceLeft, backFaceBottom)
+                .unitVector()
+                .pointAt(arrowHeight);
+    QLineF zArrowUnit =
+            QLineF(
+                zArrowBaseMid.x(), zArrowBaseMid.y(), frontFaceLeft,
+                frontFaceBottom).unitVector();
+    QLineF zArrowBaseNormal = zArrowUnit.normalVector();
+    painter.drawPolygon(QPolygonF({
+        {frontFaceLeft, frontFaceBottom},
+        zArrowBaseNormal.pointAt(-0.5f * arrowWidth),
+        zArrowBaseNormal.pointAt(0.5f * arrowWidth)
+    }));
+    painter.drawText(
+            QRectF(
+                frontFaceLeft + 1.414f * charWidth,
+                frontFaceBottom - 1.414f * charWidth - charHeight,
+                charWidth, charHeight),
+            Qt::AlignBottom | Qt::AlignLeft,
+            tr("z"));
+    painter.restore();
 }
 
 std::vector<std::array<int, 2>> HistVolumePhysicalOpenGLView::filterByCurrSlice(

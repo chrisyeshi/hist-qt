@@ -168,12 +168,16 @@ public:
 
 public:
     Qt::BGMode backgroundMode() const { return _painter.backgroundMode(); }
+    QFontInfo fontInfo() const { return _painter.fontInfo(); }
+    QFontMetrics fontMetrics() const { return _painter.fontMetrics(); }
 
 public:
     void save() { _painter.save(); }
     void restore() { _painter.restore(); }
     template <typename... Args>
     void setPen(Args... args) { _painter.setPen(args...); }
+    template <typename... Args>
+    void setBrush(Args... args) { _painter.setBrush(args...); }
     template <typename... Args>
     void translate(Args... args) { _painter.translate(args...); }
     template <typename... Args>
@@ -195,6 +199,8 @@ public:
     void fillRect(Args... args) { _painter.fillRect(args...); }
     template <typename... Args>
     void drawText(Args... args) { _painter.drawText(args...); }
+    template <typename... Args>
+    void drawPolygon(Args... args) { _painter.drawPolygon(args...); }
 
 private:
     QPainter _painter;

@@ -14,6 +14,7 @@ class HistView;
 class HistVolumePhysicalOpenGLView;
 class HistFacadePainter;
 class HistFacadeCharter;
+class Painter;
 class QGestureEvent;
 
 Q_DECLARE_METATYPE(std::string)
@@ -148,6 +149,7 @@ private:
     void translateEvent(const QVector2D& delta);
     void zoomEvent(float scale, const QVector2D& pos);
     std::shared_ptr<QOpenGLFramebufferObject> createWidgetSizeFbo() const;
+    void drawOrienView(Painter& painter);
 
 private:
     const float _clickDelta = 5.f;
