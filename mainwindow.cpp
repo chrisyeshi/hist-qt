@@ -494,7 +494,7 @@ void MainWindow::open(const QString &dir)
     if (!_data.setDir(dir.toStdString()))
         return;
     _currTimeStep = 0;
-    _timelineView->setStepCount(_data.numSteps());
+    _timelineView->setTimeSteps(_data.timeSteps());
     _data.stats([this](DataPool::Stats dataStats) {
         _timelineView->setStats(dataStats);
         _timelineView->update();

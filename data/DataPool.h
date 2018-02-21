@@ -157,6 +157,7 @@ public:
     const HistConfig& histConfig(const std::string& name) const;
     TracerConfig tracerConfig(int timestep) const;
     void setQueryRules(const std::vector<QueryRule>& rules);
+    const TimeSteps& timeSteps() const { return m_timeSteps; }
 
 public slots:
     void histVolumeLoaded(DataLoader::HistVolumeId histVolumeId,

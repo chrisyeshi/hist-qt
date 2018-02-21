@@ -16,7 +16,7 @@ public:
 
 public:
     void setTimeStep(int timeStep);
-    void setStepCount(int stepCount) { _nSteps = stepCount; }
+    void setTimeSteps(const TimeSteps& timeSteps) { _timeSteps = timeSteps; }
     void setHistConfig(HistConfig histConfig) { _histConfig = histConfig; }
     void setStats(DataPool::Stats dataStats) { _dataStats = dataStats; }
     void setDisplayDims(std::vector<int> displayDims) {
@@ -43,8 +43,8 @@ private:
     static const QColor _selectedColor;
 
 private:
-//    TimePlotView* _timePlotView;
-    int _nSteps, _hoveredStep, _currStep;
+    int _hoveredStep, _currStep;
+    TimeSteps _timeSteps;
     HistConfig _histConfig;
     DataPool::Stats _dataStats;
     std::string _histVolumeName;

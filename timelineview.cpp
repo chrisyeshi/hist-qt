@@ -18,13 +18,7 @@ const QColor TimelineView::_hoveredColor = QColor(231, 76, 60, 50);
 const QColor TimelineView::_selectedColor = QColor(231, 76, 60, 150);
 
 TimelineView::TimelineView(QWidget *parent)
-  : OpenGLWidget(parent), _nSteps(1), _currStep(0), _hoveredStep(-1) {
-//    QVBoxLayout* vBoxLayout = new QVBoxLayout(this);
-//    vBoxLayout->setMargin(0);
-//    _timePlotView = new TimePlotView(this);
-//    connect(_timePlotView, &TimePlotView::timeStepChanged,
-//            this, &TimelineView::timeStepChanged);
-//    vBoxLayout->addWidget(_timePlotView);
+  : OpenGLWidget(parent), _currStep(0), _hoveredStep(-1) {
     setFocusPolicy(Qt::ClickFocus);
     setMinimumHeight(100);
     setMouseTracking(true);
@@ -33,15 +27,8 @@ TimelineView::TimelineView(QWidget *parent)
     });
 }
 
-//void TimelineView::setDataPool(DataPool* dataPool)
-//{
-//    _timePlotView->setDataPool(dataPool);
-//    _timePlotView->update();
-//}
-
 void TimelineView::setTimeStep(int timeStep) {
     _currStep = timeStep;
-//    _timePlotView->setTimeStep(timeStep);
 }
 
 void TimelineView::paintGL() {
@@ -79,7 +66,7 @@ void TimelineView::paintGL() {
     float plotWidth = plotRight - plotLeft;
     float plotHeight = plotBottom - plotTop;
     _plotRect = QRectF(plotLeft, plotTop, plotWidth, plotHeight);
-    float stepWidth = plotWidth / _nSteps;
+    float stepWidth = plotWidth / _timeSteps.nSteps();
     int bottomLabelStep = int(std::ceil(bottomLabelWidth / stepWidth) + 0.5f);
     // averages
     for (unsigned int i = 0; i < _displayDims.size(); ++i) {
@@ -112,16 +99,16 @@ void TimelineView::paintGL() {
     painter.drawRect(plotLeft, plotTop, plotWidth, plotHeight);
     // tick marks
     painter.setPen(QPen(Qt::black, chartLineWidth));
-    for (int iStep = 1; iStep < _nSteps; ++iStep) {
+    for (int iStep = 1; iStep < _timeSteps.nSteps(); ++iStep) {
         float x = plotLeft + iStep * stepWidth;
         painter.drawLine(QLineF(x, plotTop, x, plotBottom));
     }
     // horizontal labels
-    for (int iStep = 0; iStep < _nSteps; iStep += bottomLabelStep) {
+    for (int iStep = 0; iStep < _timeSteps.nSteps(); iStep += bottomLabelStep) {
         painter.drawText(
                 plotLeft + iStep * stepWidth, plotBottom, stepWidth,
                 plotBottomHeight, Qt::AlignCenter,
-                QString::number(iStep, 'g', 5));
+                QString::fromStdString(_timeSteps.asString(iStep)));
     }
     // vertical labels
     painter.drawText(
@@ -183,12 +170,12 @@ void TimelineView::leaveEvent(QEvent *) {
 
 void TimelineView::keyPressEvent(QKeyEvent *event) {
     if (Qt::Key_Right == event->key()) {
-        setSelectedStep(clamp(_currStep + 1, 0, _nSteps -1));
+        setSelectedStep(clamp(_currStep + 1, 0, _timeSteps.nSteps() -1));
         update();
         return;
     }
     if (Qt::Key_Left == event->key()) {
-        setSelectedStep(clamp(_currStep - 1, 0, _nSteps -1));
+        setSelectedStep(clamp(_currStep - 1, 0, _timeSteps.nSteps() -1));
         update();
         return;
     }
@@ -196,8 +183,11 @@ void TimelineView::keyPressEvent(QKeyEvent *event) {
 }
 
 int TimelineView::localPosToStep(QPointF pos) const {
-    float stepWidth = _plotRect.width() / _nSteps;
-    return clamp(int((pos.x() - _plotRect.x()) / stepWidth), 0, _nSteps - 1);
+    float stepWidth = _plotRect.width() / _timeSteps.nSteps();
+    return clamp(
+            int((pos.x() - _plotRect.x()) / stepWidth),
+            0,
+            _timeSteps.nSteps() - 1);
 }
 
 void TimelineView::setSelectedStep(int step) {
