@@ -236,7 +236,8 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
         _currSliceId = clamp(_currSliceId + 1, 0, nSlices - 1);
         qInfo() << "sliceIdKeyboard" << _currSliceId;
         updateCurrSlice();
-        LazyUI::instance().labeledScrollBar(tr("sliceId"), _currSliceId);
+        LazyUI::instance().labeledScrollBar(
+                tr("sliceId"), getCurrSliceIndexLabel(), _currSliceId);
         render();
         update();
     });
@@ -247,7 +248,8 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
         _currSliceId = clamp(_currSliceId - 1, 0, nSlices - 1);
         qInfo() << "sliceIdKeyboard" << _currSliceId;
         updateCurrSlice();
-        LazyUI::instance().labeledScrollBar(tr("sliceId"), _currSliceId);
+        LazyUI::instance().labeledScrollBar(
+                tr("sliceId"), getCurrSliceIndexLabel(), _currSliceId);
         render();
         update();
     });
@@ -278,7 +280,8 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             update();
         });
         LazyUI::instance().labeledScrollBar(
-                tr("sliceId"), tr("Slice Index"), FluidLayout::Item::FullLine);
+                tr("sliceId"), getCurrSliceIndexLabel(),
+                FluidLayout::Item::FullLine);
         LazyUI::instance().divider("freqHeader");
         LazyUI::instance().labeledCombo(
                 "freqRangeMethod", "Show frequency percentage range per",
@@ -300,10 +303,10 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             setFreqRangesToHistPainters(_currFreqRange);
             LazyUI::instance().labeledLineEdit(
                     "freqRangeMin", "Minimum (%)",
-                    QString::number(_currFreqRange[0]));
+                    QString::number(_currFreqRange[0] * 100.f));
             LazyUI::instance().labeledLineEdit(
                     "freqRangeMax", "Maximum (%)",
-                    QString::number(_currFreqRange[1]));
+                    QString::number(_currFreqRange[1] * 100.f));
             render();
             update();
         });
@@ -313,7 +316,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             qInfo() << "freqRangeMinLineEdit" << text;
             _currFreqNormPer = NormPer_Custom;
             LazyUI::instance().labeledCombo("freqRangeMethod", "Custom");
-            _currFreqRange[0] = text.toDouble();
+            _currFreqRange[0] = text.toDouble() / 100.f;
             setFreqRangesToHistPainters(_currFreqRange);
             render();
             update();
@@ -324,7 +327,7 @@ HistVolumePhysicalOpenGLView::HistVolumePhysicalOpenGLView(QWidget *parent)
             qInfo() << "freqRangeMaxLineEdit" << text;
             _currFreqNormPer = NormPer_Custom;
             LazyUI::instance().labeledCombo("freqRangeMethod", "Custom");
-            _currFreqRange[1] = text.toDouble();
+            _currFreqRange[1] = text.toDouble() / 100.f;
             setFreqRangesToHistPainters(_currFreqRange);
             render();
             update();
@@ -518,9 +521,11 @@ void HistVolumePhysicalOpenGLView::reset(std::vector<int> displayDims) {
     }
     LazyUI::instance().labeledCombo("freqRangeMethod", "Histogram");
     LazyUI::instance().labeledLineEdit(
-            "freqRangeMin", "Minimum (%)", QString::number(_currFreqRange[0]));
+            "freqRangeMin", "Minimum (%)",
+            QString::number(_currFreqRange[0] * 100.f));
     LazyUI::instance().labeledLineEdit(
-            "freqRangeMax", "Maximum (%)", QString::number(_currFreqRange[1]));
+            "freqRangeMax", "Maximum (%)",
+            QString::number(_currFreqRange[1] * 100.f));
     LazyUI::instance().labeledCombo("histRangeMethod", "Histogram");
     LazyUI::instance().labeledLineEdit(
             "histRange1Min", varRangeLabel(0) + " min",
@@ -801,25 +806,6 @@ void HistVolumePhysicalOpenGLView::render() {
         float dy = rect.height() / _currSlice->nHistY();
         if (_currDims.size() != 1 || dx > _sizeThresholdToRenderSolidColor) {
             // if there is space for plotting the histograms
-            {
-                Painter bgPainter(&device);
-                bgPainter.fillRect(rect, Qt::white);
-                bgPainter.setPen(QPen(bgColor, 0.75f));
-                // vertical grid lines separating the histograms
-                for (int iHistX = 0; iHistX <= _currSlice->nHistX(); ++iHistX) {
-                    float x = iHistX * dx + rect.left();
-                    bgPainter.drawLine(QLineF(x, rect.top(), x, rect.bottom()));
-                }
-                // horizontal grid lines separating the histograms
-                for (int iHistY = 0; iHistY <= _currSlice->nHistY(); ++iHistY) {
-                    float y = iHistY * dy + rect.top();
-                    bgPainter.drawLine(QLineF(rect.left(), y, rect.right(), y));
-                }
-            }
-//            if (_histPainters.size() > 138) {
-//                _histPainters[137]->paint(&device);
-//                _histPainters[138]->paint(&device);
-//            }
             for (auto painter : _histPainters) {
                 painter->paint(&device);
             }
@@ -1129,12 +1115,13 @@ void HistVolumePhysicalOpenGLView::updateHistPainterRects() {
 }
 
 void HistVolumePhysicalOpenGLView::updateSliceIdScrollBar() {
-    int nSlices = getSliceCountInDirection(_histVolume->dimHists(), _currOrien);
-    LazyUI::instance().labeledScrollBar(tr("sliceId"), tr("Slice Index"),
-            0, nSlices - 1, _currSliceId, FluidLayout::Item::FullLine, this,
-            [this](int value) {
+    LazyUI::instance().labeledScrollBar(
+            tr("sliceId"), getCurrSliceIndexLabel(), 0, getCurrSliceCount() - 1,
+            _currSliceId, FluidLayout::Item::FullLine, this, [=](int value) {
         qInfo() << "sliceIdScrollBar" << value;
         _currSliceId = value;
+        LazyUI::instance().labeledScrollBar(
+                tr("sliceId"), getCurrSliceIndexLabel());
         updateCurrSlice();
         render();
         update();
@@ -1154,6 +1141,21 @@ int HistVolumePhysicalOpenGLView::getSliceCountInDirection(
     }
     assert(false);
     return -1;
+}
+
+int HistVolumePhysicalOpenGLView::getCurrSliceCount() const {
+    return !_histVolume ? 1
+            : getSliceCountInDirection(_histVolume->dimHists(), _currOrien);
+}
+
+QString HistVolumePhysicalOpenGLView::getCurrSliceIndexLabel() const {
+    return QString("Slice Index: %1 = %2 of [%3 - %4]")
+            .arg(YZ == _currOrien ? 'X'
+                : XZ == _currOrien ? 'Y'
+                : XY == _currOrien ? 'Z' : 'W')
+            .arg(_currSliceId)
+            .arg(0)
+            .arg(getCurrSliceCount() - 1);
 }
 
 std::array<int, 2> HistVolumePhysicalOpenGLView::localPositionToHistSliceId(
@@ -1334,6 +1336,8 @@ void HistVolumePhysicalOpenGLView::drawOrienView(Painter &painter) {
     float backSlabRight = backFaceRight;
     float backSlabBottom = backFaceBottom;
     QColor slabColor(255, 255, 255, 255);
+    QPen dashPen(Qt::lightGray, 1.f, Qt::DashLine);
+    dashPen.setDashPattern({4, 8});
     painter.save();
     // volume orientation background
     painter.fillRect(
@@ -1343,7 +1347,7 @@ void HistVolumePhysicalOpenGLView::drawOrienView(Painter &painter) {
     painter.drawRect(QRectF(orienLeft, orienTop, orienWidth, orienHeight));
     // volume orientation back face
     painter.save();
-    painter.setPen(QPen(Qt::lightGray, 1.f, Qt::DashLine));
+    painter.setPen(dashPen);
     painter.drawLine(
             QLineF(backFaceLeft, backFaceTop, backFaceRight, backFaceTop));
     painter.drawLine(
@@ -1413,7 +1417,7 @@ void HistVolumePhysicalOpenGLView::drawOrienView(Painter &painter) {
     painter.setPen(QPen(Qt::gray, 1.f));
     // volume orientation slab back face
     painter.save();
-    painter.setPen(QPen(Qt::lightGray, 1.f, Qt::DashLine));
+    painter.setPen(dashPen);
     painter.drawLine(
             QLineF(backSlabLeft, backSlabTop, backSlabRight, backSlabTop));
     painter.drawLine(

@@ -32,6 +32,70 @@ void TimelineView::setTimeStep(int timeStep) {
 }
 
 void TimelineView::paintGL() {
+    if (LineChart == _drawMode) {
+        drawTimelineAsLineChart();
+    } else if (BarChart == _drawMode) {
+        drawTimelineAsBarChart();
+    }
+}
+
+void TimelineView::mouseMoveEvent(QMouseEvent *event) {
+    if (event->buttons() & Qt::LeftButton) {
+        setSelectedStep(localPosToStep(event->localPos()));
+    } else {
+        _hoveredStep = localPosToStep(event->localPos());
+    }
+    update();
+}
+
+void TimelineView::mousePressEvent(QMouseEvent *event) {
+    _hoveredStep = localPosToStep(event->localPos());
+    setSelectedStep(localPosToStep(event->localPos()));
+    update();
+}
+
+void TimelineView::mouseReleaseEvent(QMouseEvent *event) {
+
+}
+
+void TimelineView::leaveEvent(QEvent *) {
+    _hoveredStep = -1;
+    update();
+}
+
+void TimelineView::keyPressEvent(QKeyEvent *event) {
+    if (Qt::Key_Right == event->key()) {
+        setSelectedStep(clamp(_currStep + 1, 0, _timeSteps.nSteps() -1));
+        update();
+        return;
+    }
+    if (Qt::Key_Left == event->key()) {
+        setSelectedStep(clamp(_currStep - 1, 0, _timeSteps.nSteps() -1));
+        update();
+        return;
+    }
+    OpenGLWidget::keyPressEvent(event);
+}
+
+int TimelineView::localPosToStep(QPointF pos) const {
+    float stepWidth = _plotRect.width() / (_timeSteps.nSteps() - 1);
+    return BarChart == _drawMode
+            ? clamp(
+                int((pos.x() - _plotRect.x()) / stepWidth),
+                0, _timeSteps.nSteps() - 1)
+            : LineChart == _drawMode
+            ? clamp(
+                int((pos.x() - _plotRect.x() + 0.5f * stepWidth) / stepWidth),
+                0, _timeSteps.nSteps() - 1)
+            : -1;
+}
+
+void TimelineView::setSelectedStep(int step) {
+    _currStep = step;
+    emit timeStepChanged(_currStep);
+}
+
+void TimelineView::drawTimelineAsBarChart() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     static std::vector<QColor> dimToColor =
             {QColor(50, 69, 180, 100), QColor(39, 174, 96, 100)};
@@ -144,58 +208,127 @@ void TimelineView::paintGL() {
     }
 }
 
-void TimelineView::mouseMoveEvent(QMouseEvent *event) {
-    if (event->buttons() & Qt::LeftButton) {
-        setSelectedStep(localPosToStep(event->localPos()));
-    } else {
-        _hoveredStep = localPosToStep(event->localPos());
+void TimelineView::drawTimelineAsLineChart() {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    static std::vector<QColor> dimToColor =
+            {QColor(50, 69, 180, 100), QColor(39, 174, 96, 100)};
+    // setup painter
+    Painter painter(this);
+    painter.setPen(QPen(Qt::black, 0.25f));
+    painter.setFont(QFont("mono", 8.f));
+    // variables
+    float chartLineWidth = 0.25f;
+    float plottingLineWidth = 4.f;
+    float margin = 4.f;
+    float legendSpacing = 2.f;
+    float textHeight = painter.fontMetrics().height();
+    float leftLabelWidth =
+            painter.fontMetrics().boundingRect(tr("max")).width();
+    float bottomLabelWidth =
+            painter.fontMetrics()
+                .boundingRect(QString::number(0.012345678, 'g', 8)).width();
+    float plotLeftWidth = 2 * margin + leftLabelWidth;
+    float plotTopHeight = 2 * margin + textHeight;
+    float plotBottomHeight = 2 * margin + textHeight;
+    float plotRightWidth = margin;
+    float plotLeft = plotLeftWidth;
+    float plotTop = plotTopHeight;
+    float plotBottom = height() - plotBottomHeight;
+    float plotRight = width() - plotRightWidth;
+    float plotWidth = plotRight - plotLeft;
+    float plotHeight = plotBottom - plotTop;
+    _plotRect = QRectF(plotLeft, plotTop, plotWidth, plotHeight);
+    float stepWidth = plotWidth / (_timeSteps.nSteps() - 1);
+    int bottomLabelStep = int(std::ceil(bottomLabelWidth / stepWidth) + 0.5f);
+    // averages
+    for (unsigned int i = 0; i < _displayDims.size(); ++i) {
+        unsigned iDim = _displayDims[i];
+        float vMin = std::numeric_limits<float>::max();
+        float vMax = std::numeric_limits<float>::lowest();
+        for (int iStep = 0; iStep < _dataStats.size(); ++iStep) {
+            const auto& volumeStats = _dataStats[iStep][_histConfig.name()];
+            float average = volumeStats.means.at(_histConfig.vars[iDim]);
+            vMin = std::min(vMin, average);
+            vMax = std::max(vMax, average);
+        }
+        QPolygonF polyline;
+        for (unsigned int iStep = 0; iStep < _dataStats.size(); ++iStep) {
+            const auto& volumeStats = _dataStats[iStep][_histConfig.name()];
+            float average = volumeStats.means.at(_histConfig.vars[iDim]);
+            float ratio = (average - vMin) / (vMax - vMin);
+            float top = plotTop + 0.5f * plottingLineWidth;
+            float bottom = plotBottom - 0.5f * plottingLineWidth;
+            float y = ratio * (top - bottom) + bottom;
+            float x = plotLeft + iStep * stepWidth;
+            polyline.push_back(QPointF(x, y));
+        }
+        painter.setPen(
+                QPen(
+                    dimToColor[i], plottingLineWidth, Qt::SolidLine,
+                    Qt::RoundCap));
+        painter.drawPolyline(polyline);
     }
-    update();
-}
-
-void TimelineView::mousePressEvent(QMouseEvent *event) {
-    _hoveredStep = localPosToStep(event->localPos());
-    setSelectedStep(localPosToStep(event->localPos()));
-    update();
-}
-
-void TimelineView::mouseReleaseEvent(QMouseEvent *event) {
-
-}
-
-void TimelineView::leaveEvent(QEvent *) {
-    _hoveredStep = -1;
-    update();
-}
-
-void TimelineView::keyPressEvent(QKeyEvent *event) {
-    if (Qt::Key_Right == event->key()) {
-        setSelectedStep(clamp(_currStep + 1, 0, _timeSteps.nSteps() -1));
-        update();
-        return;
+    // plot box
+    painter.setPen(QPen(Qt::black, chartLineWidth));
+    painter.drawRect(plotLeft, plotTop, plotWidth, plotHeight);
+    // tick marks
+    painter.setPen(QPen(Qt::black, chartLineWidth));
+    for (int iStep = 1; iStep < _timeSteps.nSteps(); ++iStep) {
+        float x = plotLeft + iStep * stepWidth;
+        painter.drawLine(QLineF(x, plotTop, x, plotBottom));
     }
-    if (Qt::Key_Left == event->key()) {
-        setSelectedStep(clamp(_currStep - 1, 0, _timeSteps.nSteps() -1));
-        update();
-        return;
+    // horizontal labels
+    for (int iStep = 0; iStep < _timeSteps.nSteps(); iStep += bottomLabelStep) {
+        float left =
+                clamp(
+                    plotLeft + iStep * stepWidth - 0.5f * bottomLabelWidth,
+                    0.f, width() - bottomLabelWidth);
+        painter.drawText(
+                left, plotBottom, bottomLabelWidth, plotBottomHeight,
+                Qt::AlignCenter,
+                QString::fromStdString(_timeSteps.asString(iStep)));
     }
-    OpenGLWidget::keyPressEvent(event);
+    // vertical labels
+    painter.drawText(
+            0, plotTop, plotLeftWidth, textHeight, Qt::AlignCenter, tr("max"));
+    painter.drawText(0, plotBottom - textHeight, plotLeftWidth, textHeight,
+            Qt::AlignCenter, tr("min"));
+    // legends
+    float legendX = plotLeft;
+    float legendBoxSide = plotTopHeight - 2 * margin;
+    for (unsigned int i = 0; i < _displayDims.size(); ++i) {
+        unsigned int iDim = _displayDims[i];
+        painter.fillRect(
+                legendX, margin, legendBoxSide, legendBoxSide, dimToColor[i]);
+        legendX += legendBoxSide + legendSpacing;
+        QRectF rect =
+                painter.boundingRect(
+                    QRect(legendX, 0, 100, plotTopHeight),
+                    Qt::AlignLeft | Qt::AlignVCenter,
+                    QString::fromStdString(_histConfig.vars[iDim]));
+        painter.drawText(rect, Qt::AlignLeft | Qt::AlignVCenter,
+                QString::fromStdString(_histConfig.vars[iDim]));
+        legendX += rect.width() + 10 * legendSpacing;
+    }
+    // highlight steps
+    {
+        auto left = [&](int iStep) {
+            return std::max(plotLeft, plotLeft + (iStep - 0.5f) * stepWidth);
+        };
+        auto right = [&](int iStep) {
+            return std::min(plotRight, plotLeft + (iStep + 0.5f) * stepWidth);
+        };
+        auto w = [&](int iStep) {
+            return right(iStep) - left(iStep);
+        };
+        float top = plotTop;
+        float h = plotHeight;
+        painter.fillRect(
+                QRectF(left(_currStep), top, w(_currStep), h), _selectedColor);
+        if (_hoveredStep > -1) {
+            painter.fillRect(
+                    QRectF(left(_hoveredStep), top, w(_hoveredStep), h),
+                    _hoveredColor);
+        }
+    }
 }
-
-int TimelineView::localPosToStep(QPointF pos) const {
-    float stepWidth = _plotRect.width() / _timeSteps.nSteps();
-    return clamp(
-            int((pos.x() - _plotRect.x()) / stepWidth),
-            0,
-            _timeSteps.nSteps() - 1);
-}
-
-void TimelineView::setSelectedStep(int step) {
-    _currStep = step;
-    emit timeStepChanged(_currStep);
-}
-
-//void TimelineView::setStats(std::vector<HistFacadeVolume::Stats> stats) {
-//    _timePlotView->setStats(stats);
-//    _timePlotView->update();
-//}

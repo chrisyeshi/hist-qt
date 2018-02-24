@@ -324,7 +324,7 @@ void MainWindow::createSimpleLayout() {
         qInfo() << "TimelineView::timeStepChanged" << timeStep;
         setTimeStep(timeStep);
     });
-    LazyUI::instance().button(tr("Open"), this, [this]() {
+    LazyUI::instance().button(tr("Open Dataset"), this, [this]() {
         qInfo() << "openButton";
         open();
     });
@@ -474,7 +474,7 @@ void MainWindow::createUserStudyLayout() {
         qInfo() << "TimelineView::timeStepChanged" << timeStep;
         setTimeStep(timeStep);
     });
-    LazyUI::instance().button(tr("Open"), this, [this]() {
+    LazyUI::instance().button(tr("Open Dataset"), this, [this]() {
         qInfo() << "openButton";
         open();
     });

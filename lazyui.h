@@ -347,10 +347,17 @@ public:
         labeledCombo(key, items, select, context, func);
     }
 
-    void labeledScrollBar(QString key, int value) {
+    void labeledScrollBar(QString key, const QString& label) {
         assert(_widgets.contains(key));
         auto labeledScrollBar =
                 static_cast<LabeledWidget<QScrollBar>*>(_widgets[key]);
+        labeledScrollBar->setLabel(label);
+    }
+    void labeledScrollBar(QString key, const QString& label, int value) {
+        assert(_widgets.contains(key));
+        auto labeledScrollBar =
+                static_cast<LabeledWidget<QScrollBar>*>(_widgets[key]);
+        labeledScrollBar->setLabel(label);
         auto scrollBar = labeledScrollBar->widget();
         scrollBar->blockSignals(true);
         scrollBar->setValue(value);
@@ -377,6 +384,7 @@ public:
         labeledScrollBar(key, label, size);
         auto labeledScrollBar =
                 static_cast<LabeledWidget<QScrollBar>*>(_widgets[key]);
+        labeledScrollBar->setLabel(label);
         auto scrollBar = labeledScrollBar->widget();
         scrollBar->blockSignals(true);
         scrollBar->setPageStep(1);

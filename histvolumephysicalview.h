@@ -137,6 +137,8 @@ private:
     void updateHistPainterRects();
     void updateSliceIdScrollBar();
     int getSliceCountInDirection(Extent dimHists, Orien orien) const;
+    int getCurrSliceCount() const;
+    QString getCurrSliceIndexLabel() const;
     std::array<int, 2> localPositionToHistSliceId(QPointF localPos) const;
     bool isHistSliceIdsValid(std::array<int, 2> histSliceIds) const;
     QColor quarterColor() const;

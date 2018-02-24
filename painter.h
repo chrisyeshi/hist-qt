@@ -201,6 +201,8 @@ public:
     void drawText(Args... args) { _painter.drawText(args...); }
     template <typename... Args>
     void drawPolygon(Args... args) { _painter.drawPolygon(args...); }
+    template <typename... Args>
+    void drawPolyline(Args... args) { _painter.drawPolyline(args...); }
 
 private:
     QPainter _painter;

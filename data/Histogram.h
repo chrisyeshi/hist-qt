@@ -131,7 +131,9 @@ public:
     const Extent& dim() const { return m_dim; }
     int nDim() const { return dim().nDim(); }
     int nBins() const {
-        return [this](){
+        return 0 == m_dim.nDim()
+                ? 0
+                : [this](){
             int prod = 1;
             for (auto dim : m_dim) prod *= dim;
             return prod;

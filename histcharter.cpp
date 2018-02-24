@@ -192,6 +192,19 @@ void Hist2DFacadeCharter::leaveEvent(QEvent *event) {
 }
 
 void Hist2DFacadeCharter::chart(QPaintDevice *paintDevice) {
+    Painter painter(std::make_shared<UsePainterImpl>(), paintDevice);
+    painter.setPen(QPen(Qt::black, 0.25f));
+    // background and border
+    /// TODO: try using OpenGL to draw the background and a thinner border.
+    painter.fillRect(
+            QRectF(
+                _viewport.left() * _width, _viewport.top() * _height,
+                _viewport.width() * _width, _viewport.height() * _height),
+            Qt::white);
+    painter.drawRect(
+            QRectF(
+                _viewport.left() * _width, _viewport.top() * _height,
+                _viewport.width() * _width, _viewport.height() * _height));
     // if there isn't enough space for labels
     if (histWidth() / chartWidth() < thresholdRatioToDrawLabels) {
         drawHist(chartLeft() / width(), chartBottom() / height(),
@@ -202,8 +215,6 @@ void Hist2DFacadeCharter::chart(QPaintDevice *paintDevice) {
     drawHist(histLeft() / width(), histBottom() / height(),
             histWidth() / width(), histHeight() / height());
     // axes
-    Painter painter(std::make_shared<UsePainterImpl>(), paintDevice);
-    painter.setPen(QPen(Qt::black, 0.25f));
     auto hist2d = hist();
     auto xVarRange = _varRanges[0];
     double xvr = xVarRange[1] - xVarRange[0];
@@ -629,6 +640,19 @@ void Hist1DFacadeCharter::chart(QPaintDevice *paintDevice)
     const float vMaxRatio = 1.f / 1.1f;
     const int nTicks = 6;
     Painter painter(std::make_shared<UsePainterImpl>(), paintDevice);
+    // background and border
+    painter.save();
+    painter.setPen(QPen(Qt::black, 0.25f));
+    painter.fillRect(
+            QRectF(
+                _viewport.left() * _width, _viewport.top() * _height,
+                _viewport.width() * _width, _viewport.height() * _height),
+            Qt::white);
+    painter.drawRect(
+            QRectF(
+                _viewport.left() * _width, _viewport.top() * _height,
+                _viewport.width() * _width, _viewport.height() * _height));
+    painter.restore();
     // if there isn't enough space for labels
     if (histWidth() / chartWidth() < thresholdRatioToDrawLabels) {
         drawHist(chartLeft() / width(), chartBottom() / height(),
@@ -778,6 +802,10 @@ void HistFacadeCharter::setRanges(std::vector<std::array<double, 2>> ranges) {
 void HistFacadeCharter::setHist(
         std::shared_ptr<const HistFacade> histFacade,
         std::vector<int> displayDims) {
+    if (std::dynamic_pointer_cast<const HistNullFacade>(histFacade)) {
+        _charter = std::make_shared<HistNullCharter>();
+        return;
+    }
     _charter = IHistCharter::create(histFacade, displayDims);
     if (2 == displayDims.size()) {
         Hist2DFacadeCharter* charter =

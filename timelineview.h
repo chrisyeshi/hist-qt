@@ -15,6 +15,9 @@ public:
     explicit TimelineView(QWidget *parent = 0);
 
 public:
+    enum DrawMode {BarChart, LineChart};
+
+public:
     void setTimeStep(int timeStep);
     void setTimeSteps(const TimeSteps& timeSteps) { _timeSteps = timeSteps; }
     void setHistConfig(HistConfig histConfig) { _histConfig = histConfig; }
@@ -37,6 +40,8 @@ protected:
 private:
     int localPosToStep(QPointF pos) const;
     void setSelectedStep(int step);
+    void drawTimelineAsBarChart();
+    void drawTimelineAsLineChart();
 
 private:
     static const QColor _hoveredColor;
@@ -50,6 +55,7 @@ private:
     std::string _histVolumeName;
     std::vector<int> _displayDims;
     QRectF _plotRect;
+    DrawMode _drawMode = LineChart;
 };
 
 #endif // TIMELINEVIEW_H
