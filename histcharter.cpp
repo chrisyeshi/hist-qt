@@ -207,13 +207,17 @@ void Hist2DFacadeCharter::chart(QPaintDevice *paintDevice) {
                 _viewport.width() * _width, _viewport.height() * _height));
     // if there isn't enough space for labels
     if (histWidth() / chartWidth() < thresholdRatioToDrawLabels) {
+        painter.beginNativePainting();
         drawHist(chartLeft() / width(), chartBottom() / height(),
                 chartWidth() / width(), chartHeight() / height());
+        painter.endNativePainting();
         return;
     }
     // histogram
+    painter.beginNativePainting();
     drawHist(histLeft() / width(), histBottom() / height(),
             histWidth() / width(), histHeight() / height());
+    painter.endNativePainting();
     // axes
     auto hist2d = hist();
     auto xVarRange = _varRanges[0];
@@ -597,6 +601,7 @@ double Hist1DFacadeCharter::posToValue(float x) const {
 
 void Hist1DFacadeCharter::drawHist(
         double left, double bottom, double width, double height) {
+    /// TODO: reset the blend state and function
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     if (_histPainter) {
@@ -655,8 +660,10 @@ void Hist1DFacadeCharter::chart(QPaintDevice *paintDevice)
     painter.restore();
     // if there isn't enough space for labels
     if (histWidth() / chartWidth() < thresholdRatioToDrawLabels) {
+        painter.beginNativePainting();
         drawHist(chartLeft() / width(), chartBottom() / height(),
                 chartWidth() / width(), chartHeight() / height());
+        painter.endNativePainting();
         return;
     }
     // draw all the labels
@@ -671,8 +678,10 @@ void Hist1DFacadeCharter::chart(QPaintDevice *paintDevice)
     }
     painter.restore();
     // histogram
+    painter.beginNativePainting();
     drawHist(histLeft() / width(), histBottom() / height(),
             histWidth() / width(), histHeight() / height());
+    painter.endNativePainting();
     // axes
     painter.setPen(QPen(Qt::black, 0.5f));
     auto hist = _histFacade->hist(_displayDim);

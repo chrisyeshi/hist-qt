@@ -165,6 +165,8 @@ public:
     }
     bool end() { return _impl->end(&_painter); }
     void resize(int w, int h) { _impl->resize(&_painter, w, h); }
+    void beginNativePainting() { _painter.beginNativePainting(); }
+    void endNativePainting() { _painter.endNativePainting(); }
 
 public:
     Qt::BGMode backgroundMode() const { return _painter.backgroundMode(); }
