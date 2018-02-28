@@ -319,12 +319,20 @@ public:
     void labeledCombo(QString key, const QString& label,
             const QStringList& items, FluidLayout::Item::Size size,
             QObject* context, std::function<void(const QString&)> func) {
-        labeledCombo(key, label, items, items.at(0), size, context, func);
+        try {
+            labeledCombo(key, label, items, items.at(0), size, context, func);
+        } catch (...) {
+            std::cout << "LazyUI::labeledCombo" << std::endl;
+        }
     }
     void labeledCombo(
             QString key, const QStringList& items, QObject* context,
             std::function<void(const QString&)> func) {
-        labeledCombo(key, items, items.at(0), context, func);
+        try {
+            labeledCombo(key, items, items.at(0), context, func);
+        } catch (...) {
+            std::cout << "LazyUI::labeledCombo" << std::endl;
+        }
     }
     void labeledCombo(
             QString key, const QStringList& items, const QString& select,

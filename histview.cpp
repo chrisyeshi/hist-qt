@@ -64,8 +64,12 @@ void HistView::setHist(std::shared_ptr<const HistFacade> histFacade,
             selectedVarRangesMap[displayDim] = {NAN, NAN};
             auto itr = _selectedVarRangesMap.find(displayDim);
             if (_selectedVarRangesMap.end() != itr) {
-                selectedVarRangesMap[displayDim] =
-                        _selectedVarRangesMap.at(displayDim);
+                try {
+                    selectedVarRangesMap[displayDim] =
+                            _selectedVarRangesMap.at(displayDim);
+                } catch (...) {
+                    std::cout << "HistView::setHist" << std::endl;
+                }
             }
         }
         _histCharter->setRanges(varRanges);

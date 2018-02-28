@@ -87,12 +87,16 @@ void Hist2DFacadeCharter::setRanges(
 
 void Hist2DFacadeCharter::setSelectedVarRanges(
         const IHistCharter::HistRangesMap &selectedVarRanges) {
+    try {
     _selectedVarRanges.resize(2);
     for (int i = 0; i < _displayDims.size(); ++i) {
         _selectedVarRanges[i] = selectedVarRanges.at(_displayDims[i]);
     }
     _selectedBinBeg = {-1, -1};
     _selectedBinEnd = {-1, -1};
+    } catch (...) {
+        std::cout << "Hist2DFacadeCharter::setSelectedVarRanges" << std::endl;
+    }
 }
 
 void Hist2DFacadeCharter::mousePressEvent(QMouseEvent *event) {
@@ -498,8 +502,12 @@ void Hist1DFacadeCharter::setRanges(
 
 void Hist1DFacadeCharter::setSelectedVarRanges(
         const HistRangesMap& varRangesMap) {
+    try {
     _selectedVarRange = varRangesMap.at(_displayDim);
     _selectedBinRange = {-1, -1};
+    } catch (...) {
+        std::cout << "Hist1DFacadeCharter::setSelectedVarRanges" << std::endl;
+    }
 }
 
 void Hist1DFacadeCharter::mousePressEvent(QMouseEvent *event) {

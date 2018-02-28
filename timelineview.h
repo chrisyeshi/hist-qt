@@ -19,9 +19,9 @@ public:
 
 public:
     void setTimeStep(int timeStep);
-    void setTimeSteps(const TimeSteps& timeSteps) { _timeSteps = timeSteps; }
+    void setTimeSteps(const TimeSteps& timeSteps);
     void setHistConfig(HistConfig histConfig) { _histConfig = histConfig; }
-    void setStats(DataPool::Stats dataStats) { _dataStats = dataStats; }
+    void setStats(DataPool::Stats dataStats);
     void setDisplayDims(std::vector<int> displayDims) {
         _displayDims = displayDims;
     }

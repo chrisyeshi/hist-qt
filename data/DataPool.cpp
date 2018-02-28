@@ -8,25 +8,29 @@
 #include "dataconfigreader.h"
 
 namespace {
-    const std::string data_out = "/data/";
-    const std::string tracer_pre = "tracer-";
-    const std::string pdf_pre = "pdf-";
 
-    template <typename AsyncFunc, typename Callback>
-    void asyncRun(QObject* obj, AsyncFunc asyncFunc, Callback callback) {
-        auto asyncFuncWrapper = [=]() {
-            auto result = asyncFunc();
-            QTimer::singleShot(0, obj, std::bind(callback, result));
-        };
-        QtConcurrent::run(asyncFuncWrapper);
-    }
+const std::string data_out = "/data/";
+const std::string tracer_pre = "tracer-";
+const std::string pdf_pre = "pdf-";
 
-    // Convenient function to run the callback in the main thread.
-    template <typename AsyncFunc, typename Callback>
-    void asyncRun(AsyncFunc asyncFunc, Callback callback) {
-        asyncRun(QCoreApplication::instance(), asyncFunc, callback);
-    }
+template <typename AsyncFunc, typename Callback>
+void asyncRun(QObject* obj, AsyncFunc asyncFunc, Callback callback) {
+    auto asyncFuncWrapper = [=]() {
+        auto result = asyncFunc();
+        QTimer::singleShot(0, obj, std::bind(callback, result));
+    };
+    QtConcurrent::run(asyncFuncWrapper);
 }
+
+// Convenient function to run the callback in the main thread.
+template <typename AsyncFunc, typename Callback>
+void asyncRun(AsyncFunc asyncFunc, Callback callback) {
+    asyncRun(QCoreApplication::instance(), asyncFunc, callback);
+}
+
+static std::shared_ptr<StatsThread> _statsThread;
+
+} // unnamed namespace
 
 /**
  * @brief operator <<
@@ -59,6 +63,8 @@ bool operator==(const QueryRule &a, const QueryRule &b)
 void DataLoader::initialize(std::string dir, GridConfig gridConfig,
         TimeSteps timeSteps, bool pdfInTracerDir,
         std::vector<HistConfig> configs) {
+    clearAsync();
+    waitForAsync();
     _dir = dir;
     _gridConfig = gridConfig;
     _timeSteps = timeSteps;
@@ -99,8 +105,6 @@ void DataLoader::processQueue()
         auto histVolumeId = _queue[0];
         _queue.erase(_queue.begin());
         _queueMutex.unlock();
-//        std::cout << histVolumeId.first << " : " << histVolumeId.second
-//                << std::endl;
         auto histVolume = load(histVolumeId);
         emit histVolumeLoaded(histVolumeId, histVolume);
     }
@@ -159,8 +163,7 @@ DataStep::DataStep(
         int stepId, GridConfig gridConfig, std::vector<HistConfig> histConfigs,
         DataLoader *dataLoader, QObject *parent)
   : QObject(parent), m_stepId(stepId), m_gridConfig(gridConfig)
-  , m_histConfigs(histConfigs), m_histMask(nHist(), true)
-  , m_dataLoader(dataLoader)
+  , m_histConfigs(histConfigs), m_dataLoader(dataLoader)
 {
 
 }
@@ -184,9 +187,10 @@ void DataStep::setVolume(
 //    std::cout << "DataStep::setVolume(" << m_stepId << ", " << name << ")"
 //            << std::endl;
     m_data[name] = volume;
-    /// TODO: separate into it's own function for better performance?
-    for (int iHist = 0; iHist < nHist(); ++iHist)
-        volume->hist(iHist)->setSelected(m_histMask[iHist]);
+//    /// TODO: separate into it's own function for better performance?
+//    qDebug() << "nHist()" << nHist();
+//    for (int iHist = 0; iHist < nHist(); ++iHist)
+//        volume->hist(iHist)->setSelected(m_histMask[iHist]);
 }
 
 std::shared_ptr<HistFacadeVolume> DataStep::dumbVolume(
@@ -338,6 +342,7 @@ DataPool::~DataPool() {
 
 bool DataPool::setDir(const std::string& dir)
 {
+    _statsThread = nullptr;
     std::shared_ptr<DataConfigReader> dataConfigReader = nullptr;
     std::ifstream mbpdf((dir + "/multi_block.config").c_str());
     std::ifstream fpdf((dir + "/pdf.config").c_str());
@@ -377,25 +382,17 @@ std::shared_ptr<DataStep> DataPool::step(int iStep)
                 iStep, m_gridConfig, m_histConfigs, m_dataLoader);
         connect(m_data[iStep].get(), &DataStep::signalLoadHistVolume,
                 this, &DataPool::loadHistVolume);
-        m_data[iStep]->setQueryRules(m_queryRules);
+//        m_data[iStep]->setQueryRules(m_queryRules);
     }
     return m_data[iStep];
 }
 
 void DataPool::stats(std::function<void(Stats)> callback) const {
     assert(m_isOpen);
-    static std::shared_ptr<StatsThread> statsThread =
-            std::make_shared<StatsThread>();
-    statsThread->compute(m_dir, m_gridConfig, m_timeSteps, m_pdfInTracerDir,
-            m_histConfigs, QThread::currentThread(), callback);
-}
-
-Extent DataPool::dimHists() const
-{
-    return m_gridConfig.dimHists();
-//    Extent extent(m_dimProcs[0] * m_dimHistsPerDomain[0],
-//            m_dimProcs[1] * m_dimHistsPerDomain[1],
-//            m_dimProcs[2] * m_dimHistsPerDomain[2]);
+    _statsThread = std::make_shared<StatsThread>();
+    _statsThread->compute(
+            m_dir, m_gridConfig, m_timeSteps, m_pdfInTracerDir, m_histConfigs,
+            QThread::currentThread(), callback);
 }
 
 const HistConfig &DataPool::histConfig(const std::string &name) const

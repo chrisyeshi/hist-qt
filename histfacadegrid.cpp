@@ -1,4 +1,5 @@
 #include "histfacadegrid.h"
+#include <cmath>
 #include <fstream>
 #include <data/histreader.h>
 #include <QElapsedTimer>
@@ -355,8 +356,12 @@ HistFacadeVolume::Stats HistFacadeVolume::stats() const {
 }
 
 std::shared_ptr<HistFacadeRect> HistFacadeVolume::xySlice(int z) const {
-    if (0 < _cachedXYSlices.count(z)) {
-        return _cachedXYSlices.at(z);
+    try {
+        if (0 < _cachedXYSlices.count(z)) {
+            return _cachedXYSlices.at(z);
+        }
+    } catch (...) {
+        std::cout << "HistFacadeVolume::xySlice" << std::endl;
     }
     auto nHist = helper().nh_x * helper().nh_y;
     std::vector<std::shared_ptr<const HistFacade>> hists(nHist);
@@ -372,8 +377,12 @@ std::shared_ptr<HistFacadeRect> HistFacadeVolume::xySlice(int z) const {
 }
 
 std::shared_ptr<HistFacadeRect> HistFacadeVolume::xzSlice(int y) const {
-    if (0 < _cachedXZSlices.count(y)) {
-        return _cachedXZSlices.at(y);
+    try {
+        if (0 < _cachedXZSlices.count(y)) {
+            return _cachedXZSlices.at(y);
+        }
+    } catch (...) {
+        std::cout << "HistFacadeVolume::xzSlice" << std::endl;
     }
     auto nHist = helper().nh_x * helper().nh_z;
     std::vector<std::shared_ptr<const HistFacade>> hists(nHist);
@@ -389,8 +398,12 @@ std::shared_ptr<HistFacadeRect> HistFacadeVolume::xzSlice(int y) const {
 }
 
 std::shared_ptr<HistFacadeRect> HistFacadeVolume::yzSlice(int x) const {
-    if (0 < _cachedYZSlices.count(x)) {
-        return _cachedYZSlices.at(x);
+    try {
+        if (0 < _cachedYZSlices.count(x)) {
+            return _cachedYZSlices.at(x);
+        }
+    } catch (...) {
+        std::cout << "HistFacadeVolume::yzSlice" << std::endl;
     }
     auto nHist = helper().nh_y * helper().nh_z;
     std::vector<std::shared_ptr<const HistFacade>> hists(nHist);

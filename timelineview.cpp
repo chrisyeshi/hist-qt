@@ -4,6 +4,7 @@
 #include <QSlider>
 #include <QScrollBar>
 #include <painter.h>
+#include <yy/util.h>
 
 namespace {
 
@@ -31,11 +32,27 @@ void TimelineView::setTimeStep(int timeStep) {
     _currStep = timeStep;
 }
 
+void TimelineView::setTimeSteps(const TimeSteps &timeSteps) {
+    _timeSteps = timeSteps;
+}
+
+void TimelineView::setStats(DataPool::Stats dataStats) {
+    if (!dataStats.empty() && yy::includes(dataStats[0], _histConfig.name())) {
+        _dataStats = dataStats;
+        return;
+    }
+    _dataStats = {};
+}
+
 void TimelineView::paintGL() {
-    if (LineChart == _drawMode) {
-        drawTimelineAsLineChart();
-    } else if (BarChart == _drawMode) {
-        drawTimelineAsBarChart();
+    try {
+        if (LineChart == _drawMode) {
+            drawTimelineAsLineChart();
+        } else if (BarChart == _drawMode) {
+            drawTimelineAsBarChart();
+        }
+    } catch (...) {
+        assert(false);
     }
 }
 

@@ -816,21 +816,26 @@ void HistVolumePhysicalOpenGLView::render() {
             const HistFacadeVolume::Stats& stats = _histVolume->stats();
             for (int iHistY = 0; iHistY < _currSlice->nHistY(); ++iHistY)
             for (int iHistX = 0; iHistX < _currSlice->nHistX(); ++iHistX) {
-                QRectF histRect = calcHistRect({iHistX, iHistY});
-                auto hist = _currSlice->hist(iHistX, iHistY)->hist();
-                int dim = _currDims[0];
-                float average = hist->means()[dim];
-                const std::string& var = _histConfig.vars[dim];
-                const auto& range = stats.meanRanges.at(var);
-                float ratio = (average - range[0]) / (range[1] - range[0]);
-                glm::vec3 lower = {0.9f, 0.9f, 1.f};
-                glm::vec3 higher = {0.2f, 0.3f, 0.6f};
-                glm::vec3 color = ratio * (higher - lower) + lower;
-                painter.fillRect(
-                        histRect,
-                        QColor(
-                            color[0] * 255, color[1] * 255, color[2] * 255,
-                            255));
+                try {
+                    QRectF histRect = calcHistRect({iHistX, iHistY});
+                    auto hist = _currSlice->hist(iHistX, iHistY)->hist();
+                    int dim = _currDims[0];
+                    float average = hist->means()[dim];
+                    const std::string& var = _histConfig.vars[dim];
+                    const auto& range = stats.meanRanges.at(var);
+                    float ratio = (average - range[0]) / (range[1] - range[0]);
+                    glm::vec3 lower = {0.9f, 0.9f, 1.f};
+                    glm::vec3 higher = {0.2f, 0.3f, 0.6f};
+                    glm::vec3 color = ratio * (higher - lower) + lower;
+                    painter.fillRect(
+                            histRect,
+                            QColor(
+                                color[0] * 255, color[1] * 255, color[2] * 255,
+                                255));
+                } catch (...) {
+                    std::cout << "HistVolumePhysicalOpenGLView::render"
+                            << std::endl;
+                }
             }
             /// TODO: try drawing two triangles for 2d histograms.
         }
@@ -1528,15 +1533,20 @@ void HistVolumePhysicalOpenGLView::drawOrienView(Painter &painter) {
 
 void HistVolumePhysicalOpenGLView::setCurrDimsAndUpdateUI(
         std::vector<int> displayDims) {
-    _currDims = displayDims;
-    LazyUI::instance().labeledLineEdit(
-            "histRange1Min", varRangeLabel(0) + " min");
-    LazyUI::instance().labeledLineEdit(
-            "histRange1Max", varRangeLabel(0) + " max");
-    LazyUI::instance().labeledLineEdit(
-            "histRange2Min", varRangeLabel(1) + " min");
-    LazyUI::instance().labeledLineEdit(
-            "histRange2Max", varRangeLabel(1) + " max");
+    try {
+        _currDims = displayDims;
+        LazyUI::instance().labeledLineEdit(
+                "histRange1Min", varRangeLabel(0) + " min");
+        LazyUI::instance().labeledLineEdit(
+                "histRange1Max", varRangeLabel(0) + " max");
+        LazyUI::instance().labeledLineEdit(
+                "histRange2Min", varRangeLabel(1) + " min");
+        LazyUI::instance().labeledLineEdit(
+                "histRange2Max", varRangeLabel(1) + " max");
+    } catch (...) {
+        std::cout << "HistVolumePhysicalOpenGLView::setCurrDimsAndUpdateUI"
+                << std::endl;
+    }
 }
 
 QString HistVolumePhysicalOpenGLView::varRangeLabel(int iDim) const {

@@ -40,8 +40,12 @@ bool HistFacade::checkRange(
 
 std::shared_ptr<const Hist> HistFacade::hist(
         const std::vector<int> &dims) const {
-    if (0 < _cachedHists.count(dims)) {
-        return _cachedHists.at(dims);
+    try {
+        if (0 < _cachedHists.count(dims)) {
+            return _cachedHists.at(dims);
+        }
+    } catch (...) {
+        std::cout << "HistFacade::hist" << std::endl;
     }
     HistCollapser collapser(this->hist());
     std::shared_ptr<const Hist> hist = collapser.collapseTo(dims);
@@ -57,8 +61,12 @@ std::shared_ptr<const Hist> HistFacade::hist(
 std::shared_ptr<yy::gl::texture> HistFacade::texture(
         const std::vector<int> &dims) const
 {
-    if (0 < _cachedTextures.count(dims)) {
-        return _cachedTextures.at(dims);
+    try {
+        if (0 < _cachedTextures.count(dims)) {
+            return _cachedTextures.at(dims);
+        }
+    } catch (...) {
+        std::cout << "HistFacade::texture" << std::endl;
     }
     /// TODO: right now only supports 2d histograms.
     assert(dims.size() == 2);
@@ -92,8 +100,12 @@ std::shared_ptr<yy::gl::texture> HistFacade::texture(
 /// yy::gl::buffer will have to be stored in another array.
 std::shared_ptr<yy::gl::vector<float>> HistFacade::vbo(
         const std::vector<int> &dims) const {
-    if (0 < _cachedVBOs.count(dims)) {
-        return _cachedVBOs.at(dims);
+    try {
+        if (0 < _cachedVBOs.count(dims)) {
+            return _cachedVBOs.at(dims);
+        }
+    } catch (...) {
+        std::cout << "HistFacade::vbo" << std::endl;
     }
     auto hist = this->hist(dims);
     auto freqsPtr = std::make_shared<yy::gl::vector<float>>(hist->nBins());

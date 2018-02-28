@@ -85,9 +85,6 @@ private:
     void toUserStudyPage(int pageId);
 
 private:
-    unsigned int nHist() const;
-
-private:
     HistVolumeView* _histVolumeView;
     HistCompareView* _histCompareView;
     QueryView* _queryView;

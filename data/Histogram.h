@@ -261,7 +261,7 @@ public:
     }
     using Hist::binFreq;
     virtual float binPercent(const int flatId) const override {
-        return m_values[flatId] / m_sum;
+        return 0.f == m_sum ? 1.f : m_values[flatId] / m_sum;
     }
     using Hist::binPercent;
 

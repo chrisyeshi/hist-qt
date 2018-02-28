@@ -1,5 +1,6 @@
 #include "Histogram.h"
 
+#include <iostream>
 #include <fstream>
 #include <iomanip>
 #include <cassert>
@@ -224,24 +225,26 @@ Hist1D::Hist1D(int dim, double min, double max, double logBase,
 
 HistBin Hist1D::varRangesValue(
         const std::vector<std::array<double, 2>> &varRanges) const {
-    std::array<double, 2> varRange = varRanges.at(0);
-    float lowerIdF = idsOfValuesF({varRange[0]}).at(0);
-    float upperIdF = idsOfValuesF({varRange[1]}).at(0);
-    int lowerId = int(lowerIdF);
-    int upperId = int(upperIdF);
-    // lower bin
-    float lowerFreq = (std::ceil(lowerIdF) - lowerIdF) * binFreq(lowerId);
-    // upper bin
-    float upperFreq = (upperIdF - std::floor(upperIdF)) * binFreq(upperId);
-    // middle bins
-    float midFreq = 0.f;
-    for (int iBin = int(std::ceil(lowerIdF)); iBin < upperId; ++iBin) {
-        midFreq += binFreq(iBin);
-    }
-    // hist bin
-    float freq = lowerFreq + upperFreq + midFreq;
-    float percent = freq / m_sum;
-    return HistBin(freq, percent);
+    try {
+        std::array<double, 2> varRange = varRanges.at(0);
+        float lowerIdF = idsOfValuesF({varRange[0]}).at(0);
+        float upperIdF = idsOfValuesF({varRange[1]}).at(0);
+        int lowerId = int(lowerIdF);
+        int upperId = int(upperIdF);
+        // lower bin
+        float lowerFreq = (std::ceil(lowerIdF) - lowerIdF) * binFreq(lowerId);
+        // upper bin
+        float upperFreq = (upperIdF - std::floor(upperIdF)) * binFreq(upperId);
+        // middle bins
+        float midFreq = 0.f;
+        for (int iBin = int(std::ceil(lowerIdF)); iBin < upperId; ++iBin) {
+            midFreq += binFreq(iBin);
+        }
+        // hist bin
+        float freq = lowerFreq + upperFreq + midFreq;
+        float percent = freq / m_sum;
+        return HistBin(freq, percent);
+    } catch(...) { std::cout << "Hist1D::varRangesValue" << std::endl; }
 }
 
 std::vector<float> Hist1D::means() const {
@@ -334,6 +337,7 @@ std::shared_ptr<Hist1D> Hist2D::to1DPtr(int dimidx) const
 
 HistBin Hist2D::varRangesValue(
         const std::vector<std::array<double, 2>> &varRanges) const {
+    try {
     std::vector<float> lowerIdsF =
             idsOfValuesF({varRanges.at(0)[0], varRanges.at(1)[0]});
     std::vector<float> upperIdsF =
@@ -385,6 +389,7 @@ HistBin Hist2D::varRangesValue(
     // return
     float percent = freq / m_sum;
     return HistBin(freq, percent);
+    } catch (...) { std::cout << "Hist2D::varRangesValue" << std::endl; }
 }
 
 bool Hist2D::checkRange(std::vector<std::pair<int32_t, int32_t>> binRanges,

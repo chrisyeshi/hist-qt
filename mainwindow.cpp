@@ -494,7 +494,10 @@ void MainWindow::open(const QString &dir)
     if (!_data.setDir(dir.toStdString()))
         return;
     _currTimeStep = 0;
+    _timelineView->setHistConfig(_data.histConfigs()[0]);
+    _timelineView->setDisplayDims({0});
     _timelineView->setTimeSteps(_data.timeSteps());
+    _timelineView->setStats({});
     _data.stats([this](DataPool::Stats dataStats) {
         _timelineView->setStats(dataStats);
         _timelineView->update();
@@ -666,10 +669,4 @@ void MainWindow::toUserStudyPage(int pageId) {
         _userStudyCtrlView->setCurrentPage(pageId);
         qInfo() << "to user study page" << pageId;
     }
-}
-
-unsigned int MainWindow::nHist() const
-{
-    Extent dim = _data.dimHists();
-    return dim[0] * dim[1] * dim[2];
 }

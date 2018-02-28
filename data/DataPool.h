@@ -31,6 +31,8 @@ bool operator==(const QueryRule& a, const QueryRule& b);
 
 ///////////////////////////////////////////////////////////////////////////////
 
+class StatsThread;
+
 ///////////////////////////////////////////////////////////////////////////////
 
 class DataLoader : public QObject {
@@ -149,7 +151,6 @@ public:
     std::vector<float> volMax() const {
         return m_gridConfig.physicalBoundingBox().upper();
     }
-    Extent dimHists() const;
     std::vector<int> dimHistsPerDomain() const {
         return m_gridConfig.dimHistsPerDomain();
     }
@@ -188,11 +189,13 @@ class StatsThread : public QThread {
 public:
     StatsThread(QObject *parent = nullptr) : QThread(parent) {}
     virtual ~StatsThread() {
+        std::cout << "begin StatsThread::~StatsThread(" << _dir << ")" << std::endl;
         _mutex.lock();
         _abort = true;
         _condition.wakeOne();
         _mutex.unlock();
         wait();
+        std::cout << "end StatsThread::~StatsThread(" << _dir << ")" << std::endl;
     }
 
 public:
@@ -235,6 +238,8 @@ protected:
                     stepStats[name] = statsPerVolume;
                 }
                 dataStats.push_back(stepStats);
+                if (_restart) break;
+                if (_abort) return;
                 QTimer::singleShot(
                         0, _context, std::bind(_callback, dataStats));
             }
