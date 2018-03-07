@@ -27,28 +27,40 @@ HistHelper HistHelper::merge(const int direction, const HistHelper& a, const His
     if (0 == direction) // x
     {
         c.n_vx = a.n_vx + b.n_vx;
-        assert(a.n_vy == b.n_vy); c.n_vy = a.n_vy;
-        assert(a.n_vz == b.n_vz); c.n_vz = a.n_vz;
+//        assert(a.n_vy == b.n_vy);
+        c.n_vy = a.n_vy;
+//        assert(a.n_vz == b.n_vz);
+        c.n_vz = a.n_vz;
         c.nh_x = a.nh_x + b.nh_x;
-        assert(a.nh_y == b.nh_y); c.nh_y = a.nh_y;
-        assert(a.nh_z == b.nh_z); c.nh_z = a.nh_z;
+//        assert(a.nh_y == b.nh_y);
+        c.nh_y = a.nh_y;
+//        assert(a.nh_z == b.nh_z);
+        c.nh_z = a.nh_z;
 
     } else if (1 == direction) // y
     {
-        assert(a.n_vx == b.n_vx); c.n_vx = a.n_vx;
+//        assert(a.n_vx == b.n_vx);
+        c.n_vx = a.n_vx;
         c.n_vy = a.n_vy + b.n_vy;
-        assert(a.n_vz == b.n_vz); c.n_vz = a.n_vz;
-        assert(a.nh_x == b.nh_x); c.nh_x = a.nh_x;
+//        assert(a.n_vz == b.n_vz);
+        c.n_vz = a.n_vz;
+//        assert(a.nh_x == b.nh_x);
+        c.nh_x = a.nh_x;
         c.nh_y = a.nh_y + b.nh_y;
-        assert(a.nh_z == b.nh_z); c.nh_z = a.nh_z;
+//        assert(a.nh_z == b.nh_z);
+        c.nh_z = a.nh_z;
 
     } else if (2 == direction) // z
     {
-        assert(a.n_vx == b.n_vx); c.n_vx = a.n_vx;
-        assert(a.n_vy == b.n_vy); c.n_vy = a.n_vy;
+//        assert(a.n_vx == b.n_vx);
+        c.n_vx = a.n_vx;
+//        assert(a.n_vy == b.n_vy);
+        c.n_vy = a.n_vy;
         c.n_vz = a.n_vz + b.n_vz;
-        assert(a.nh_x == b.nh_x); c.nh_x = a.nh_x;
-        assert(a.nh_y == b.nh_y); c.nh_y = a.nh_y;
+//        assert(a.nh_x == b.nh_x);
+        c.nh_x = a.nh_x;
+//        assert(a.nh_y == b.nh_y);
+        c.nh_y = a.nh_y;
         c.nh_z = a.nh_z + b.nh_z;
     }
     return c;

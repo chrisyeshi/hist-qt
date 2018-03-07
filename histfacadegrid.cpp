@@ -1,6 +1,7 @@
 #include "histfacadegrid.h"
 #include <cmath>
 #include <fstream>
+#include <set>
 #include <data/histreader.h>
 #include <QElapsedTimer>
 #include <util.h>
@@ -33,81 +34,204 @@ std::shared_ptr<HistFacadeDomain> getNullHistDomain(
     return defaultHistDomain;
 }
 
-yy::ivec3 getMultiBlockDomainCounts(const MultiBlockTopology& topo) {
-    if (4 == topo.blockCount()) {
-        int x = topo.blockSpec(0).nDomains()[0]
-                + topo.blockSpec(1).nDomains()[0]
-                + topo.blockSpec(2).nDomains()[0];
-        int y = topo.blockSpec(3).nDomains()[1]
-                + topo.blockSpec(0).nDomains()[1];
-        int z = topo.blockSpec(0).nDomains()[2];
-        return yy::ivec3(x, y, z);
+std::map<int, int> getXToColumnId(const MultiBlockTopology& topo) {
+    std::map<int, int> xToColumnId;
+    std::set<int> xs;
+    for (int iBlock = 0; iBlock < topo.blockCount(); ++iBlock) {
+        auto block = topo.blockSpec(iBlock);
+        xs.insert(block.lowerCorner().x());
     }
-    assert(false);
-    return yy::ivec3(-1, -1, -1);
+    for (auto itr = xs.begin(); itr != xs.end(); ++itr) {
+        xToColumnId[*itr] = std::distance(xs.begin(), itr);
+    }
+    return xToColumnId;
+}
+
+std::map<int, int> getYToRowId(const MultiBlockTopology& topo) {
+    std::map<int, int> yToRowId;
+    std::set<int> ys;
+    for (int iBlock = 0; iBlock < topo.blockCount(); ++iBlock) {
+        auto block = topo.blockSpec(iBlock);
+        ys.insert(block.lowerCorner().y());
+    }
+    for (auto itr = ys.begin(); itr != ys.end(); ++itr) {
+        yToRowId[*itr] = std::distance(ys.begin(), itr);
+    }
+    return yToRowId;
+}
+
+std::map<int, int> getZToDepthId(const MultiBlockTopology& topo) {
+    std::map<int, int> zToDepthId;
+    std::set<int> zs;
+    for (int iBlock = 0; iBlock < topo.blockCount(); ++iBlock) {
+        auto block = topo.blockSpec(iBlock);
+        zs.insert(block.lowerCorner().z());
+    }
+    for (auto itr = zs.begin(); itr != zs.end(); ++itr) {
+        zToDepthId[*itr] = std::distance(zs.begin(), itr);
+    }
+    return zToDepthId;
+}
+
+std::vector<int> getColumnDomainCounts(
+        const MultiBlockTopology& topo, const std::map<int, int>& xToColumnId) {
+    std::vector<int> columnDomainCounts(xToColumnId.size(), 0);
+    for (int iBlock = 0; iBlock < topo.blockCount(); ++iBlock) {
+        auto block = topo.blockSpec(iBlock);
+        int columnId = xToColumnId.at(block.lowerCorner().x());
+        columnDomainCounts[columnId] =
+                std::max(block.nDomains()[0], columnDomainCounts[columnId]);
+    }
+    return columnDomainCounts;
+}
+
+std::vector<int> getRowDomainCounts(
+        const MultiBlockTopology& topo, const std::map<int, int>& yToRowId) {
+    std::vector<int> rowDomainCounts(yToRowId.size(), 0);
+    for (int iBlock = 0; iBlock < topo.blockCount(); ++iBlock) {
+        auto block = topo.blockSpec(iBlock);
+        int rowId = yToRowId.at(block.lowerCorner().y());
+        rowDomainCounts[rowId] =
+                std::max(block.nDomains()[1], rowDomainCounts[rowId]);
+    }
+    return rowDomainCounts;
+}
+
+std::vector<int> getDepthDomainCounts(
+        const MultiBlockTopology& topo, const std::map<int, int>& zToDepthId) {
+    std::vector<int> depthDomainCounts(zToDepthId.size(), 0);
+    for (int iBlock = 0; iBlock < topo.blockCount(); ++iBlock) {
+        auto block = topo.blockSpec(iBlock);
+        int depthId = zToDepthId.at(block.lowerCorner().z());
+        depthDomainCounts[depthId] =
+                std::max(block.nDomains()[2], depthDomainCounts[depthId]);
+    }
+    return depthDomainCounts;
+}
+
+std::vector<int> getColumnVoxelCounts(
+        const MultiBlockTopology& topo, const std::map<int, int>& xToColumnId) {
+    std::vector<int> columnVoxelCounts(xToColumnId.size(), 0);
+    for (int iBlock = 0; iBlock < topo.blockCount(); ++iBlock) {
+        auto block = topo.blockSpec(iBlock);
+        int columnId = xToColumnId.at(block.lowerCorner().x());
+        columnVoxelCounts[columnId] =
+                std::max(block.nGridPts()[0], columnVoxelCounts[columnId]);
+    }
+    return columnVoxelCounts;
+}
+
+std::vector<int> getRowVoxelCounts(
+        const MultiBlockTopology& topo, const std::map<int, int>& yToRowId) {
+    std::vector<int> rowVoxelCounts(yToRowId.size(), 0);
+    for (int iBlock = 0; iBlock < topo.blockCount(); ++iBlock) {
+        auto block = topo.blockSpec(iBlock);
+        int rowId = yToRowId.at(block.lowerCorner().y());
+        rowVoxelCounts[rowId] =
+                std::max(block.nGridPts()[1], rowVoxelCounts[rowId]);
+    }
+    return rowVoxelCounts;
+}
+
+std::vector<int> getDepthVoxelCounts(
+        const MultiBlockTopology& topo, const std::map<int, int>& zToDepthId) {
+    std::vector<int> depthVoxelCounts(zToDepthId.size(), 0);
+    for (int iBlock = 0; iBlock < topo.blockCount(); ++iBlock) {
+        auto block = topo.blockSpec(iBlock);
+        int depthId = zToDepthId.at(block.lowerCorner().z());
+        depthVoxelCounts[depthId] =
+                std::max(block.nGridPts()[2], depthVoxelCounts[depthId]);
+    }
+    return depthVoxelCounts;
+}
+
+yy::ivec3 getMultiBlockDomainCounts(const MultiBlockTopology& topo) {
+    auto xToColumnId = getXToColumnId(topo);
+    auto yToRowId = getYToRowId(topo);
+    auto zToDepthId = getZToDepthId(topo);
+    auto columnDomainCounts = getColumnDomainCounts(topo, xToColumnId);
+    auto rowDomainCounts = getRowDomainCounts(topo, yToRowId);
+    auto depthDomainCounts = getDepthDomainCounts(topo, zToDepthId);
+    yy::ivec3 nDomains(0, 0, 0);
+    for (auto count : columnDomainCounts) {
+        nDomains.x() += count;
+    }
+    for (auto count : rowDomainCounts) {
+        nDomains.y() += count;
+    }
+    for (auto count : depthDomainCounts) {
+        nDomains.z() += count;
+    }
+    return nDomains;
 }
 
 yy::ivec3 getMultiBlockDomainIdOffsets(
         const MultiBlockTopology& topo, int iBlock) {
-    if (4 == topo.blockCount()) {
-        if (0 == iBlock) {
-            return yy::ivec3(0, topo.blockSpec(3).nDomains()[1], 0);
-        } else if (1 == iBlock) {
-            return yy::ivec3(topo.blockSpec(0).nDomains()[0],
-                    topo.blockSpec(3).nDomains()[1], 0);
-        } else if (2 == iBlock) {
-            return yy::ivec3(
-                    topo.blockSpec(0).nDomains()[0]
-                        + topo.blockSpec(1).nDomains()[0],
-                    topo.blockSpec(3).nDomains()[1], 0);
-        } else if (3 == iBlock) {
-            return yy::ivec3(topo.blockSpec(0).nDomains()[0], 0, 0);
-        }
+    auto xToColumnId = getXToColumnId(topo);
+    auto yToRowId = getYToRowId(topo);
+    auto zToDepthId = getZToDepthId(topo);
+    auto columnDomainCounts = getColumnDomainCounts(topo, xToColumnId);
+    auto rowDomainCounts = getRowDomainCounts(topo, yToRowId);
+    auto depthDomainCounts = getDepthDomainCounts(topo, zToDepthId);
+    auto block = topo.blockSpec(iBlock);
+    int columnId = xToColumnId.at(block.lowerCorner().x());
+    int rowId = yToRowId.at(block.lowerCorner().y());
+    int depthId = zToDepthId.at(block.lowerCorner().z());
+    yy::ivec3 offsets(0, 0, 0);
+    for (int iColumn = 0; iColumn < columnId; ++iColumn) {
+        offsets.x() += columnDomainCounts.at(iColumn);
     }
-    assert(false);
-    return yy::ivec3(-1, -1, -1);
+    for (int iRow = 0; iRow < rowId; ++iRow) {
+        offsets.y() += rowDomainCounts.at(iRow);
+    }
+    for (int iDepth = 0; iDepth < depthId; ++iDepth) {
+        offsets.z() += depthDomainCounts.at(iDepth);
+    }
+    return offsets;
 }
 
 yy::ivec3 getMultiBlockDomainVoxelCounts(
         const MultiBlockTopology& topo, const yy::ivec3& domainIds) {
-    if (4 == topo.blockCount()) {
-        int xDomain1 = topo.blockSpec(0).nDomains()[0];
-        int xGridPt1 = topo.blockSpec(0).nGridPts()[0];
-        int xDomain2 = topo.blockSpec(1).nDomains()[0];
-        int xGridPt2 = topo.blockSpec(1).nGridPts()[0];
-        int xDomain3 = topo.blockSpec(2).nDomains()[0];
-        int xGridPt3 = topo.blockSpec(2).nGridPts()[0];
-        int yDomain1 = topo.blockSpec(3).nDomains()[1];
-        int yGridPt1 = topo.blockSpec(3).nGridPts()[1];
-        int yDomain2 = topo.blockSpec(0).nDomains()[1];
-        int yGridPt2 = topo.blockSpec(0).nGridPts()[1];
-        int zDomain = topo.blockSpec(0).nDomains()[2];
-        int zGridPt = topo.blockSpec(0).nGridPts()[2];
-        int x, y, z;
-        // x
-        if (domainIds.x() < xDomain1) {
-            x = xGridPt1 / xDomain1;
-        } else if (domainIds.x() < xDomain1 + xDomain2) {
-            x = xGridPt2 / xDomain2;
-        } else if (domainIds.x() < xDomain1 + xDomain2 + xDomain3) {
-            x = xGridPt3 / xDomain3;
-        } else {
-            assert(false);
+    auto xToColumnId = getXToColumnId(topo);
+    auto yToRowId = getYToRowId(topo);
+    auto zToDepthId = getZToDepthId(topo);
+    auto columnDomainCounts = getColumnDomainCounts(topo, xToColumnId);
+    auto rowDomainCounts = getRowDomainCounts(topo, yToRowId);
+    auto depthDomainCounts = getDepthDomainCounts(topo, zToDepthId);
+    auto columnVoxelCounts = getColumnVoxelCounts(topo, xToColumnId);
+    auto rowVoxelCounts = getRowVoxelCounts(topo, yToRowId);
+    auto depthVoxelCounts = getDepthVoxelCounts(topo, zToDepthId);
+    int columnId = -1, rowId = -1, depthId = -1;
+    for (int iColumn = 0, accu = 0; iColumn < columnDomainCounts.size();
+            ++iColumn) {
+        int lower = accu;
+        int upper = accu + columnDomainCounts[iColumn];
+        if (lower <= domainIds.x() && domainIds.x() < upper) {
+            columnId = iColumn;
         }
-        // y
-        if (domainIds.y() < yDomain1) {
-            y = yGridPt1 / yDomain1;
-        } else if (domainIds.y() < yDomain1 + yDomain2) {
-            y = yGridPt2 / yDomain2;
-        } else {
-            assert(false);
-        }
-        // z
-        z = zGridPt / zDomain;
-        return yy::ivec3(x, y, z);
+        accu = upper;
     }
-    assert(false);
-    return yy::ivec3(-1, -1, -1);
+    for (int iRow = 0, accu = 0; iRow < rowDomainCounts.size(); ++iRow) {
+        int lower = accu;
+        int upper = accu + rowDomainCounts[iRow];
+        if (lower <= domainIds.y() && domainIds.y() < upper) {
+            rowId = iRow;
+        }
+        accu = upper;
+    }
+    for (int iDepth = 0, accu = 0; iDepth < depthDomainCounts.size();
+            ++iDepth) {
+        int lower = accu;
+        int upper = accu + depthDomainCounts[iDepth];
+        if (lower <= domainIds.z() && domainIds.z() < upper) {
+            depthId = iDepth;
+        }
+        accu = upper;
+    }
+    return yy::ivec3(
+            columnVoxelCounts[columnId] / columnDomainCounts[columnId],
+            rowVoxelCounts[rowId] / rowDomainCounts[rowId],
+            depthVoxelCounts[depthId] / depthDomainCounts[depthId]);
 }
 
 yy::ivec3 getMultiBlockDomainHistCounts(
