@@ -40,8 +40,8 @@ int main(int argc, char *argv[])
     // initiate the application
     QApplication a(argc, argv);
     // main window
-//    MainWindow w("user study");
-    MainWindow w("physical");
+    MainWindow w("user study");
+//    MainWindow w("physical");
     w.show();
     return a.exec();
 }

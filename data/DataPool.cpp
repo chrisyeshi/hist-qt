@@ -5,6 +5,8 @@
 #include <cassert>
 #include <unordered_set>
 #include <util.h>
+#include <QFileInfo>
+#include <json/json.h>
 #include "dataconfigreader.h"
 
 namespace {
@@ -12,23 +14,63 @@ namespace {
 const std::string data_out = "/data/";
 const std::string tracer_pre = "tracer-";
 const std::string pdf_pre = "pdf-";
-
-template <typename AsyncFunc, typename Callback>
-void asyncRun(QObject* obj, AsyncFunc asyncFunc, Callback callback) {
-    auto asyncFuncWrapper = [=]() {
-        auto result = asyncFunc();
-        QTimer::singleShot(0, obj, std::bind(callback, result));
-    };
-    QtConcurrent::run(asyncFuncWrapper);
-}
-
-// Convenient function to run the callback in the main thread.
-template <typename AsyncFunc, typename Callback>
-void asyncRun(AsyncFunc asyncFunc, Callback callback) {
-    asyncRun(QCoreApplication::instance(), asyncFunc, callback);
-}
-
 static std::shared_ptr<StatsThread> _statsThread;
+
+bool fileExists(const std::string& filePath) {
+    QFileInfo info(QString::fromStdString(filePath));
+    return info.exists() && info.isFile();
+}
+
+DataPool::Stats loadStatsFromFile(const std::string& filePath) {
+    Json::Value jStats;
+    Json::Reader reader;
+    std::ifstream fin(filePath.c_str());
+    reader.parse(fin, jStats);
+    DataPool::Stats stats;
+    for (int iStep = 0; iStep < jStats.size(); ++iStep) {
+        Json::Value jStep = jStats[iStep];
+        DataStep::Stats step;
+        for (auto volKey : jStep.getMemberNames()) {
+            Json::Value jVolume = jStep[volKey];
+            HistFacadeVolume::Stats volume;
+            for (auto varKey : jVolume.getMemberNames()) {
+                volume.means[varKey] = jVolume[varKey]["mean"].asFloat();
+                volume.meanRanges[varKey] = {
+                    jVolume[varKey]["meanRange"]["min"].asFloat(),
+                    jVolume[varKey]["meanRange"]["max"].asFloat(),
+                };
+            }
+            step[volKey] = volume;
+        }
+        stats.push_back(step);
+    }
+    return stats;
+}
+
+void saveStatsToFile(
+        const DataPool::Stats& stats, const std::string& filePath) {
+    Json::Value jStats;
+    for (unsigned int iStep = 0; iStep < stats.size(); ++iStep) {
+        const auto& step = stats[iStep];
+        Json::Value jStep;
+        for (auto pair : step) {
+            const auto& volume = pair.second;
+            Json::Value jVolume;
+            for (auto vPair : volume.means) {
+                const auto& key = vPair.first;
+                jVolume[key]["mean"] = volume.means.at(key);
+                jVolume[key]["meanRange"]["min"] = volume.meanRanges.at(key)[0];
+                jVolume[key]["meanRange"]["max"] = volume.meanRanges.at(key)[1];
+            }
+            jStep[pair.first] = jVolume;
+        }
+        jStats[iStep] = jStep;
+    }
+    std::ofstream fout(filePath.c_str());
+    assert(fout);
+    Json::StyledStreamWriter writer;
+    writer.write(fout, jStats);
+}
 
 } // unnamed namespace
 
@@ -389,10 +431,20 @@ std::shared_ptr<DataStep> DataPool::step(int iStep)
 
 void DataPool::stats(std::function<void(Stats)> callback) const {
     assert(m_isOpen);
-    _statsThread = std::make_shared<StatsThread>();
-    _statsThread->compute(
-            m_dir, m_gridConfig, m_timeSteps, m_pdfInTracerDir, m_histConfigs,
-            QThread::currentThread(), callback);
+    std::string filePath = m_dir + "/datastats.json";
+    std::cout << filePath << std::endl;
+    if (fileExists(filePath)) {
+        Stats stats = loadStatsFromFile(filePath);
+        callback(stats);
+    } else {
+        _statsThread = std::make_shared<StatsThread>();
+        _statsThread->compute(
+                m_dir, m_gridConfig, m_timeSteps, m_pdfInTracerDir,
+                m_histConfigs, QThread::currentThread(), [=](Stats stats) {
+            saveStatsToFile(stats, filePath);
+            callback(stats);
+        });
+    }
 }
 
 const HistConfig &DataPool::histConfig(const std::string &name) const

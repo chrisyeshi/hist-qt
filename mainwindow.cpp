@@ -340,6 +340,12 @@ void MainWindow::createUserStudyLayout() {
     _histView = new HistViewHolder(this);
     _histView->setText(tr("Please open a dataset."));
     auto physicalView = new HistVolumePhysicalView(this);
+    connect(physicalView, &HistVolumePhysicalView::currHistConfigDimsChanged,
+            this, [this](std::string name, std::vector<int> displayDims) {
+        _timelineView->setHistConfig(_data.histConfig(name));
+        _timelineView->setDisplayDims(displayDims);
+        _timelineView->update();
+    });
     connect(physicalView, &HistVolumePhysicalView::selectedHistIdsChanged, this,
             [this](std::string volumeName, std::vector<int> flatIds,
                 std::vector<int> displayDims) {
@@ -361,6 +367,17 @@ void MainWindow::createUserStudyLayout() {
         }
         _histView->update();
     }, Qt::QueuedConnection);
+    connect(physicalView, &HistVolumePhysicalView::customVarRangesChanged,
+            this,
+            [this](const HistVolumePhysicalView::HistRangesMap& varRangesMap) {
+        HistView::HistRangesMap rangesMap;
+        int counter = 0;
+        for (auto keyValue : varRangesMap) {
+            rangesMap[counter++] = keyValue.second;
+        }
+        _histView->setCustomVarRanges(rangesMap);
+        _histView->update();
+    });
     _histVolumeView = physicalView;
     _histCompareView->hide();
     _particleView->hide();
@@ -478,6 +495,11 @@ void MainWindow::createUserStudyLayout() {
         qInfo() << "openButton";
         open();
     });
+    LazyUI::instance().divider("histConfigHeader");
+    LazyUI::instance().labeledCombo(tr("histVolume"), tr("Histogram Volumes"),
+            FluidLayout::Item::Large);
+    LazyUI::instance().labeledCombo(tr("histVar"), tr("Display Variables"),
+            FluidLayout::Item::Large);
     readSettings();
 }
 
