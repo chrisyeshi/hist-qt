@@ -124,7 +124,7 @@ std::array<float, 2> calcFreqRange(const std::shared_ptr<const Hist>& hist) {
         vMin = std::min(vMin, hist->binPercent(iBin));
         vMax = std::max(vMax, hist->binPercent(iBin));
     }
-    return {vMin, vMax};
+    return {0.f, vMax};
 }
 
 QVector2D calcDeltaVecPixel(const QList<QTouchEvent::TouchPoint>& touchPoints) {
@@ -1033,7 +1033,7 @@ void HistVolumePhysicalOpenGLView::setFreqRangesToHistPainters(
         auto freqRange = ::calcFreqRange(hist);
         std::array<float, 2> r;
         r[0] = std::isnan(range[0]) ? freqRange[0] : range[0];
-        r[1] = std::isnan(range[1]) ? freqRange[1] : range[1];
+        r[1] = std::max(r[0], std::isnan(range[1]) ? freqRange[1] : range[1]);
         _histPainters[iHist]->setFreqRange(r[0], r[1]);
     }
 }

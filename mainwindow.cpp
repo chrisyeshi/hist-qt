@@ -448,18 +448,17 @@ void MainWindow::createUserStudyLayout() {
         message->setGeometry(150, 380, 600, 600);
         message->setText(
                 tr("The purpose of this user study is to gather user") +
-                tr(" experience feedback in order to improve the") +
+                tr(" feedback in order to improve the") +
                 tr(" visualization tool under development. It is a tool") +
-                tr(" for scientists to explore and analyze volumetric") +
+                tr(" to explore and analyze volumetric") +
                 tr(" histograms. A typical usage is to identify") +
                 tr(" regions of interest in a simulation volume.") +
-                tr(" The tasks in this user study are designed to be") +
-                tr(" simplified versions of what the scientists will") +
-                tr(" perform."));
+                tr(" This study consists of a tutorial, three exercises,") +
+                tr(" and three tasks."));
         auto start = new QPushButton(tr("Start"), widget);
         start->move(150, 500);
         connect(start, &QPushButton::clicked,
-                this, &MainWindow::toUserStudyBgPage);
+                this, &MainWindow::toTutorialPage);
         return widget;
     }());
     _sLayout->addWidget([&]() {
@@ -663,21 +662,18 @@ void MainWindow::toUserStudyPage(int pageId) {
         _userStudyCtrlView->setCurrentPage(0);
         qInfo() << "to features walk through page";
 
-    } else if (17 == pageId) {
+    } else if (13 == pageId) {
         _sLayout->setCurrentIndex(0);
         _userStudyCtrlView->setCurrentPage(0);
         qInfo() << "to welcome page";
 
-    } else if (6 == pageId || 10 == pageId) {
+    } else if (12 == pageId) {
+        auto home = QProcessEnvironment::systemEnvironment().value("HOME");
+        this->open(home + tr("/work/histqt/data_pdf_reheat_manual"));
         setTimeStep(0);
         _histView->setHist(std::make_shared<HistNullFacade>(), {});
         _histView->update();
-        volView->reset({0, 1});
-        _sLayout->setCurrentIndex(2);
-        _userStudyCtrlView->setCurrentPage(pageId);
-        qInfo() << "to user study page" << pageId;
-
-    } else if (11 <= pageId && pageId <= 16) {
+        volView->reset();
         _sLayout->setCurrentIndex(2);
         _userStudyCtrlView->setCurrentPage(pageId);
         qInfo() << "to user study page" << pageId;

@@ -288,7 +288,7 @@ HistFacadeVolume::HistFacadeVolume(
         });
         if (yColumns.size() != dims[0] * dims[2]) {
             // everything in one file, other than "." and ".."
-            assert(3 == entries.size());
+//            assert(3 == entries.size());
             _domains = HistFacadeYColumnReader(dir, name, "00000", vars).read();
         } else {
             // actual y columns

@@ -482,7 +482,13 @@ void DataPool::histVolumeLoaded(DataLoader::HistVolumeId histVolumeId,
         std::shared_ptr<HistFacadeVolume> histVolume) {
     int stepId = histVolumeId.first;
     std::string name = histVolumeId.second;
-    this->step(stepId)->setVolume(name, histVolume);
+    auto itr = std::find_if(m_histConfigs.begin(), m_histConfigs.end(),
+            [name](const HistConfig& config) {
+        return config.name() == name;
+    });
+    if (this->step(stepId) && itr != m_histConfigs.end()) {
+        this->step(stepId)->setVolume(name, histVolume);
+    }
 }
 
 void DataPool::loadHistVolume(DataLoader::HistVolumeId histVolumeId) {

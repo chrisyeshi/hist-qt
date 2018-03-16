@@ -9,6 +9,14 @@
 #include "histreader.h"
 #include <yy/functional.h>
 
+namespace {
+
+float clamp(float v, float a, float b) {
+    return std::min(b, std::max(a, v));
+}
+
+} // unnamed namespace
+
 bool operator==(const Interval<float> &a, const Interval<float> &b)
 {
     if (fabs(a.lower - b.lower) > 0.0001)
@@ -342,6 +350,12 @@ HistBin Hist2D::varRangesValue(
             idsOfValuesF({varRanges.at(0)[0], varRanges.at(1)[0]});
     std::vector<float> upperIdsF =
             idsOfValuesF({varRanges.at(0)[1], varRanges.at(1)[1]});
+    for (int iDim = 0; iDim < nDim(); ++iDim) {
+        lowerIdsF[0] = clamp(lowerIdsF[0], 0.f, float(dim()[0]));
+        lowerIdsF[1] = clamp(lowerIdsF[1], 0.f, float(dim()[1]));
+        upperIdsF[0] = clamp(upperIdsF[0], 0.f, float(dim()[0]));
+        upperIdsF[1] = clamp(upperIdsF[1], 0.f, float(dim()[1]));
+    }
     std::vector<int> lowerIds = {int(lowerIdsF[0]), int(lowerIdsF[1])};
     std::vector<int> upperIds = {int(upperIdsF[0]), int(upperIdsF[1])};
     float freq = 0.f;
